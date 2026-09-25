@@ -1,0 +1,47 @@
+import { Hero } from "@/components/landing/hero";
+import { TrustedBy } from "@/components/landing/trusted-by";
+import { WhyUs } from "@/components/landing/why-us";
+import { Showcase } from "@/components/landing/showcase";
+import { Journey } from "@/components/landing/journey";
+import { Subjects } from "@/components/landing/subjects";
+import { DeepDive } from "@/components/landing/deep-dive";
+import { Testimonials } from "@/components/landing/testimonials";
+import { StatsBand } from "@/components/landing/stats";
+import { Pricing } from "@/components/landing/pricing";
+import { Faq } from "@/components/landing/faq";
+import { FinalCta } from "@/components/landing/final-cta";
+import { buildMetadata } from "@/lib/seo/metadata";
+import { JsonLd } from "@/components/seo/json-ld";
+import { FAQS } from "@/components/landing/faq-data";
+import { faqPageJsonLd, organisationJsonLd, websiteJsonLd } from "@/lib/seo/jsonld";
+
+export const metadata = buildMetadata({
+  title: "ScholarsCrib — Learn Smarter. Score Higher. Build Your Future.",
+  description:
+    "Nigeria's learning platform for WAEC, JAMB and NECO. Interactive lessons, an AI tutor, smart flashcards, quizzes, CBT practice and a study plan that adapts to you.",
+  path: "/",
+});
+
+export default function LandingPage() {
+  return (
+    <>
+      <JsonLd data={organisationJsonLd()} />
+      <JsonLd data={websiteJsonLd()} />
+      <JsonLd data={faqPageJsonLd(FAQS)} />
+      <Hero />
+      <TrustedBy />
+      <WhyUs />
+      <Showcase />
+      <Journey />
+      <Subjects />
+      <DeepDive />
+      {/* <Users /> */}
+      <Testimonials />
+      <StatsBand />
+      <Pricing />
+      {/* <MobileApp /> */}
+      <Faq />
+      <FinalCta />
+    </>
+  );
+}
