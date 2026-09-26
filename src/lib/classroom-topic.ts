@@ -1,4 +1,5 @@
 import { api } from "@/lib/api/server";
+import { endpoints } from "@/lib/api/endpoints";
 import { isApiError } from "@/lib/api/errors";
 import type { PracticeResultOut, TopicPageOut } from "@/lib/api/types";
 import {
@@ -10,8 +11,8 @@ import {
   type CheckBlock,
   type LessonBlock,
 } from "./lesson-engine";
-import type { PrereqStatus } from "@/engines/learning/availability";
-import type { TopicState } from "@/engines/learning/mastery";
+import type { PrereqStatus } from "@/types/learning";
+import type { TopicState } from "@/types/learning";
 import type { TopicNavItem } from "./classroom";
 import { CLASS_LEVELS, TERMS, type ClassLevel, type Term } from "./curriculum-scope";
 
@@ -104,7 +105,7 @@ async function fetchTopicPage(
   const suffix = view ? `/${view}` : "";
   try {
     return await api<TopicPageOut>(
-      `/api/classroom/subjects/${encodeURIComponent(subjectSlug)}/topics/${encodeURIComponent(topicSlug)}${suffix}`,
+      endpoints.classroom.topic(subjectSlug, topicSlug, suffix),
     );
   } catch (error) {
     if (isApiError(error) && error.status === 404) return null;
@@ -433,7 +434,7 @@ export async function getTopicPracticeResult(
   let payload: PracticeResultOut;
   try {
     payload = await api<PracticeResultOut>(
-      `/api/classroom/subjects/${encodeURIComponent(subjectSlug)}/topics/${encodeURIComponent(topicSlug)}/practice/result`,
+      endpoints.classroom.topic(subjectSlug, topicSlug, "/practice/result"),
     );
   } catch (error) {
     if (isApiError(error) && error.status === 404) return { status: "not-found" };

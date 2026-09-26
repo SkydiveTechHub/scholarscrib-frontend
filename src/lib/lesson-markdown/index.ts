@@ -1,6 +1,6 @@
 import type { LessonBlock, ConceptBlock } from "@/lib/lesson-engine";
 import { MAX_CARD_WORDS, blockWordCount, lintLessonBlocks, wordCount } from "@/lib/lesson-engine";
-import type { Issue, LessonMeta, ParsedLesson } from "./types";
+import type { Issue, ParsedLesson } from "./types";
 import { makeIdFactory, slugify } from "./ids";
 import { parseFrontmatter } from "./frontmatter";
 import { FENCE_TYPES, buildFenceBlock, readFence, type FenceType } from "./fences";
@@ -17,7 +17,7 @@ import {
 // Pure markdown → LessonBlock[] parser for admin lesson-note upload.
 // See docs/superpowers/specs/2026-08-05-lesson-note-upload-design.md.
 //
-// Deliberately has no Prisma, React or next/* imports: it runs both in the
+// Deliberately has no React or next/* imports: it runs both in the
 // browser (upload preview) and in a route handler (the authoritative parse).
 
 /** A heading section, before it is turned into one or more concept blocks. */

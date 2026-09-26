@@ -1,4 +1,5 @@
 import { api } from "@/lib/api/server";
+import { endpoints } from "@/lib/api/endpoints";
 import type { StudentsPageOut } from "@/lib/api/types";
 import { STUDENT_PAGE_SIZE, type StudentFilter } from "@/lib/admin-student";
 import type { SubscriptionTier } from "@/lib/subscription";
@@ -21,7 +22,8 @@ export interface StudentRow {
   track: Track | null;
   tier: SubscriptionTier;
   isActive: boolean;
-  createdAt: Date;
+  /** Null when the backend omits it; shown as "—" rather than a fake date. */
+  createdAt: Date | null;
   /** Most recent learning event; null for an account that never studied. */
   lastActiveAt: Date | null;
 }
@@ -77,7 +79,7 @@ export async function listStudents(
   if (filter.status) params.status = filter.status;
   if (filter.state) params.state = filter.state;
 
-  const out = await api<StudentsPageOut>("/admin/api/students", {
+  const out = await api<StudentsPageOut>(endpoints.admin.students.list, {
     realm: "admin",
     params,
   });
@@ -98,7 +100,7 @@ export async function listStudents(
         track: nullableString(u.track) as Track | null,
         tier: (nullableString(u.tier) as SubscriptionTier) ?? "FREEMIUM",
         isActive: Boolean(u.isActive),
-        createdAt: toDate(u.createdAt) ?? new Date(0),
+        createdAt: toDate(u.createdAt),
         lastActiveAt: toDate(u.lastActiveAt),
       };
     }),
@@ -126,7 +128,7 @@ export interface StudentDetail extends StudentRow {
  * `flashcardReviewCount` totals. Null/404 → null.
  */
 export async function getStudentDetail(id: string): Promise<StudentDetail | null> {
-  const out = await api<unknown>(`/admin/api/students/${id}`, { realm: "admin" });
+  const out = await api<unknown>(endpoints.admin.students.detail(id), { realm: "admin" });
   const u = rowAs(out);
   if (!asString(u.id)) return null;
 
@@ -146,7 +148,7 @@ export async function getStudentDetail(id: string): Promise<StudentDetail | null
     isActive: Boolean(u.isActive),
     suspendedAt: toDate(u.suspendedAt),
     suspendedReason: nullableString(u.suspendedReason),
-    createdAt: toDate(u.createdAt) ?? new Date(0),
+    createdAt: toDate(u.createdAt),
     lastActiveAt: toDate(u.lastActiveAt),
     attemptCount: asFiniteNumber(u.attemptCount),
     masteredTopicCount: asFiniteNumber(u.masteredTopicCount),
@@ -168,7 +170,7 @@ export async function getStudentDeletionImpact(
   id: string,
 ): Promise<Record<string, number>> {
   const out = rowAs(
-    await api<unknown>(`/admin/api/students/${id}/deletion-impact`, {
+    await api<unknown>(endpoints.admin.students.deletionImpact(id), {
       realm: "admin",
     }),
   );

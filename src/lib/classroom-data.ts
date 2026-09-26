@@ -1,4 +1,5 @@
 import { api } from "@/lib/api/server";
+import { endpoints } from "@/lib/api/endpoints";
 import { isApiError } from "@/lib/api/errors";
 import type { ClassroomSubjectsOut, SubjectPageOut } from "@/lib/api/types";
 import { TRACK_CATEGORIES, relevantTrackCategories } from "./subjects";
@@ -75,7 +76,7 @@ export async function getClassroomSubjects(
 
   // The backend already narrows the catalogue server-side to CORE + the
   // student's own track, so `showAll` is intentionally not forwarded.
-  const data = await api<ClassroomSubjectsOut>("/api/classroom/subjects");
+  const data = await api<ClassroomSubjectsOut>(endpoints.classroom.subjects);
 
   const byCategory: Record<string, ClassroomSubject[]> = {};
   for (const raw of data.subjects ?? []) {
@@ -137,7 +138,7 @@ export async function getSubjectPageData(
   let data: SubjectPageOut;
   try {
     data = await api<SubjectPageOut>(
-      `/api/classroom/subjects/${encodeURIComponent(subjectSlug)}`,
+      endpoints.classroom.subject(subjectSlug),
     );
   } catch (error) {
     if (isApiError(error) && error.status === 404) return null;

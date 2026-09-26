@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useCallback, useEffect, useState } from "react";
+import { Suspense, useCallback, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { LuSearch, LuTrash2, LuPencil, LuChevronLeft, LuChevronRight, LuCircleAlert } from "react-icons/lu";
@@ -9,8 +9,12 @@ import { ConfirmDialog } from "@/components/admin/confirm-dialog";
 import { Button, buttonClass } from "@/components/ui/button";
 import { PageHeader } from "@/components/ui/page-header";
 import { HIDE_BELOW, SHOW_BELOW } from "@/components/admin/admin-table";
-import { fetchApi } from "@/lib/api/client";
-import type { AdminQuestionsOut, DeleteQuestionsOut, SubjectsOut, UsageOut } from "@/lib/api/types";
+import {
+  useAdminQuestions,
+  useDeleteQuestions,
+  useFetchQuestionUsage,
+  useSubjectCatalogue,
+} from "@/hooks/api/use-admin-questions";
 import { cn } from "@/lib/utils";
 
 interface Question {
@@ -103,11 +107,6 @@ function QuestionsPageFallback() {
 function AdminQuestionsPageInner() {
   const searchParams = useSearchParams();
 
-  const [questions, setQuestions] = useState<Question[]>([]);
-  const [pagination, setPagination] = useState<Pagination | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [reloadKey, setReloadKey] = useState(0);
 
   // Input state (what the user is typing) vs applied state (what the request
   // actually uses). Splitting these is what stops a refetch firing on every
@@ -138,67 +137,55 @@ function AdminQuestionsPageInner() {
   const [bulkDialogOpen, setBulkDialogOpen] = useState(false);
   const [bulkBusy, setBulkBusy] = useState(false);
 
-  const [subjects, setSubjects] = useState<SubjectOption[]>([]);
-
-  useEffect(() => {
-    let cancelled = false;
-    fetchApi<SubjectsOut>("/api/subjects", { anonymous: true })
-      .then((data) => {
-        if (!cancelled && data?.subjects) {
-          setSubjects(
-            (data.subjects as SubjectOption[])
-              .map((s) => ({ id: s.id, name: s.name, code: s.code }))
-              .sort((a, b) => a.name.localeCompare(b.name)),
-          );
-        }
-      })
-      .catch(() => {
-        // Subject options are a progressive enhancement of the filters; a
-        // failure here shouldn't block the question list itself.
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  const fetchQuestions = useCallback(
-    async (signal: AbortSignal) => {
-      setLoading(true);
-      setError(null);
-      try {
-        const params: Record<string, string> = { page: String(page), pageSize: "20" };
-        if (appliedQuery) params.search = appliedQuery;
-        if (examFilter) params.examType = examFilter;
-        if (subjectFilter) params.subjectId = subjectFilter;
-        if (difficultyFilter) params.difficulty = difficultyFilter;
-        if (examYearFilter) params.examYear = examYearFilter;
-
-        const data = await fetchApi<AdminQuestionsOut>("/admin/api/questions", {
-          realm: "admin",
-          params,
-          signal,
-        });
-        setQuestions(data.questions as unknown as Question[]);
-        setPagination(data.pagination as unknown as Pagination);
-      } catch (err) {
-        if ((err as Error).name === "AbortError") return;
-        setError(err instanceof Error ? err.message : "Could not reach the server. Check your connection and retry.");
-      } finally {
-        setLoading(false);
-      }
-    },
-    [page, appliedQuery, examFilter, subjectFilter, difficultyFilter, examYearFilter],
+  // Subject options are a progressive enhancement of the filters; a failure
+  // here leaves the list empty rather than blocking the question list itself.
+  const subjectCatalogue = useSubjectCatalogue();
+  const subjects = useMemo<SubjectOption[]>(
+    () =>
+      ((subjectCatalogue.data?.subjects ?? []) as SubjectOption[])
+        .map((s) => ({ id: s.id, name: s.name, code: s.code }))
+        .sort((a, b) => a.name.localeCompare(b.name)),
+    [subjectCatalogue.data],
   );
 
-  useEffect(() => {
-    // This effect intentionally triggers data loading on mount and whenever the
-    // filter/page inputs (or reloadKey, for Retry) change; fetchQuestions is
-    // memoized over those inputs.
-    const controller = new AbortController();
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    fetchQuestions(controller.signal);
-    return () => controller.abort();
-  }, [fetchQuestions, reloadKey]);
+  const params = useMemo(() => {
+    const next: Record<string, string> = { page: String(page), pageSize: "20" };
+    if (appliedQuery) next.search = appliedQuery;
+    if (examFilter) next.examType = examFilter;
+    if (subjectFilter) next.subjectId = subjectFilter;
+    if (difficultyFilter) next.difficulty = difficultyFilter;
+    if (examYearFilter) next.examYear = examYearFilter;
+    return next;
+  }, [page, appliedQuery, examFilter, subjectFilter, difficultyFilter, examYearFilter]);
+
+  const questionsQuery = useAdminQuestions(params);
+  const fetchQuestionUsage = useFetchQuestionUsage();
+  const deleteQuestions = useDeleteQuestions();
+
+  // Rows deleted from this view. Filtered out locally rather than refetched,
+  // so the page doesn't reflow under the admin mid-task.
+  const [removedIds, setRemovedIds] = useState<Set<string>>(new Set());
+  const removeRows = (ids: string[]) =>
+    setRemovedIds((prev) => new Set([...prev, ...ids]));
+
+  const questions = useMemo(
+    () =>
+      ((questionsQuery.data?.questions ?? []) as unknown as Question[]).filter(
+        (q) => !removedIds.has(q.id),
+      ),
+    [questionsQuery.data, removedIds],
+  );
+  const pagination = (questionsQuery.data?.pagination ?? null) as unknown as Pagination | null;
+  // The previous page stays as placeholder data while the next one loads, so
+  // the pager keeps its counts; the rows themselves show the spinner.
+  // A Retry after a failure shows the spinner again, not the stale error.
+  const retrying = questionsQuery.isError && questionsQuery.isFetching;
+  const loading = questionsQuery.isPending || questionsQuery.isPlaceholderData || retrying;
+  const error = questionsQuery.isError && !retrying
+    ? questionsQuery.error instanceof Error
+      ? questionsQuery.error.message
+      : "Could not reach the server. Check your connection and retry."
+    : null;
 
   // Selection is scoped to the current page/filter view. Clear it whenever
   // that view changes so a bulk delete can never act on rows the admin can
@@ -253,9 +240,7 @@ function AdminQuestionsPageInner() {
     setDeleteError(null);
     setDeleting(q.id);
     try {
-      const usage = await fetchApi<UsageOut>(`/admin/api/questions/${q.id}/usage`, {
-        realm: "admin",
-      });
+      const usage = await fetchQuestionUsage(q.id);
       setDeleteUsage(usage);
       setDeleteTarget(q);
     } catch {
@@ -280,11 +265,7 @@ function AdminQuestionsPageInner() {
     // where the row is still visible and must stay selected.
     let rowRemoved = false;
     try {
-      const data = await fetchApi<DeleteQuestionsOut>("/admin/api/questions", {
-        method: "DELETE",
-        params: { id: deleteTarget.id },
-        realm: "admin",
-      });
+      const data = await deleteQuestions.mutateAsync({ id: deleteTarget.id });
       // Match by id, not position — with a single id this happened to be
       // safe, but it is a landmine once more than one id is ever in flight.
       const refusedById = new Map<string, RefusedRow>(
@@ -298,7 +279,7 @@ function AdminQuestionsPageInner() {
         return;
       }
       if ((data?.notFound as string[] | undefined)?.includes(deleteTarget.id)) {
-        setQuestions((prev) => prev.filter((item) => item.id !== deleteTarget.id));
+        removeRows([deleteTarget.id]);
         rowRemoved = true;
         setOutcome({
           tone: "info",
@@ -307,7 +288,7 @@ function AdminQuestionsPageInner() {
         });
         return;
       }
-      setQuestions((prev) => prev.filter((item) => item.id !== deleteTarget.id));
+      removeRows([deleteTarget.id]);
       rowRemoved = true;
     } catch {
       setDeleteError("Could not reach the server. The question was not deleted.");
@@ -330,11 +311,7 @@ function AdminQuestionsPageInner() {
     setDeleteError(null);
     setOutcome(null);
     try {
-      const data = await fetchApi<DeleteQuestionsOut>("/admin/api/questions", {
-        method: "DELETE",
-        body: { ids: [...selected] },
-        realm: "admin",
-      });
+      const data = await deleteQuestions.mutateAsync({ ids: [...selected] });
       if (!data) {
         setDeleteError(`Delete failed.`);
         return;
@@ -346,7 +323,7 @@ function AdminQuestionsPageInner() {
       // Close the dialog and clear the selection before their counts change,
       // so the dialog never re-renders mid-close with a stale/zeroed count.
       setBulkDialogOpen(false);
-      setQuestions((prev) => prev.filter((q) => !deleted.includes(q.id) && !notFound.includes(q.id)));
+      removeRows([...deleted, ...notFound]);
       setSelected(new Set());
 
       if (refused.length === 0 && notFound.length === 0) {
@@ -550,7 +527,7 @@ function AdminQuestionsPageInner() {
             title="Could not load questions"
             message={error}
             action={
-              <Button variant="outline" size="sm" onClick={() => setReloadKey((k) => k + 1)}>
+              <Button variant="outline" size="sm" onClick={() => void questionsQuery.refetch()}>
                 Retry
               </Button>
             }

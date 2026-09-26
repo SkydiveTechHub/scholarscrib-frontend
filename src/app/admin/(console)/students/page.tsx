@@ -119,7 +119,7 @@ export default async function AdminStudentsPage({
                       <Badge tone={status.tone}>{status.label}</Badge>
                     </AdminTd>
                     <AdminTd align="right" className={cn(HIDE_BELOW.lg, "tabular-nums text-muted")}>
-                      {DATE.format(row.createdAt)}
+                      {row.createdAt ? DATE.format(row.createdAt) : "—"}
                     </AdminTd>
                     <AdminTd align="right" className={cn(HIDE_BELOW.md, "whitespace-nowrap tabular-nums text-muted")}>
                       {row.lastActiveAt ? DATE.format(row.lastActiveAt) : "Never"}

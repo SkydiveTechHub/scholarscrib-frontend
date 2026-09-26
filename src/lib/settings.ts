@@ -1,4 +1,5 @@
 import { api } from "@/lib/api/server";
+import { endpoints } from "@/lib/api/endpoints";
 import { isApiError } from "@/lib/api/errors";
 import type { SettingsProfileOut } from "@/lib/api/types";
 
@@ -10,7 +11,7 @@ import type { SettingsProfileOut } from "@/lib/api/types";
  */
 export async function getSettingsProfile(): Promise<SettingsProfileOut | null> {
   try {
-    return await api<SettingsProfileOut>("/api/user/profile");
+    return await api<SettingsProfileOut>(endpoints.user.profile);
   } catch (error) {
     if (isApiError(error) && error.isAuthFailure) return null;
     throw error;

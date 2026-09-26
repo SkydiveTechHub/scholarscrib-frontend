@@ -1,4 +1,5 @@
 import { api } from "@/lib/api/server";
+import { endpoints } from "@/lib/api/endpoints";
 import type { SettingsDevice } from "@/lib/api/types";
 import { DEVICE_LIMIT } from "./device-limit";
 
@@ -20,7 +21,7 @@ export type ActiveDevice = {
  * Settings profile read uses.
  */
 export async function listActiveDevices(_userId: string): Promise<ActiveDevice[]> {
-  const { devices } = await api<{ devices: SettingsDevice[] }>("/api/user/devices");
+  const { devices } = await api<{ devices: SettingsDevice[] }>(endpoints.user.devices);
   return (devices ?? []).map((device) => ({
     id: device.id,
     label: device.label ?? null,

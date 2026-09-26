@@ -1,4 +1,5 @@
 import { api } from "@/lib/api/server";
+import { endpoints } from "@/lib/api/endpoints";
 import type { SettingsProfileOut } from "@/lib/api/types";
 
 /**
@@ -7,7 +8,7 @@ import type { SettingsProfileOut } from "@/lib/api/types";
  * and only the profile endpoint can say the step is already done.
  */
 export async function getProfileCompletionFields() {
-  const profile = await api<SettingsProfileOut>("/api/user/profile");
+  const profile = await api<SettingsProfileOut>(endpoints.user.profile);
   return {
     firstName: profile.firstName ?? null,
     classLevel: profile.classLevel ?? null,

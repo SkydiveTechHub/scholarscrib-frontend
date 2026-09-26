@@ -1,8 +1,7 @@
-import type { EngineDb } from "@/engines/learning/db";
-import type { MasteryLevel } from "@/types/prisma";
+import type { MasteryLevel } from "@/types/learning";
 
-// Lesson Engine — block model, authoring lint, mastery math, and revision
-// scheduling. See docs/superpowers/specs/2026-08-01-lesson-engine-design.md.
+// Lesson Engine — the lesson block model, parsing, and the authoring lint the
+// admin upload preview runs. See docs/superpowers/specs/2026-08-01-lesson-engine-design.md.
 
 export const MAX_CARD_WORDS = 120;
 
@@ -347,28 +346,6 @@ export function parsePrerequisiteLabels(raw: unknown): string[] {
   return labels;
 }
 
-/** True when the student has completed at least one lesson under the topic. */
-export async function hasCompletedAnyLessonInTopic(
-  prisma: Pick<EngineDb, "lesson" | "studentProgress">,
-  studentId: string,
-  topicId: string,
-): Promise<boolean> {
-  const lessons = await prisma.lesson.findMany({
-    where: { subtopic: { topicId } },
-    select: { id: true },
-  });
-  if (lessons.length === 0) return true;
-  const count = await prisma.studentProgress.count({
-    where: {
-      studentId,
-      topicId,
-      lessonId: { in: lessons.map((l) => l.id) },
-      status: "COMPLETED",
-    },
-  });
-  return count > 0;
-}
-
 // ─── Checkpoint state (per-block progress) ────────────────────
 
 export type CheckpointRecord = {
@@ -435,40 +412,9 @@ export function parseCheckpointState(raw: unknown): CheckpointState {
   return { visited, checks, practice };
 }
 
-// ─── Mastery math ────────────────────────────────────────────
+// ─── Display ────────────────────────────────────────────────
 
-/**
- * Knowledge-check accuracy in 0..1. First-try correct = full credit,
- * correct after a retry = half credit, never correct = 0.
- */
-export function kcAccuracyFromCheckpoints(
-  checks: Record<string, CheckpointRecord>,
-): number {
-  const records = Object.values(checks);
-  if (records.length === 0) return 0;
-  let total = 0;
-  for (const record of records) {
-    if (!record.correct) continue;
-    total += record.attempts === 1 ? 1 : 0.5;
-  }
-  return total / records.length;
-}
-
-/** Mastery score in 0..100 — 30% knowledge checks, 70% practice exit. */
-export function computeMasteryScore(
-  kcScore01: number,
-  practiceScore01: number,
-): number {
-  const raw = 0.3 * kcScore01 + 0.7 * practiceScore01;
-  return Math.min(100, Math.max(0, Math.round(raw * 100)));
-}
-
-/** Best of the most recent 3 scores — a bad retake never erases a pass. */
-export function bestOfLastThree(scores: number[]): number {
-  const recent = scores.slice(-3);
-  return recent.reduce((best, score) => Math.max(best, score), 0);
-}
-
+/** The label for a 0..100 mastery score, when the backend sends only the score. */
 const MASTERY_THRESHOLDS: Array<{ min: number; level: MasteryLevel }> = [
   { min: 85, level: "STRONG" },
   { min: 70, level: "COMPETENT" },
@@ -479,26 +425,4 @@ const MASTERY_THRESHOLDS: Array<{ min: number; level: MasteryLevel }> = [
 export function masteryLevelFromScore(score: number): MasteryLevel {
   const threshold = MASTERY_THRESHOLDS.find((t) => score >= t.min);
   return threshold?.level ?? "WEAK";
-}
-
-// ─── Revision scheduling ─────────────────────────────────────
-
-const DEFAULT_REVISION_DAYS = [1, 3, 7, 14];
-
-export function parseRevisionDays(raw: unknown): number[] {
-  if (!Array.isArray(raw)) return DEFAULT_REVISION_DAYS;
-  const days = raw.filter(
-    (d): d is number =>
-      typeof d === "number" && Number.isInteger(d) && d >= 1,
-  );
-  return days.length > 0 ? days : DEFAULT_REVISION_DAYS;
-}
-
-/** The first scheduled revision date after a lesson is completed. */
-export function nextRevisionDate(from: Date, revisionDays: unknown): Date {
-  const [first = 1] = parseRevisionDays(revisionDays);
-  const next = new Date(from);
-  next.setDate(next.getDate() + first);
-  next.setHours(0, 0, 0, 0);
-  return next;
 }

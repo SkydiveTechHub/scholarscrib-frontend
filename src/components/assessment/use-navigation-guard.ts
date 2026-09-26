@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { guardedDestination } from "./exam-guard";
-import { setExamActive } from "./exam-active";
+import { useExamStore } from "@/stores/exam-store";
 
 // React glue around `exam-guard`. Which clicks count as leaving is decided
 // there, where it is unit-tested; this file only listens and navigates.
@@ -12,8 +12,6 @@ import { setExamActive } from "./exam-active";
 export type PendingExit =
   | { kind: "link"; href: string }
   | { kind: "back" };
-
-export type NavigationGuard = ReturnType<typeof useNavigationGuard>;
 
 export function useNavigationGuard({
   active,
@@ -48,8 +46,9 @@ export function useNavigationGuard({
   // Publish to the app chrome so it can stop prefetching routes the student is
   // being warned away from — on a metered mobile connection that is real data.
   useEffect(() => {
-    setExamActive(active);
-    return () => setExamActive(false);
+    const { setActive } = useExamStore.getState();
+    setActive(active);
+    return () => setActive(false);
   }, [active]);
 
   // Re-arm on every activation. Today the component always unmounts on exit,

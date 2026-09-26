@@ -3,7 +3,7 @@ import { LuCompass, LuFlame, LuLockOpen, LuRotateCcw } from "react-icons/lu";
 import {
   CONTINUE_REASON,
   type NextTopicRecommendation,
-} from "@/engines/learning/recommend";
+} from "@/types/learning";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { evidenceLabel } from "@/lib/evidence-display";

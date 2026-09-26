@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { fetchApi } from "@/lib/api/client";
+import { useUpdateProfile } from "@/hooks/api/use-user";
 import { FormMessage, Section, labelClass, submitClass } from "./section";
 
 const LEVELS = ["SS1", "SS2", "SS3"];
@@ -25,6 +25,7 @@ export function AcademicForm({
     track: track ?? "",
   });
   const [loading, setLoading] = useState(false);
+  const updateProfile = useUpdateProfile();
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
@@ -47,7 +48,7 @@ export function AcademicForm({
     setSuccess("");
 
     try {
-      await fetchApi("/api/user/profile", { method: "PATCH", body: form });
+      await updateProfile.mutateAsync(form);
 
       setSuccess("Class details saved.");
       router.refresh();

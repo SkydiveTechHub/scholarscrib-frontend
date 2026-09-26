@@ -3,9 +3,8 @@
 import { useId, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { StatusBanner } from "@/components/admin/status-banner";
-import { fetchApi } from "@/lib/api/client";
 import { ApiError } from "@/lib/api/errors";
-import type { MaterialOut } from "@/lib/api/types";
+import { useSaveMaterial, useSignMaterialUpload } from "@/hooks/api/use-admin-materials";
 import { MATERIAL_TYPES, MATERIAL_LABELS, type MaterialType } from "@/lib/materials";
 import { requiresUpload } from "@/lib/admin-material";
 
@@ -28,17 +27,6 @@ type Props = {
   onCancel: () => void;
 };
 
-type Signature = {
-  cloudName: string;
-  apiKey: string;
-  timestamp: number;
-  signature: string;
-  folder: string;
-  allowedFormats: string[];
-  maxBytes: number;
-  resourceType: "image" | "raw";
-};
-
 export function MaterialForm({ subjectId, material, onSaved, onCancel }: Props) {
   const fieldId = useId();
   const [type, setType] = useState<MaterialType>(material?.resourceType ?? "PDF");
@@ -50,6 +38,8 @@ export function MaterialForm({ subjectId, material, onSaved, onCancel }: Props) 
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const signMaterialUpload = useSignMaterialUpload();
+  const saveMaterial = useSaveMaterial();
 
   const upload = requiresUpload(type);
 
@@ -59,11 +49,7 @@ export function MaterialForm({ subjectId, material, onSaved, onCancel }: Props) 
     try {
       // Ask the server to authorise this one upload. The signature covers the
       // folder and the format allowlist, so the browser cannot widen either.
-      const signed = await fetchApi<Signature>("/admin/api/materials/sign", {
-        method: "POST",
-        body: { type },
-        realm: "admin",
-      });
+      const signed = await signMaterialUpload.mutateAsync(type);
 
       // maxBytes is advisory only — Cloudinary does not enforce it from this
       // signature. This guard just saves the round trip on an obvious miss.
@@ -121,19 +107,9 @@ export function MaterialForm({ subjectId, material, onSaved, onCancel }: Props) 
         isFree,
       };
 
-      if (material) {
-        await fetchApi<MaterialOut>(`/admin/api/materials/${material.id}`, {
-          method: "PATCH",
-          body: payload,
-          realm: "admin",
-        });
-      } else {
-        await fetchApi<MaterialOut>("/admin/api/materials", {
-          method: "POST",
-          body: { ...payload, subjectId },
-          realm: "admin",
-        });
-      }
+      await saveMaterial.mutateAsync(
+        material ? { id: material.id, payload } : { subjectId, payload },
+      );
 
       onSaved();
     } catch (cause) {

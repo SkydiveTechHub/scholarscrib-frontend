@@ -1,6 +1,7 @@
 "use client";
 
-import { fetchApi } from "@/lib/api/client";
+import { endpoints } from "@/lib/api/endpoints";
+import { request } from "@/lib/api/http";
 import {
   detectIOS,
   isPushWorkerVersion,
@@ -67,9 +68,10 @@ function workerVersion(registration: ServiceWorkerRegistration): Promise<string 
 
 async function postSubscription(subscription: PushSubscription): Promise<boolean> {
   try {
-    await fetchApi("/api/push/subscription", {
+    await request({
       method: "POST",
-      body: subscription.toJSON(),
+      url: endpoints.push.subscription,
+      data: subscription.toJSON(),
     });
     return true;
   } catch {
@@ -142,9 +144,10 @@ export async function unsubscribeThisDevice(): Promise<void> {
   const work = (async () => {
     const subscription = await currentSubscription();
     if (!subscription) return;
-    await fetchApi("/api/push/subscription", {
+    await request({
       method: "DELETE",
-      body: { endpoint: subscription.endpoint },
+      url: endpoints.push.subscription,
+      data: { endpoint: subscription.endpoint },
     }).catch(() => undefined);
     await subscription.unsubscribe().catch(() => undefined);
   })().catch(() => undefined);

@@ -16,7 +16,10 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { JAMB_SPEC } from "@/lib/jamb-cbt";
 import { examYearRange } from "@/lib/exam-years";
-import { fetchApi } from "@/lib/api/client";
+import {
+  useGenerateJambCbt,
+  usePrepareJambCbt,
+} from "@/hooks/api/use-assessments";
 import { Spinner } from "@/components/ui/spinner";
 
 /** What the bank holds for one subject in the chosen year. */
@@ -50,6 +53,8 @@ export function JambCbtPicker({
   subjects: PickerSubject[];
 }) {
   const router = useRouter();
+  const { mutateAsync: prepareJambCbt } = usePrepareJambCbt<Preparation>();
+  const { mutateAsync: generateJambCbt } = useGenerateJambCbt();
   const [chosen, setChosen] = useState<string[]>([]);
   const [year, setYear] = useState<number | null>(null);
   const [starting, setStarting] = useState(false);
@@ -99,10 +104,7 @@ export function JambCbtPicker({
     setPrep(null);
     setError("");
     try {
-      const data = await fetchApi<Preparation>("/api/assessments/jamb-cbt/prepare", {
-        method: "POST",
-        body: { subjectIds, examYear: chosenYear },
-      });
+      const data = await prepareJambCbt({ subjectIds, examYear: chosenYear });
       if (run !== prepRun.current) return;
       setPrep({
         ready: data.ready,
@@ -120,7 +122,7 @@ export function JambCbtPicker({
     } finally {
       if (run === prepRun.current) setPreparing(false);
     }
-  }, []);
+  }, [prepareJambCbt]);
 
   /** Drops any selected year and the coverage report that went with it. */
   function clearYear() {
@@ -162,10 +164,7 @@ export function JambCbtPicker({
     setStarting(true);
     setError("");
     try {
-      await fetchApi("/api/assessments/jamb-cbt/generate", {
-        method: "POST",
-        body: { subjectIds: chosen, examYear: year },
-      });
+      await generateJambCbt({ subjectIds: chosen, examYear: year });
       const params = new URLSearchParams({
         year: String(year),
         subjects: chosen.join(","),

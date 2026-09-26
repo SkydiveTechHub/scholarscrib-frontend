@@ -1,9 +1,7 @@
 import type { CheckBlock, LessonBlock } from "@/lib/lesson-engine";
 import {
   CLASS_LEVELS,
-  scopeOrdinal,
   type ClassLevel,
-  type ScopePoint,
 } from "@/lib/curriculum-scope";
 
 // Decision logic for the Classroom section. Pure — no database, no React — so
@@ -49,95 +47,6 @@ export type TopicNavItem = {
   term: string;
   orderIndex: number;
 };
-
-/**
- * Prisma select fragment for a topic's `subtopics` relation, shaped to reach
- * "the topic's single lesson" — every topic has exactly one subtopic and one
- * lesson (150/150 in the live database). Spread this into every query that
- * needs to resolve that lesson, so the "exactly one" assumption is encoded in
- * one place rather than copy-pasted at each call site.
- *
- * `as const` keeps `orderBy`'s direction literals (`"asc"`) instead of
- * widening to `string`, which Prisma's generated types require.
- */
-export const topicLessonSelect = {
-  orderBy: { orderIndex: "asc" },
-  take: 1,
-  select: {
-    lessons: { orderBy: { createdAt: "asc" }, take: 1 },
-  },
-} as const;
-
-/**
- * `topicLessonSelect` with a caller-supplied column list for the lesson.
- *
- * The plain fragment above fetches whole lesson rows, which is what the
- * classroom pages want. Admin queries want two or three columns instead, and
- * before this helper existed each of them hand-rolled the whole
- * `{ orderBy, take, select: { lessons: { take } } }` shape — and every one
- * dropped `orderBy: { createdAt: "asc" }` on the way, so they resolved
- * "the topic's lesson" by database order while the classroom resolved it by
- * creation order. That was harmless only while every subtopic had exactly one
- * lesson; `POST /admin/api/lessons/import` can now create a second one.
- *
- * Narrowing columns is therefore the one thing a call site may vary — `lesson`
- * names the lesson columns, `subtopic` any extra subtopic columns (the import
- * route needs the subtopic's own `id`). Ordering and `take`, on both levels,
- * still come from the single definition above.
- */
-export function topicLessonSelectWith<
-  const TLesson,
-  const TSubtopic extends object = Record<never, never>,
->(lesson: TLesson, subtopic: TSubtopic = {} as TSubtopic) {
-  return {
-    ...topicLessonSelect,
-    select: {
-      ...subtopic,
-      lessons: { ...topicLessonSelect.select.lessons, select: lesson },
-    },
-  } as const;
-}
-
-/**
- * The topic's single lesson, or `null` if it somehow has none (defensive —
- * every authored topic has one). Pairs with `topicLessonSelect`: callers query
- * `subtopics: topicLessonSelect` then pass the result here.
- */
-export function resolveTopicLesson<Lesson>(topic: {
-  subtopics: readonly { lessons: readonly Lesson[] }[];
-}): Lesson | null {
-  return topic.subtopics[0]?.lessons[0] ?? null;
-}
-
-/**
- * Previous and next topic, within the same class.
- *
- * Ordering runs term-by-term then by `orderIndex`, so navigation carries across
- * a term boundary but stops at a class boundary — moving from SS1 straight into
- * SS2 would silently skip a year.
- */
-export function topicNeighbours(
-  topics: readonly TopicNavItem[],
-  currentSlug: string,
-): { previous: TopicNavItem | null; next: TopicNavItem | null } {
-  const current = topics.find((t) => t.slug === currentSlug);
-  if (!current) return { previous: null, next: null };
-
-  const ordered = topics
-    .filter((t) => t.classLevel === current.classLevel)
-    .sort((a, b) => {
-      const byTerm =
-        scopeOrdinal({ classLevel: a.classLevel, term: a.term } as ScopePoint) -
-        scopeOrdinal({ classLevel: b.classLevel, term: b.term } as ScopePoint);
-      return byTerm !== 0 ? byTerm : a.orderIndex - b.orderIndex;
-    });
-
-  const index = ordered.findIndex((t) => t.slug === currentSlug);
-  return {
-    previous: index > 0 ? ordered[index - 1] : null,
-    next: index >= 0 && index < ordered.length - 1 ? ordered[index + 1] : null,
-  };
-}
 
 /**
  * Which resources the topic page shows.

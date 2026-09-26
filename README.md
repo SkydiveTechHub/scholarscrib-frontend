@@ -1,45 +1,48 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# ScholarsCrib — frontend
 
-## Getting Started
+The Next.js app for ScholarsCrib (WAEC, JAMB and NECO exam prep). It is a pure
+client of the FastAPI backend, which owns auth, the database, scoring, study
+plans, billing and push delivery. Nothing here talks to a database or holds a
+backend secret.
 
-First, run the development server:
+## Getting started
 
 ```bash
+cp .env.example .env
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Environment variables
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+See `.env.example`. All of them are safe to expose to the browser except
+`API_URL`, which only the server reads.
 
-## Environment Variables
+| Variable | Purpose |
+|---|---|
+| `API_URL` | Backend base URL for server components, no trailing slash. Defaults to `https://scholarscrib-backend.onrender.com` in production and `http://localhost:8000` in development. |
+| `NEXT_PUBLIC_API_URL` | Backend base URL for the browser. Same as `API_URL` unless proxied. |
+| `NEXT_PUBLIC_APP_URL` | This app's public URL, used for canonical links and the sitemap. |
+| `NEXT_PUBLIC_BILLING_ENABLED` | `"true"` shows checkout. |
+| `NEXT_PUBLIC_PUSH_ENABLED` | `"true"` offers push notifications. Also needs `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, the backend's public VAPID key. |
 
-- `ADMIN_AUTH_SECRET` — signs the admin session (a second, separate NextAuth
-  instance mounted at `/admin/api/auth`, distinct from the student instance
-  at `/api/auth`). It **must differ** from `AUTH_SECRET`: sharing one would
-  let a leaked student secret forge admin tokens. Generate it with
-  `node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"`.
-  Admin sign-in fails until this is set.
+## How the code is organised
 
-## Learn More
+- `src/app` — routes. Server components load data from the backend.
+- `src/lib/api` — the two transports: `server.ts` (server components; reads the
+  token cookie) and `client.ts` (browser; attaches the bearer token).
+- `src/lib` — loaders that map backend responses onto page shapes, plus display
+  helpers, labels and client-side form validation.
+- `src/types` — shapes the backend sends that the UI renders.
+- `src/stores` — Zustand stores for client-only UI state. See
+  `src/stores/README.md` for the rules.
+- `src/components` — UI.
 
-To learn more about Next.js, take a look at the following resources:
+## Scripts
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- `npm run dev` / `npm run build` / `npm start`
+- `npm run lint`
+- `npm test` — runs every `scripts/test-*.mts`
+- `npm run typecheck:tests` — type-checks the tests

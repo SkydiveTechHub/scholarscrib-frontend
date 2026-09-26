@@ -1,7 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { evidenceLabel } from "../src/lib/evidence-display";
-import { OBSERVATION_FLOOR } from "../src/engines/learning/evidence";
+import { evidenceLabel, OBSERVATION_FLOOR } from "../src/lib/evidence-display";
 
 const now = new Date("2026-08-17T09:00:00Z");
 

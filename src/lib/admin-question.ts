@@ -1,7 +1,7 @@
 // Invariants the schema cannot express.
 //
 // `Question.correctAnswer` is a bare String and `Question.options` a nullable
-// Json blob (prisma/schema.prisma:417-418), so nothing stops an objective
+// JSON blob on the backend, so nothing stops an objective
 // question from declaring a correct answer that is not one of its options —
 // which marks every student wrong, silently. Likewise `topicId` is only
 // constrained to *a* topic, not to a topic under the question's subject.
@@ -74,29 +74,3 @@ export function checkQuestionInvariants(input: {
   return issues;
 }
 
-/**
- * `topicSubjectId` is the subject of the resolved topic, or null when the
- * reference did not resolve at all. `topicRef` is whatever the caller was
- * given — an id from the form, a slug from an import row — and is used only
- * for the message.
- */
-export function checkTopicOwnership(input: {
-  topicRef: string | null;
-  topicSubjectId: string | null;
-  subjectId: string;
-}): InvariantIssue | null {
-  if (!input.topicRef) return null;
-
-  if (!input.topicSubjectId) {
-    return { field: "topicId", message: `Unknown topic: "${input.topicRef}".` };
-  }
-
-  if (input.topicSubjectId !== input.subjectId) {
-    return {
-      field: "topicId",
-      message: `Topic "${input.topicRef}" belongs to a different subject.`,
-    };
-  }
-
-  return null;
-}

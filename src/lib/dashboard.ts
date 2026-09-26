@@ -1,12 +1,13 @@
 import { api } from "@/lib/api/server";
+import { endpoints } from "@/lib/api/endpoints";
 import type {
   DashboardAttempt as ApiDashboardAttempt,
   DashboardOut,
   PerformanceOut,
 } from "@/lib/api/types";
-import type { NextTopicRecommendation } from "@/engines/learning/recommend";
-import type { TopicGap } from "@/engines/learning/gaps";
-import type { RevisionQueueItem } from "@/engines/learning/revision";
+import type { NextTopicRecommendation } from "@/types/learning";
+import type { TopicGap } from "@/types/learning";
+import type { RevisionQueueItem } from "@/types/learning";
 
 /**
  * Dashboard read, composed from the backend's aggregate endpoints. The
@@ -155,7 +156,7 @@ export async function getDashboardData(
   _userId: string,
   attemptPage = 1,
 ): Promise<DashboardData> {
-  const dash = await api<DashboardOut>("/api/dashboard", {
+  const dash = await api<DashboardOut>(endpoints.dashboard, {
     params: { activity: attemptPage },
   });
   const recentAttempts = (dash.recentAttempts ?? []).map(asAttempt);
@@ -185,7 +186,7 @@ export async function getDashboardData(
   const pathSubjects: Record<string, DashboardSubject> = {};
   if (hasActivity) {
     try {
-      const perf = await api<PerformanceOut>("/api/performance", {
+      const perf = await api<PerformanceOut>(endpoints.performance, {
         params: { page: 1, pageSize: 100 },
       });
       let answered = 0;

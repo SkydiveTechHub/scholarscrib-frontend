@@ -5,7 +5,7 @@ import {
   LuLayers,
   LuRotateCcw,
 } from "react-icons/lu";
-import type { RevisionQueueItem } from "@/engines/learning/revision";
+import type { RevisionQueueItem } from "@/types/learning";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import type { SubjectMeta } from "./next-topics";

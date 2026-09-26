@@ -1,4 +1,5 @@
 import { api } from "@/lib/api/server";
+import { endpoints } from "@/lib/api/endpoints";
 import { summariseSubjects, toStatRows, type StatRow } from "./admin-stats";
 import {
   groupByClass,
@@ -62,7 +63,7 @@ export type AdminOverviewData = {
  */
 export async function getAdminOverview(): Promise<AdminOverviewData> {
   const payload = rowAs(
-    await api<unknown>("/admin/api/overview", { realm: "admin" }),
+    await api<unknown>(endpoints.admin.overview, { realm: "admin" }),
   );
 
   const subjects: Array<{ id: string; name: string; code: string; questionCount: number }> =
@@ -132,7 +133,7 @@ export type QuestionFormOptions = {
  */
 export async function getQuestionFormOptions(): Promise<QuestionFormOptions> {
   const payload = rowAs(
-    await api<unknown>("/admin/api/questions/form-options", { realm: "admin" }),
+    await api<unknown>(endpoints.admin.questions.formOptions, { realm: "admin" }),
   );
   return {
     subjects: (Array.isArray(payload.subjects) ? payload.subjects : []).map((s) => {
@@ -196,7 +197,7 @@ export async function getAdminLessonBrowseData(
   if (filter.term) params.term = filter.term;
 
   const payload = rowAs(
-    await api<unknown>("/admin/api/lesson-browse", { realm: "admin", params }),
+    await api<unknown>(endpoints.admin.lessons.browse, { realm: "admin", params }),
   );
 
   const subjects = (Array.isArray(payload.subjects) ? payload.subjects : []).map(
@@ -293,7 +294,7 @@ export async function getQuestionForEdit(
   | null
 > {
   const [payload, options] = await Promise.all([
-    api<unknown>(`/admin/api/questions/${id}`, { realm: "admin" }),
+    api<unknown>(endpoints.admin.questions.detail(id), { realm: "admin" }),
     getQuestionFormOptions(),
   ]);
   const raw = rowAs(payload);
@@ -333,7 +334,7 @@ export async function getQuestionForEdit(
  */
 export async function getLessonUploadSubjects(): Promise<LessonUploadSubject[]> {
   const payload = rowAs(
-    await api<unknown>("/admin/api/lesson-tree", { realm: "admin" }),
+    await api<unknown>(endpoints.admin.lessons.tree, { realm: "admin" }),
   );
   return (Array.isArray(payload.subjects) ? payload.subjects : []).map((s) => {
     const r = rowAs(s);
@@ -368,7 +369,7 @@ export async function getLessonUploadSubjects(): Promise<LessonUploadSubject[]> 
  * because that module still serves the student study-plan and stays local.
  */
 export async function listAcademicTerms(): Promise<AcademicTermRow[]> {
-  const out = await api<unknown>("/admin/api/academic-terms", { realm: "admin" });
+  const out = await api<unknown>(endpoints.admin.academicTerms.list, { realm: "admin" });
   const rows = Array.isArray(out)
     ? out
     : (rowAs(out).terms as unknown[] | undefined) ?? [];

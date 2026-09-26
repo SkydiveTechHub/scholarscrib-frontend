@@ -5,7 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { LuSettings, LuLogOut, LuChevronDown } from "react-icons/lu";
 import { Avatar } from "./avatar";
 import { cn } from "@/lib/utils";
-import { useExamActive } from "@/components/assessment/exam-active";
+import { useExamActive } from "@/stores/exam-store";
 
 export type ProfileUser = {
   firstName?: string | null;

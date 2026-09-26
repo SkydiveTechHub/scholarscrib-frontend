@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   LuCheck,
   LuPencil,
@@ -17,7 +17,7 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Spinner } from "@/components/ui/spinner";
-import { fetchApi } from "@/lib/api/client";
+import { usePastPapers } from "@/hooks/api/use-assessments";
 
 type PastPaper = {
   examType: string;
@@ -37,25 +37,20 @@ const EXAM_BADGES: Record<string, "blue" | "green" | "purple"> = {
   NECO: "purple",
 };
 
+// Stable empty list, so the memos below don't recompute every render.
+const NO_PAPERS: PastPaper[] = [];
+
 export function PastQuestionPicker({ track }: { track: string | null }) {
-  const [papers, setPapers] = useState<PastPaper[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [failed, setFailed] = useState(false);
+  // One fetch for the whole picker — the paper list is small (one row per
+  // exam/subject/year), so every step filters in memory instead of re-querying.
+  const pastPapers = usePastPapers<PastPaper>();
+  const papers = pastPapers.data?.papers ?? NO_PAPERS;
+  const loading = pastPapers.isPending;
+  const failed = pastPapers.isError;
 
   const [exam, setExam] = useState<string | null>(null);
   const [subjectId, setSubjectId] = useState<string | null>(null);
   const [showAllSubjects, setShowAllSubjects] = useState(false);
-
-  useEffect(() => {
-    // One fetch for the whole picker — the paper list is small (one row per
-    // exam/subject/year), so every step filters in memory instead of re-querying.
-    fetchApi<{ papers: PastPaper[] }>("/api/questions/past-papers", {
-      anonymous: true,
-    })
-      .then((data) => setPapers(data.papers ?? []))
-      .catch(() => setFailed(true))
-      .finally(() => setLoading(false));
-  }, []);
 
   // ① Exams that actually have papers.
   const exams = useMemo(() => {

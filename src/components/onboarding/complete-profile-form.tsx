@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { NIGERIAN_STATES } from "@/lib/constants/exam-types";
 import { cn } from "@/lib/utils";
+import { useCompleteProfile } from "@/hooks/api/use-user";
 
 const CLASS_LEVELS = ["SS1", "SS2", "SS3"];
 const TRACKS = [
@@ -25,6 +26,7 @@ export function CompleteProfileForm({
   const [form, setForm] = useState<Fields>(initial);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+  const completeProfile = useCompleteProfile();
 
   function update(field: keyof Fields, value: string) {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -39,14 +41,9 @@ export function CompleteProfileForm({
 
     setSaving(true);
     setError("");
-    const [{ fetchApi }, { isApiError }] = await Promise.all([
-      import("@/lib/api/client"),
-      import("@/lib/api/errors"),
-    ]);
+    const { isApiError } = await import("@/lib/api/errors");
     try {
-      await fetchApi<{ ok: boolean }>("/api/user/complete-profile", {
-        body: form,
-      });
+      await completeProfile.mutateAsync(form);
       // replace, not push: Back must not return to a step that is done.
       router.replace("/dashboard");
       router.refresh();

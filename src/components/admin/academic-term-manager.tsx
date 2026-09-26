@@ -6,8 +6,7 @@ import { AdminTable, AdminTd, AdminTh, AdminTr } from "@/components/admin/admin-
 import { StatusBanner } from "@/components/admin/status-banner";
 import { buttonClass } from "@/components/ui/button";
 import { TERM_LABELS, type Term } from "@/lib/curriculum-scope";
-import { fetchApi } from "@/lib/api/client";
-import type { TermOut } from "@/lib/api/types";
+import { useSaveAcademicTerm, type SaveTermInput } from "@/hooks/api/use-admin-terms";
 import type { AcademicTermRow } from "@/lib/academic-terms";
 
 type Draft = { id?: string; session: string; term: Term; startsOn: string; endsOn: string };
@@ -19,11 +18,12 @@ export function AcademicTermManager({ terms }: { terms: AcademicTermRow[] }) {
   const [draft, setDraft] = useState<Draft>(EMPTY);
   const [error, setError] = useState("");
   const [pending, startTransition] = useTransition();
+  const saveTerm = useSaveAcademicTerm();
 
-  async function send(url: string, method: string, body?: unknown) {
+  async function send(input: SaveTermInput) {
     setError("");
     try {
-      await fetchApi<TermOut>(url, { method, body, realm: "admin" });
+      await saveTerm.mutateAsync(input);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not save the term.");
       return false;
@@ -34,11 +34,7 @@ export function AcademicTermManager({ terms }: { terms: AcademicTermRow[] }) {
 
   async function save() {
     const { id, ...body } = draft;
-    const ok = await send(
-      id ? `/admin/api/academic-terms/${id}` : "/admin/api/academic-terms",
-      id ? "PATCH" : "POST",
-      body,
-    );
+    const ok = await send(id ? { id, term: body } : { term: body });
     if (ok) setDraft(EMPTY);
   }
 
@@ -72,7 +68,7 @@ export function AcademicTermManager({ terms }: { terms: AcademicTermRow[] }) {
                 <button
                   type="button"
                   className={buttonClass("ghost", "sm")}
-                  onClick={() => send(`/admin/api/academic-terms/${t.id}`, "DELETE")}
+                  onClick={() => send({ id: t.id, remove: true })}
                 >
                   Delete
                 </button>

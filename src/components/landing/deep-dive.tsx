@@ -8,7 +8,6 @@ import {
   LuClock,
   LuFlame,
   LuListChecks,
-  LuSparkles,
   LuTrendingUp,
   LuWifiOff,
 } from "react-icons/lu";
@@ -60,55 +59,6 @@ function LessonsPanel() {
             <span key={chip} className="chip surface-2 text-ink-muted">
               {chip}
             </span>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function TutorPanel() {
-  const messages = [
-    { from: "me", text: "Why does a bus hurtle forward when it brakes suddenly?" },
-    { from: "ai", text: "Inertia! Objects resist change in motion. Your body keeps moving forward until the seatbelt — or the seat — stops it." },
-    { from: "me", text: "Ah! So that’s why we wear seatbelts. Makes sense now." },
-  ];
-  return (
-    <div className="relative">
-      <div className="absolute -inset-6 rounded-[2.5rem] bg-gradient-to-br from-brand/15 to-accent/15 blur-2xl" aria-hidden />
-      <div className="relative space-y-3">
-        {messages.map((m, i) => (
-          <div
-            key={i}
-            className={cn(
-              "flex items-start gap-2.5",
-              m.from === "me" && "justify-end",
-            )}
-          >
-            {m.from === "ai" ? (
-              <span className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary to-brand text-white">
-                <LuSparkles className="h-3.5 w-3.5" />
-              </span>
-            ) : null}
-            <p
-              className={cn(
-                "max-w-[75%] rounded-2xl px-4 py-2.5 text-xs font-semibold leading-relaxed",
-                m.from === "ai"
-                  ? "surface-2 hairline ink"
-                  : "rounded-tr-md bg-gradient-to-br from-primary to-brand text-white",
-              )}
-            >
-              {m.text}
-            </p>
-          </div>
-        ))}
-        <div className="flex items-center gap-1.5 pl-10">
-          {[0, 1, 2].map((i) => (
-            <span
-              key={i}
-              className="h-1.5 w-1.5 animate-bounce rounded-full bg-primary/50"
-              style={{ animationDelay: `${i * 0.15}s` }}
-            />
           ))}
         </div>
       </div>

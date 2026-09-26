@@ -8,6 +8,12 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/ui/page-header";
 import { buttonClass } from "@/components/ui/button";
 import type { StudyPlanPageData } from "@/lib/study-plan";
+import { isApiError } from "@/lib/api/errors";
+import {
+  useSaveStudyPlan,
+  useSaveStudyPlanPositions,
+  useSetStudyPlanItemStatus,
+} from "@/hooks/api/use-study-plan";
 import { ClassPositionPanel } from "./class-position-panel";
 import { PlanSchedule } from "./plan-schedule";
 import { PlanSetupForm, type PlanSettings } from "./plan-setup-form";
@@ -22,36 +28,36 @@ export function StudyPlanView({ data }: { data: StudyPlanPageData }) {
   const [editing, setEditing] = useState(false);
   const [error, setError] = useState("");
 
-  async function request(url: string, method: string, body: unknown): Promise<string | null> {
+  const savePlan = useSaveStudyPlan();
+  const setItemStatus = useSetStudyPlanItemStatus();
+  const setPlanPositions = useSaveStudyPlanPositions();
+
+  /** Runs a mutation, then refreshes; resolves to an error message or null. */
+  async function run(mutation: () => Promise<unknown>): Promise<string | null> {
     try {
-      const res = await fetch(url, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-      if (!res.ok) {
-        const payload = await res.json().catch(() => ({}));
-        return payload.error ?? "Something went wrong. Please try again.";
-      }
+      await mutation();
       router.refresh();
       return null;
-    } catch {
+    } catch (err) {
+      if (isApiError(err)) {
+        return err.body?.error ?? "Something went wrong. Please try again.";
+      }
       return "Network error. Please try again.";
     }
   }
 
   async function saveSettings(settings: PlanSettings) {
-    const problem = await request("/api/study-plan", plan ? "PATCH" : "POST", settings);
+    const problem = await run(() => savePlan.mutateAsync({ settings, exists: Boolean(plan) }));
     if (!problem) setEditing(false);
     return problem;
   }
 
   async function setStatus(id: string, status: "COMPLETED" | "SKIPPED" | "PENDING") {
-    setError((await request(`/api/study-plan/items/${id}`, "PATCH", { status })) ?? "");
+    setError((await run(() => setItemStatus.mutateAsync({ id, status }))) ?? "");
   }
 
   async function savePositions(positions: { subjectId: string; topicId: string | null }[]) {
-    setError((await request("/api/study-plan/positions", "PUT", { positions })) ?? "");
+    setError((await run(() => setPlanPositions.mutateAsync(positions))) ?? "");
   }
 
   const description = [

@@ -1,10 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import {
-  notificationPreferencesSchema,
-  pushSubscriptionSchema,
-  unsubscribeSchema,
-} from "../src/lib/push-validators";
+import { pushSubscriptionSchema } from "../src/lib/push-validators";
 
 const p256dh = "B" + "A".repeat(86); // 87 chars, base64url of 65 bytes
 const auth = "A".repeat(22); // base64url of 16 bytes
@@ -32,16 +28,4 @@ test("keys must be base64url of plausible length", () => {
   assert.equal(pushSubscriptionSchema.safeParse({ ...valid, keys: { p256dh: "short", auth } }).success, false);
   assert.equal(pushSubscriptionSchema.safeParse({ ...valid, keys: { p256dh, auth: "!!!!!!!!!!!!!!!!!!!!!!" } }).success, false);
   assert.equal(pushSubscriptionSchema.safeParse({ endpoint: valid.endpoint }).success, false);
-});
-
-test("unsubscribe needs an endpoint", () => {
-  assert.equal(unsubscribeSchema.safeParse({ endpoint: valid.endpoint }).success, true);
-  assert.equal(unsubscribeSchema.safeParse({}).success, false);
-});
-
-test("preference patches need at least one boolean", () => {
-  assert.deepEqual(notificationPreferencesSchema.parse({ streakReminders: false }), { streakReminders: false });
-  assert.equal(notificationPreferencesSchema.safeParse({}).success, false);
-  assert.equal(notificationPreferencesSchema.safeParse({ studyReminders: "yes" }).success, false);
-  assert.equal(notificationPreferencesSchema.safeParse({ somethingElse: true }).success, false);
 });

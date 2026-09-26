@@ -7,13 +7,6 @@ import {
   normaliseStudentFilter,
   studentFilterParams,
 } from "../src/lib/admin-student";
-import {
-  registerSchema,
-  studentProfileSchema,
-  studentStatusSchema,
-  studentTierSchema,
-  updateProfileSchema,
-} from "../src/lib/validators";
 
 test("empty params give an unfiltered first page", () => {
   const f = normaliseStudentFilter({});
@@ -43,33 +36,6 @@ test("an unlisted or miscased state is dropped", () => {
   assert.equal(normaliseStudentFilter({ state: "Atlantis" }).state, null);
   assert.equal(normaliseStudentFilter({ state: "lagos" }).state, null);
   assert.equal(normaliseStudentFilter({ state: "" }).state, null);
-});
-
-test("the register schema requires a listed state", () => {
-  const base = {
-    firstName: "Ada",
-    lastName: "Obi",
-    email: "ada@example.com",
-    password: "secret123",
-    classLevel: "SS2",
-    track: "SCIENCE",
-  };
-  assert.equal(registerSchema.safeParse(base).success, false);
-  assert.equal(registerSchema.safeParse({ ...base, state: "Atlantis" }).success, false);
-  assert.equal(registerSchema.safeParse({ ...base, state: "Kano" }).success, true);
-});
-
-test("the settings schema accepts a listed state or a clear, nothing else", () => {
-  assert.equal(updateProfileSchema.safeParse({ state: "Enugu" }).success, true);
-  assert.equal(updateProfileSchema.safeParse({ state: "" }).success, true);
-  assert.equal(updateProfileSchema.safeParse({}).success, true);
-  assert.equal(updateProfileSchema.safeParse({ state: "Enugu State" }).success, false);
-});
-
-test("the admin profile schema rejects an unlisted state", () => {
-  const base = { firstName: "Ada", lastName: "Obi" };
-  assert.equal(studentProfileSchema.safeParse({ ...base, state: "Oyo" }).success, true);
-  assert.equal(studentProfileSchema.safeParse({ ...base, state: "Oyo town" }).success, false);
 });
 
 test("recognised values pass through", () => {
@@ -147,50 +113,4 @@ test("page size is a round number of rows", () => {
 
 test("fullName joins the two halves with a single space", () => {
   assert.equal(fullName({ firstName: "Ada", lastName: "Obi" }), "Ada Obi");
-});
-
-test("the profile schema requires both names", () => {
-  const bad = studentProfileSchema.safeParse({ firstName: "", lastName: "Obi" });
-  assert.equal(bad.success, false);
-});
-
-test("the profile schema rejects a malformed email but allows none at all", () => {
-  // Phone-only accounts exist, so email must be optional yet validated.
-  assert.equal(
-    studentProfileSchema.safeParse({ firstName: "Ada", lastName: "Obi", email: "nope" }).success,
-    false,
-  );
-  assert.equal(
-    studentProfileSchema.safeParse({ firstName: "Ada", lastName: "Obi" }).success,
-    true,
-  );
-});
-
-test("the profile schema rejects an unknown class level or track", () => {
-  assert.equal(
-    studentProfileSchema.safeParse({ firstName: "Ada", lastName: "Obi", classLevel: "SS9" }).success,
-    false,
-  );
-  assert.equal(
-    studentProfileSchema.safeParse({ firstName: "Ada", lastName: "Obi", track: "MUSIC" }).success,
-    false,
-  );
-});
-
-test("the status schema requires a reason when suspending", () => {
-  // An audit row reading "suspended, no reason given" helps nobody later.
-  assert.equal(studentStatusSchema.safeParse({ isActive: false }).success, false);
-  assert.equal(
-    studentStatusSchema.safeParse({ isActive: false, reason: "Payment dispute" }).success,
-    true,
-  );
-});
-
-test("the status schema needs no reason to reactivate", () => {
-  assert.equal(studentStatusSchema.safeParse({ isActive: true }).success, true);
-});
-
-test("the tier schema accepts only the three tiers", () => {
-  assert.equal(studentTierSchema.safeParse({ tier: "STANDARD" }).success, true);
-  assert.equal(studentTierSchema.safeParse({ tier: "GOLD" }).success, false);
 });

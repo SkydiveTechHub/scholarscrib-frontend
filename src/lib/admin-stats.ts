@@ -1,4 +1,4 @@
-// Display shaping for the admin overview. Kept free of Prisma so the
+// Display shaping for the admin overview. Kept free of I/O so the
 // empty-database and rounding behaviour can be tested directly.
 
 export type CountedSubject = {

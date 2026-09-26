@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   LuArrowRight,
@@ -10,7 +10,11 @@ import {
   LuCheck,
 } from "react-icons/lu";
 import { cn } from "@/lib/utils";
-import { fetchApi } from "@/lib/api/client";
+import { useQueryClient } from "@tanstack/react-query";
+import {
+  mockExamOptionsQuery,
+  useMockExamBoards,
+} from "@/hooks/api/use-assessments";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
@@ -55,9 +59,14 @@ export function MockExamPicker({
   // Null while in flight. Every board is treated as unavailable until the
   // answer lands, so nobody can click through to a board that turns out to
   // hold nothing.
-  const [boardStatus, setBoardStatus] = useState<Record<string, BoardStatus> | null>(
-    null,
-  );
+  // A failed lookup reads as "nothing available" rather than "still checking".
+  const queryClient = useQueryClient();
+  const boards = useMockExamBoards();
+  const boardStatus: Record<string, BoardStatus> | null = boards.isError
+    ? {}
+    : boards.data
+      ? (boards.data.boards ?? {})
+      : null;
   const [subjects, setSubjects] = useState<SubjectAvailability[]>([]);
   const [loadingSubjects, setLoadingSubjects] = useState(false);
   const [subjectId, setSubjectId] = useState<string | null>(null);
@@ -90,20 +99,6 @@ export function MockExamPicker({
     to: ScopePoint | null;
   } | null>(initialSubjectId ? { subjectId: initialSubjectId, from: initialFrom, to: initialTo } : null);
 
-  // Which boards can be sat at all. This one does belong in an effect — it is
-  // needed to paint the first step, before the student has done anything.
-  useEffect(() => {
-    let live = true;
-    fetchApi<{ boards: Record<string, BoardStatus> }>(
-      "/api/assessments/mock-exam/boards",
-    )
-      .then((data) => live && setBoardStatus(data.boards ?? {}))
-      .catch(() => live && setBoardStatus({}));
-    return () => {
-      live = false;
-    };
-  }, []);
-
   // Driven from the click rather than an effect on `board`: picking a board is
   // a user action, so the fetch belongs in the handler.
   const chooseBoard = useCallback(
@@ -114,9 +109,8 @@ export function MockExamPicker({
       setLoadingSubjects(true);
       setError("");
       try {
-        const data = await fetchApi<{ subjects: SubjectAvailability[] }>(
-          "/api/assessments/mock-exam/options",
-          { params: { examType: chosen } },
+        const data = await queryClient.fetchQuery(
+          mockExamOptionsQuery<SubjectAvailability>(chosen),
         );
         const list: SubjectAvailability[] = data.subjects ?? [];
         setSubjects(list);
@@ -148,7 +142,7 @@ export function MockExamPicker({
         setLoadingSubjects(false);
       }
     },
-    [pendingPrefill],
+    [pendingPrefill, queryClient],
   );
 
   const subject = useMemo(

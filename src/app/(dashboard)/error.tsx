@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 
 /**
  * Catches render and data errors anywhere under the dashboard. Without it a
- * single failed query — a dropped Supabase connection, say — takes the whole
+ * single failed request — the backend cold-starting, say — takes the whole
  * app to a blank screen with no way back.
  */
 export default function DashboardError({

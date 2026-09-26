@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { fetchApi } from "@/lib/api/client";
+import { useSubmitAssessment } from "@/hooks/api/use-assessments";
 import {
   STORAGE_VERSION,
   buildSubmission,
@@ -110,6 +110,7 @@ export function useExamSession({
   practiceExit?: { subjectSlug: string; topicSlug: string };
 }) {
   const router = useRouter();
+  const { mutateAsync: submitAssessment } = useSubmitAssessment();
 
   const [data, setData] = useState<SessionData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -352,14 +353,11 @@ export function useExamSession({
     recordTimeOnQuestion();
 
     try {
-      await fetchApi("/api/assessments/submit", {
-        method: "POST",
-        body: {
-          attemptId,
-          answers: buildSubmission(questions, answersRef.current),
-          awayEvents: awayCountRef.current,
-          ...(practiceExit ? { practiceExit } : {}),
-        },
+      await submitAssessment({
+        attemptId,
+        answers: buildSubmission(questions, answersRef.current),
+        awayEvents: awayCountRef.current,
+        ...(practiceExit ? { practiceExit } : {}),
       });
 
       clearStored(sessionKey);
@@ -384,6 +382,7 @@ export function useExamSession({
     resultHref,
     router,
     sessionKey,
+    submitAssessment,
   ]);
 
   // Kept in a ref so the timer can reach the newest closure without restarting.
