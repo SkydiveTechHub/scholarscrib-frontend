@@ -1,4 +1,4 @@
-import { isPushEnabled } from "@/lib/push-config";
+import { isPushEnabled } from "@/lib/features";
 import { getPreferences } from "@/lib/push-subscription-data";
 import { Section } from "./section";
 import { NotificationSettings } from "./notification-settings";

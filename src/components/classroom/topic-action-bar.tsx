@@ -12,7 +12,7 @@ import {
 } from "react-icons/lu";
 import { buttonClass } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { fetchApi } from "@/lib/api/client";
+import { useGenerateDeck } from "@/hooks/api/use-flashcards";
 
 // The topic page's single call-to-action row. Sticky once the note scrolls
 // past it, so a student is never more than a tap away from the four things
@@ -33,6 +33,7 @@ export function TopicActionBar({
   deckId: string | null;
 }) {
   const router = useRouter();
+  const generateDeck = useGenerateDeck<{ deck: { id: string } }>();
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -49,10 +50,7 @@ export function TopicActionBar({
     setError(null);
     setGenerating(true);
     try {
-      const data = await fetchApi<{ deck: { id: string } }>(
-        "/api/flashcards/generate",
-        { method: "POST", body: { lessonId } },
-      );
+      const data = await generateDeck.mutateAsync({ lessonId });
       router.push(`/flashcards/${data.deck.id}`);
     } catch {
       setError("Couldn't build the flashcard deck. Try again.");

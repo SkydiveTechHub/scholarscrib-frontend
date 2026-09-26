@@ -4,7 +4,7 @@ import { isAccountStatus, type AccountStatus } from "@/lib/account-status";
 import { isNigerianState, type NigerianState } from "@/lib/constants/exam-types";
 
 /**
- * Narrowing the admin student list. Pure — no Prisma, no React — so the
+ * Narrowing the admin student list. Pure — no React — so the
  * filtering rules can be tested without a database or a browser, the way
  * admin-lesson-browse.ts is.
  *
@@ -13,8 +13,7 @@ import { isNigerianState, type NigerianState } from "@/lib/constants/exam-types"
 
 export const STUDENT_PAGE_SIZE = 25;
 
-// Mirrors the Prisma `Track` enum. Declared here rather than imported from
-// @prisma/client so this module stays database-free and testable.
+// Mirrors the backend's `Track` enum.
 export const TRACKS = ["SCIENCE", "ARTS", "COMMERCIAL"] as const;
 
 export type Track = (typeof TRACKS)[number];
@@ -53,7 +52,7 @@ export interface StudentFilter {
 }
 
 /**
- * Coerce raw query strings into a filter that is safe to hand to Prisma.
+ * Coerce raw query strings into a filter that is safe to send to the backend.
  *
  * An unrecognised class level, track, tier or status is dropped rather than
  * passed through as a `where` clause on an enum column, which would throw. An

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { fetchApi } from "@/lib/api/client";
+import { useUpdateNotificationPreferences } from "@/hooks/api/use-user";
 import { buttonClass } from "@/components/ui/button";
 import { FormMessage } from "./section";
 import type { PushCapability } from "@/lib/push-capability";
@@ -36,6 +36,7 @@ export function NotificationSettings({ initial }: { initial: NotificationPrefere
   const [prefs, setPrefs] = useState(initial);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const updatePreferences = useUpdateNotificationPreferences();
 
   useEffect(() => {
     readPushState().then(setState, () => setState("unsupported"));
@@ -66,10 +67,7 @@ export function NotificationSettings({ initial }: { initial: NotificationPrefere
     setPrefs(next);
     setError("");
     try {
-      await fetchApi("/api/user/notification-preferences", {
-        method: "PATCH",
-        body: { [key]: next[key] },
-      });
+      await updatePreferences.mutateAsync({ [key]: next[key] });
     } catch {
       setPrefs(previous);
       setError("Couldn't save that change. Please try again.");

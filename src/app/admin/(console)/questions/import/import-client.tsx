@@ -6,8 +6,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { Button, buttonClass } from "@/components/ui/button";
 import { StatusBanner } from "@/components/admin/status-banner";
 import { TH_CLS } from "@/components/admin/admin-table";
-import { fetchApi } from "@/lib/api/client";
-import type { ImportQuestionsOut } from "@/lib/api/types";
+import { useImportQuestions } from "@/hooks/api/use-admin-questions";
 import { cn } from "@/lib/utils";
 import {
   parseImportPayload,
@@ -44,6 +43,7 @@ type ServerResult =
 
 export function ImportClient() {
   const [phase, setPhase] = useState<Phase>("input");
+  const importQuestions = useImportQuestions();
 
   const [raw, setRaw] = useState("");
   const [fatalError, setFatalError] = useState<string | null>(null);
@@ -102,11 +102,7 @@ export function ImportClient() {
     setSubmitting(true);
     setPhase("result");
     try {
-      const data = await fetchApi<ImportQuestionsOut>("/admin/api/questions/import", {
-        method: "POST",
-        body: { questions: rows, skipDuplicates },
-        realm: "admin",
-      });
+      const data = await importQuestions.mutateAsync({ questions: rows, skipDuplicates });
       setResult({
         ok: true,
         message: data.message,

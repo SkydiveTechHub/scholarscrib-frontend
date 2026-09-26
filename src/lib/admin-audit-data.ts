@@ -1,4 +1,5 @@
 import { api } from "@/lib/api/server";
+import { endpoints } from "@/lib/api/endpoints";
 import { AUDIT_PAGE_SIZE, type AuditFilter } from "@/lib/admin-audit-filter";
 
 /**
@@ -61,7 +62,7 @@ export async function listAuditEntries(
   };
 
   const out = rowAs(
-    await api<unknown>("/admin/api/audit", { realm: "admin", params }),
+    await api<unknown>(endpoints.admin.audit, { realm: "admin", params }),
   );
   const entries = Array.isArray(out.entries)
     ? (out.entries as unknown[])
@@ -104,7 +105,7 @@ export async function listAuditEntries(
 export async function listAuditActors(): Promise<
   Array<{ id: string; label: string }>
 > {
-  const out = await api<unknown>("/admin/api/audit/actors", { realm: "admin" });
+  const out = await api<unknown>(endpoints.admin.auditActors, { realm: "admin" });
   const actors = Array.isArray(out)
     ? out
     : Array.isArray(rowAs(out).actors)

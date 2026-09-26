@@ -5,8 +5,7 @@ import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { StatusBanner } from "@/components/admin/status-banner";
-import { fetchApi } from "@/lib/api/client";
-import type { OkOut } from "@/lib/api/types";
+import { useSetStudentTier } from "@/hooks/api/use-admin-students";
 import { SUBSCRIPTION_TIERS, TIER_LABELS, type SubscriptionTier } from "@/lib/subscription";
 import { BILLING_PERIODS, PERIOD_LABELS, type BillingPeriod } from "@/lib/subscription";
 
@@ -32,16 +31,13 @@ export function StudentTierControl({
   const [error, setError] = useState<string | null>(null);
   const [period, setPeriod] = useState<BillingPeriod>("MONTHLY");
   const [note, setNote] = useState("");
+  const setStudentTier = useSetStudentTier();
 
   async function save() {
     setSaving(true);
     setError(null);
     try {
-      await fetchApi<OkOut>(`/admin/api/students/${studentId}/tier`, {
-        method: "POST",
-        body: { tier: next, period, note: note || undefined },
-        realm: "admin",
-      });
+      await setStudentTier.mutateAsync({ studentId, tier: next, period, note: note || undefined });
       router.refresh();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not reach the server");

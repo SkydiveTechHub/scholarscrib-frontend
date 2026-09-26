@@ -1,10 +1,8 @@
 /**
  * The subscription tier seam.
  *
- * Deliberately database-free — the tier union is declared here rather than
- * imported from `@prisma/client`, the same way `curriculum-scope.ts` declares
- * CLASS_LEVELS. That is what lets the rules be unit tested without a database.
- * The Prisma `SubscriptionTier` enum carries exactly these three members.
+ * The tier union mirrors the backend's `SubscriptionTier` enum. The backend
+ * enforces entitlements; these rules decide what the UI shows or hides.
  *
  * What each tier UNLOCKS is deliberately not defined here yet. When that
  * decision is made it becomes one table in this file; call sites only ever ask
@@ -66,24 +64,10 @@ export function describeTier(account: { tier: SubscriptionTier }): {
 
 // ─── Billing ──────────────────────────────────────────────
 //
-// Declared here, not imported from `@prisma/client`, for the same reason the
-// tier union is: it keeps every billing rule unit-testable without a database.
-// The Prisma enums added alongside the Subscription model mirror these exactly.
+// Mirrors the backend's billing enums.
 
 export const BILLING_PERIODS = ["MONTHLY", "YEARLY"] as const;
 export type BillingPeriod = (typeof BILLING_PERIODS)[number];
-
-export const SUBSCRIPTION_STATUSES = [
-  "PENDING",
-  "ACTIVE",
-  "FAILED",
-  "ABANDONED",
-  "REVOKED",
-] as const;
-export type SubscriptionStatus = (typeof SUBSCRIPTION_STATUSES)[number];
-
-export const SUBSCRIPTION_SOURCES = ["PAYSTACK", "COMP"] as const;
-export type SubscriptionSource = (typeof SUBSCRIPTION_SOURCES)[number];
 
 /**
  * What the marketing site calls each tier. Deliberately different from
@@ -125,11 +109,6 @@ export function planFor(tier: SubscriptionTier, period: BillingPeriod): Plan {
     amountKobo: PLAN_PRICES_KOBO[tier][period],
     displayName: TIER_DISPLAY_NAMES[tier],
   };
-}
-
-/** FREEMIUM is the absence of a subscription, so it can never be bought. */
-export function isPurchasableTier(tier: SubscriptionTier): boolean {
-  return tier !== "FREEMIUM";
 }
 
 export function formatNaira(kobo: number): string {

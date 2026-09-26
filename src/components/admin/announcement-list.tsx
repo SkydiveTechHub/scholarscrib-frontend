@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/admin/confirm-dialog";
 import { StatusBanner } from "@/components/admin/status-banner";
 import { describeAudience, parseStoredAudience } from "@/lib/push-audience";
-import { fetchApi } from "@/lib/api/client";
+import { useCancelAnnouncement } from "@/hooks/api/use-admin-announcements";
 import type { AdminAnnouncementRow } from "@/lib/announcement-data";
 
 const STATUS_LABEL: Record<string, string> = {
@@ -21,17 +21,14 @@ export function AnnouncementList({ rows }: { rows: AdminAnnouncementRow[] }) {
   const [cancelling, setCancelling] = useState<AdminAnnouncementRow | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const cancelAnnouncement = useCancelAnnouncement();
 
   async function cancel() {
     if (!cancelling) return;
     setBusy(true);
     setError(null);
     try {
-      await fetchApi(`/admin/api/announcements/${cancelling.id}/cancel`, {
-        method: "POST",
-        body: {},
-        realm: "admin",
-      });
+      await cancelAnnouncement.mutateAsync(cancelling.id);
       setCancelling(null);
       router.refresh();
     } catch (error) {

@@ -15,8 +15,7 @@ import { EmptyState } from "@/components/admin/empty-state";
 import { ConfirmDialog } from "@/components/admin/confirm-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { fetchApi } from "@/lib/api/client";
-import type { MaterialOut, OkOut } from "@/lib/api/types";
+import { useDeleteMaterial, useReorderMaterial } from "@/hooks/api/use-admin-materials";
 import { MATERIAL_LABELS } from "@/lib/materials";
 import { MaterialForm, type MaterialRow } from "@/components/admin/material-form";
 
@@ -38,6 +37,8 @@ export function MaterialManager({
   materials: MaterialRow[];
 }) {
   const router = useRouter();
+  const reorderMaterial = useReorderMaterial();
+  const deleteMaterial = useDeleteMaterial();
   const searchParams = useSearchParams();
   const [editing, setEditing] = useState<MaterialRow | null>(null);
   const [adding, setAdding] = useState(false);
@@ -72,16 +73,8 @@ export function MaterialManager({
 
     // Sequential, not parallel: two PATCHes racing on adjacent rows can
     // interleave and leave both holding the same index.
-    await fetchApi<MaterialOut>(`/admin/api/materials/${material.id}`, {
-      method: "PATCH",
-      body: { orderIndex: materialNewIndex },
-      realm: "admin",
-    });
-    await fetchApi<MaterialOut>(`/admin/api/materials/${swapWith.id}`, {
-      method: "PATCH",
-      body: { orderIndex: material.orderIndex },
-      realm: "admin",
-    });
+    await reorderMaterial.mutateAsync({ id: material.id, orderIndex: materialNewIndex });
+    await reorderMaterial.mutateAsync({ id: swapWith.id, orderIndex: material.orderIndex });
     router.refresh();
   }
 
@@ -89,10 +82,7 @@ export function MaterialManager({
     if (!deleting) return;
     setDeleteBusy(true);
     try {
-      await fetchApi<OkOut>(`/admin/api/materials/${deleting.id}`, {
-        method: "DELETE",
-        realm: "admin",
-      });
+      await deleteMaterial.mutateAsync(deleting.id);
       setDeleting(null);
       router.refresh();
     } finally {

@@ -7,9 +7,9 @@ import { LuX } from "react-icons/lu";
 
 import { Button, buttonClass } from "@/components/ui/button";
 import { StatusBanner } from "@/components/admin/status-banner";
-import { fetchApi } from "@/lib/api/client";
 import { ApiError } from "@/lib/api/errors";
-import type { ApiErrorBody, IdOut } from "@/lib/api/types";
+import type { ApiErrorBody } from "@/lib/api/types";
+import { useCreateQuestion, useUpdateQuestion } from "@/hooks/api/use-admin-questions";
 import { cn } from "@/lib/utils";
 import { MIN_OBJECTIVE_OPTIONS } from "@/lib/admin-question";
 import {
@@ -138,6 +138,8 @@ export function QuestionForm(props: {
 }) {
   const { mode, subjects, topics, initial } = props;
   const router = useRouter();
+  const createQuestion = useCreateQuestion();
+  const updateQuestion = useUpdateQuestion();
 
   const rowIdCounter = useRef(0);
 
@@ -427,11 +429,7 @@ export function QuestionForm(props: {
 
       setSubmitting(true);
       try {
-        await fetchApi<IdOut>("/admin/api/questions", {
-          method: "POST",
-          body: parsed.data,
-          realm: "admin",
-        });
+        await createQuestion.mutateAsync(parsed.data);
         router.push("/admin/questions");
         router.refresh();
       } catch (e) {
@@ -459,11 +457,7 @@ export function QuestionForm(props: {
 
     setSubmitting(true);
     try {
-      await fetchApi<IdOut>(`/admin/api/questions/${initial.id}`, {
-        method: "PATCH",
-        body: parsed.data,
-        realm: "admin",
-      });
+      await updateQuestion.mutateAsync({ id: initial.id, patch: parsed.data });
       router.push("/admin/questions");
       router.refresh();
     } catch (e) {

@@ -12,6 +12,7 @@ import {
 } from "react-icons/lu";
 import { Logo } from "@/components/ui/logo";
 import { cn } from "@/lib/utils";
+import { useLogin } from "@/hooks/api/use-auth";
 
 function LoginForm() {
   const searchParams = useSearchParams();
@@ -28,6 +29,7 @@ function LoginForm() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const login = useLogin();
   const [error, setError] = useState("");
 
   async function handleSubmit(e: React.FormEvent) {
@@ -35,17 +37,12 @@ function LoginForm() {
     setLoading(true);
     setError("");
 
-    const [{ fetchApi }, { isApiError }, { setStudentToken }] =
-      await Promise.all([
-        import("@/lib/api/client"),
-        import("@/lib/api/errors"),
-        import("@/lib/client-session"),
-      ]);
+    const [{ isApiError }, { setStudentToken }] = await Promise.all([
+      import("@/lib/api/errors"),
+      import("@/lib/client-session"),
+    ]);
     try {
-      const data = await fetchApi<{ accessToken: string }>(
-        "/api/auth/login",
-        { body: { email, password }, anonymous: true },
-      );
+      const data = await login.mutateAsync({ email, password });
       setStudentToken(data.accessToken);
 
       // A full navigation, not router.push + router.refresh. The refresh
@@ -75,15 +72,16 @@ function LoginForm() {
   }
 
   async function handleGoogleSignIn() {
-    const [{ API_URL }, { isApiError }] = await Promise.all([
+    const [{ API_URL }, { endpoints }, { isApiError }] = await Promise.all([
       import("@/lib/api/config"),
+      import("@/lib/api/endpoints"),
       import("@/lib/api/errors"),
     ]);
     try {
       // The backend owns the OAuth dance. /api/auth/google starts it and the
       // backend's own /api/auth/google/callback resolves it, redirecting the
       // browser back to the app with an access token (per the port contract).
-      window.location.assign(`${API_URL}/api/auth/google`);
+      window.location.assign(`${API_URL}${endpoints.auth.google}`);
     } catch (err) {
       if (!isApiError(err)) {
         setError("Google sign-in is not configured yet. Use email instead.");

@@ -1,5 +1,6 @@
 import { cache } from "react";
 import { api } from "@/lib/api/server";
+import { endpoints } from "@/lib/api/endpoints";
 import { PAPER_SAMPLE_COUNT, isPaperPageEligible } from "./eligibility";
 import { examSegmentFor, type PublicExamType } from "./exam-segment";
 import { loadEligibleTopicIds, type PublicSampleQuestion } from "./learn-data";
@@ -49,7 +50,7 @@ type EligiblePaper = {
 };
 
 async function fetchPapers(examType?: string): Promise<PaperSummaryRow[]> {
-  const payload = (await api("/api/questions/past-papers", {
+  const payload = (await api(endpoints.questions.pastPapers, {
     anonymous: true,
     params: { examType },
   }).catch(() => null)) as unknown;
@@ -144,7 +145,7 @@ async function fetchPaperQuestions(
 ): Promise<PublicQuestionRow[]> {
   const rows: PublicQuestionRow[] = [];
   for (let page = 1; page <= 8; page += 1) {
-    const payload = (await api("/api/questions", {
+    const payload = (await api(endpoints.questions.list, {
       anonymous: true,
       params: { ...params, page, limit: 50 },
     }).catch(() => null)) as unknown;

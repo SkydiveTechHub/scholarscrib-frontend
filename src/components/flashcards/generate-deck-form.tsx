@@ -16,7 +16,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Modal } from "@/components/ui/modal";
 import { Spinner } from "@/components/ui/spinner";
-import { fetchApi } from "@/lib/api/client";
+import { useQueryClient } from "@tanstack/react-query";
+import { flashcardPreviewQuery, useGenerateDeck } from "@/hooks/api/use-flashcards";
 import { CARD_TYPE_LABEL, type FlashcardType } from "@/lib/flashcard-content";
 
 type TakenLesson = {
@@ -65,6 +66,8 @@ function rank(lesson: TakenLesson): number {
  */
 export function GenerateDeckForm({ lessons }: { lessons: TakenLesson[] }) {
   const router = useRouter();
+  const queryClient = useQueryClient();
+  const generateDeck = useGenerateDeck<BuildResult>();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<TakenLesson | null>(null);
@@ -119,9 +122,9 @@ export function GenerateDeckForm({ lessons }: { lessons: TakenLesson[] }) {
     setError(null);
     setPreviewing(true);
     try {
-      const data = await fetchApi<DeckPreview>("/api/flashcards/preview", {
-        params: { lessonId: lesson.lessonId },
-      });
+      const data = await queryClient.fetchQuery(
+        flashcardPreviewQuery<DeckPreview>(lesson.lessonId),
+      );
       setPreview(data);
     } catch {
       setError("Couldn’t preview this lesson. You can still build it.");
@@ -135,10 +138,7 @@ export function GenerateDeckForm({ lessons }: { lessons: TakenLesson[] }) {
     setBusy(true);
     setError(null);
     try {
-      const data = await fetchApi<BuildResult>("/api/flashcards/generate", {
-        method: "POST",
-        body: { lessonId: selected.lessonId },
-      });
+      const data = await generateDeck.mutateAsync({ lessonId: selected.lessonId });
       setResult(data);
       setPreview(null);
       router.refresh();

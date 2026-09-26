@@ -42,12 +42,3 @@ export const SETTINGS_ITEM = {
   icon: LuSettings,
 } as const;
 
-/**
- * Call this on the server and pass the result down. Computing it inside a
- * client component runs it twice — once during SSR, once on hydration — against
- * two different clocks.
- */
-export function daysUntil(date: Date): number {
-  const ms = date.getTime() - Date.now();
-  return Math.max(0, Math.ceil(ms / (1000 * 60 * 60 * 24)));
-}

@@ -1,9 +1,9 @@
 import type { ClassLevel } from "./curriculum-scope";
-import type { DayKey } from "@/engines/planner/days";
-import type { PlanMode } from "@/engines/planner/mode";
-import type { OutlineWeek } from "@/engines/planner/outline";
-import type { Overload } from "@/engines/planner/layout";
-import type { TermSource } from "@/engines/planner/term-context";
+import type { DayKey } from "@/types/study-plan";
+import type { PlanMode } from "@/types/study-plan";
+import type { OutlineWeek } from "@/types/study-plan";
+import type { Overload } from "@/types/study-plan";
+import type { TermSource } from "@/types/study-plan";
 
 // Study plan page shapes. The loader that feeds these lives in
 // `study-plan-route.ts` (a read of `GET /api/study-plan`); settings, positions

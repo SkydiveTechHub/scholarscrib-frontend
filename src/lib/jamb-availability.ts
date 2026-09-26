@@ -1,4 +1,5 @@
 import { api } from "@/lib/api/server";
+import { endpoints } from "@/lib/api/endpoints";
 import type { JambOptionsOut, MockOptionSubject } from "@/lib/api/types";
 
 // Which JAMB papers the backend can assemble. The FastAPI backend owns the
@@ -42,7 +43,7 @@ export async function getJambSubjectOptions(): Promise<{
   englishYears: number[];
   subjects: JambSubjectOption[];
 }> {
-  const opts = await api<JambOptionsOut>("/api/assessments/jamb-cbt/options");
+  const opts = await api<JambOptionsOut>(endpoints.assessments.jambCbt.options);
 
   const englishRaw = opts.english;
   const english =

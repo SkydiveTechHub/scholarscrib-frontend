@@ -19,6 +19,7 @@ import { Markdown } from "./markdown";
 import { ObjectivesPanel } from "./objectives-panel";
 import { MicroCard } from "./micro-card";
 import type { LessonBlock } from "@/lib/lesson-engine";
+import { useSaveLessonProgress } from "@/hooks/api/use-lessons";
 
 type LegacyData = {
   content: string;
@@ -164,6 +165,8 @@ function BlockLesson(props: LessonPlayerProps) {
 
   // Persist checkpoint state as cards are advanced. Fire-and-forget; the row is
   // created on the first change and marked COMPLETED later by the practice exit.
+  // `mutate` is stable and never throws, so a failed save stays silent.
+  const { mutate: saveProgress } = useSaveLessonProgress();
   const hasMounted = useRef(false);
   useEffect(() => {
     if (!hasMounted.current) {
@@ -183,16 +186,13 @@ function BlockLesson(props: LessonPlayerProps) {
       100,
       Math.round((visited.size / props.blocks.length) * 100),
     );
-    fetch(`/api/lessons/${props.lessonId}/progress`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        status: "IN_PROGRESS",
-        completionPercent,
-        checkpointData,
-      }),
-    }).catch(() => {});
-  }, [visited, checkResults, phase, props.lessonId, props.blocks.length]);
+    saveProgress({
+      lessonId: props.lessonId,
+      status: "IN_PROGRESS",
+      completionPercent,
+      checkpointData,
+    });
+  }, [visited, checkResults, phase, props.lessonId, props.blocks.length, saveProgress]);
 
   function handleCheckResult(blockId: string, attempts: number, correct: boolean) {
     setCheckResults((prev) => ({ ...prev, [blockId]: { attempts, correct } }));

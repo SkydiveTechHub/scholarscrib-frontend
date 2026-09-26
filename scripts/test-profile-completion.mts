@@ -1,7 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { isProfileComplete, needsProfileCompletion } from "../src/lib/profile-completion";
-import { completeProfileSchema } from "../src/lib/validators";
 
 const complete = { classLevel: "SS2", track: "SCIENCE", state: "Lagos" };
 
@@ -54,12 +53,4 @@ test("the gate and the page agree on every row the database can hold", () => {
   for (const row of rows) {
     assert.equal(needsProfileCompletion(row), !isProfileComplete(row), JSON.stringify(row));
   }
-});
-
-test("the completion schema requires all three fields", () => {
-  assert.equal(completeProfileSchema.safeParse(complete).success, true);
-  assert.equal(completeProfileSchema.safeParse({ ...complete, state: undefined }).success, false);
-  assert.equal(completeProfileSchema.safeParse({ ...complete, state: "" }).success, false);
-  assert.equal(completeProfileSchema.safeParse({ ...complete, classLevel: undefined }).success, false);
-  assert.equal(completeProfileSchema.safeParse({ ...complete, track: "MUSIC" }).success, false);
 });

@@ -5,8 +5,11 @@ import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { StatusBanner } from "@/components/admin/status-banner";
-import { fetchApi } from "@/lib/api/client";
-import type { OkOut } from "@/lib/api/types";
+import {
+  useDeleteStudent,
+  useForceSignOutStudent,
+  useSetStudentActive,
+} from "@/hooks/api/use-admin-students";
 
 const INPUT_CLS =
   "w-full px-3 py-2 rounded-lg border border-border bg-card text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/60";
@@ -35,15 +38,17 @@ export function StudentDangerZone({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmText, setConfirmText] = useState("");
+  const setStudentActive = useSetStudentActive();
+  const forceSignOutStudent = useForceSignOutStudent();
+  const deleteStudent = useDeleteStudent();
 
   async function setActive(next: boolean) {
     setBusy(true);
     setError(null);
     try {
-      await fetchApi<OkOut>(`/admin/api/students/${studentId}/status`, {
-        method: "POST",
+      await setStudentActive.mutateAsync({
+        studentId,
         body: next ? { isActive: true } : { isActive: false, reason },
-        realm: "admin",
       });
       setReason("");
       router.refresh();
@@ -58,10 +63,7 @@ export function StudentDangerZone({
     setBusy(true);
     setError(null);
     try {
-      await fetchApi<OkOut>(`/admin/api/students/${studentId}/force-signout`, {
-        method: "POST",
-        realm: "admin",
-      });
+      await forceSignOutStudent.mutateAsync(studentId);
       router.refresh();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not reach the server");
@@ -74,10 +76,7 @@ export function StudentDangerZone({
     setBusy(true);
     setError(null);
     try {
-      await fetchApi<OkOut>(`/admin/api/students/${studentId}`, {
-        method: "DELETE",
-        realm: "admin",
-      });
+      await deleteStudent.mutateAsync(studentId);
       // The record is gone; staying on its detail page would 404 on refresh.
       router.push("/admin/students");
     } catch (e) {

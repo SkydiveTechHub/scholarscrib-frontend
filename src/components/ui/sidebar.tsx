@@ -7,7 +7,7 @@ import { UserMenu, type ProfileUser } from "./user-menu";
 import { NAV_GROUPS, SETTINGS_ITEM } from "@/lib/navigation";
 import { Logo } from "@/components/ui/logo";
 import { LuCalendarDays } from "react-icons/lu";
-import { useExamActive } from "@/components/assessment/exam-active";
+import { useExamActive } from "@/stores/exam-store";
 
 export function Sidebar({
   user,

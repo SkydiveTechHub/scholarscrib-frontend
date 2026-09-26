@@ -5,6 +5,7 @@
  */
 
 import { api } from "@/lib/api/server";
+import { endpoints } from "@/lib/api/endpoints";
 import type { SettingsProfileOut } from "@/lib/api/types";
 import { isSubscriptionTier, type SubscriptionTier } from "@/lib/subscription";
 import type { Entitlement } from "@/lib/billing/entitlement";
@@ -19,7 +20,7 @@ export async function currentEntitlement(
   _userId: string,
   _now: Date = new Date(),
 ): Promise<Entitlement> {
-  const profile = await api<SettingsProfileOut>("/api/user/profile");
+  const profile = await api<SettingsProfileOut>(endpoints.user.profile);
   return {
     tier: isSubscriptionTier(profile.tier)
       ? (profile.tier as SubscriptionTier)

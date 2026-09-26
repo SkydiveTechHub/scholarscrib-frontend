@@ -1,4 +1,5 @@
 import { api } from "@/lib/api/server";
+import { endpoints } from "@/lib/api/endpoints";
 import type { DashboardAttempt, PerformanceOut } from "@/lib/api/types";
 
 /** A completed attempt as the performance page lists it. Dates are ISO strings. */
@@ -96,7 +97,7 @@ export async function getPerformanceData(
   attemptPage = 1,
 ): Promise<PerformanceData> {
   const page = Math.max(1, Math.floor(attemptPage));
-  const data = await api<PerformanceOut>("/api/performance", {
+  const data = await api<PerformanceOut>(endpoints.performance, {
     params: { page, pageSize: PERFORMANCE_ATTEMPTS_PAGE_SIZE },
   });
 

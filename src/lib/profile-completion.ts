@@ -6,7 +6,7 @@ import { isNigerianState } from "@/lib/constants/exam-types";
  * demographics. Google sign-ups skip the register form and have none of them;
  * older accounts may lack a state or hold free text from before it was a list.
  *
- * Pure — no Prisma, no session — so the gate is testable on its own.
+ * Pure — no session — so the gate is testable on its own.
  */
 
 type ProfileFields = {

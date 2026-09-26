@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { fetchApi } from "@/lib/api/client";
+import { useUpdateProfile } from "@/hooks/api/use-user";
 import { NIGERIAN_STATES } from "@/lib/constants/exam-types";
 import {
   FormMessage,
@@ -33,6 +33,7 @@ export function ProfileForm({
     state: state ?? "",
   });
   const [loading, setLoading] = useState(false);
+  const updateProfile = useUpdateProfile();
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
@@ -49,7 +50,7 @@ export function ProfileForm({
     setSuccess("");
 
     try {
-      await fetchApi("/api/user/profile", { method: "PATCH", body: form });
+      await updateProfile.mutateAsync(form);
 
       setSuccess("Details saved.");
       // Refresh so the sidebar and header pick up the new name.

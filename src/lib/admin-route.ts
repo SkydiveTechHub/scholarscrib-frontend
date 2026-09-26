@@ -1,24 +1,7 @@
 /**
- * Admin routing constants, deliberately free of framework and database
- * imports so `src/proxy.ts` can use them. Importing these from
- * `admin-auth.ts` would pull NextAuth and Prisma into the proxy bundle,
- * which cannot run them.
+ * Admin routing rules, deliberately free of framework imports so
+ * `src/proxy.ts` can use them.
  */
-
-export const ADMIN_SESSION_COOKIE = "scholarscrib.admin-session";
-export const ADMIN_AUTH_BASE_PATH = "/admin/api/auth";
-
-/**
- * The credentials provider's id — the last path segment of the callback the
- * login form posts to.
- *
- * Shared rather than typed in two places because a mismatch does not fail at
- * build time: @auth/core answers an unknown id with a Configuration error the
- * form renders as "Invalid credentials.", so a typo looks exactly like a wrong
- * password. Setting it as `name` alone is not enough — `name` is the display
- * label, and the id falls back to "credentials".
- */
-export const ADMIN_CREDENTIALS_PROVIDER_ID = "admin-credentials";
 
 /**
  * Which admin rule a path falls under. Extracted from the proxy so the

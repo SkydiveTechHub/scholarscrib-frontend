@@ -1,7 +1,11 @@
-import { CONFIDENCE_FLOOR, OBSERVATION_FLOOR } from "@/engines/learning/evidence";
-
 // What a topic shows instead of a mastery figure when too little evidence
 // backs it. See docs/superpowers/specs/2026-08-12-learning-evidence-layer-phase-2-design.md
+
+/** Below this confidence, a mastery number is not shown. Mirrors the backend. */
+const CONFIDENCE_FLOOR = 0.35;
+
+/** Raw observations before a topic's evidence counts as substantial. Mirrors the backend. */
+export const OBSERVATION_FLOOR = 3;
 
 export type EvidenceCounts = {
   confidence: number;

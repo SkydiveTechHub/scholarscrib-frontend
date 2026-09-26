@@ -1,27 +1,17 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  ALL_SCOPES,
-  MAX_ORDINAL,
   describeScopeRange,
   expandScopeRange,
   isValidScope,
   ordinalToScope,
   scopeLabel,
   scopeOrdinal,
-  scopeSpan,
   type ScopePoint,
 } from "../src/lib/curriculum-scope";
 
 const at = (classLevel: string, term: string) =>
   ({ classLevel, term }) as ScopePoint;
-
-// ─── Ordering ──────────────────────────────────────────────
-
-test("the syllabus is nine ordered slots", () => {
-  assert.equal(ALL_SCOPES.length, 9);
-  assert.equal(MAX_ORDINAL, 8);
-});
 
 test("ordinals run SS1 1st through SS3 3rd", () => {
   assert.equal(scopeOrdinal(at("SS1", "FIRST")), 0);
@@ -36,12 +26,6 @@ test("terms sort by curriculum order, not alphabetically", () => {
   assert.ok(
     scopeOrdinal(at("SS1", "SECOND")) < scopeOrdinal(at("SS1", "THIRD")),
   );
-});
-
-test("ordinalToScope round-trips", () => {
-  for (const scope of ALL_SCOPES) {
-    assert.deepEqual(ordinalToScope(scopeOrdinal(scope)), scope);
-  }
 });
 
 // ─── Validation ────────────────────────────────────────────
@@ -94,18 +78,6 @@ test("a reversed range is normalised rather than rejected", () => {
   const forward = expandScopeRange(at("SS1", "FIRST"), at("SS2", "FIRST"));
   const reversed = expandScopeRange(at("SS2", "FIRST"), at("SS1", "FIRST"));
   assert.deepEqual(reversed, forward);
-});
-
-// ─── Span ──────────────────────────────────────────────────
-
-test("span counts slots inclusively", () => {
-  assert.equal(scopeSpan(at("SS1", "FIRST"), at("SS1", "FIRST")), 1);
-  assert.equal(scopeSpan(at("SS1", "FIRST"), at("SS1", "THIRD")), 3);
-  assert.equal(scopeSpan(at("SS1", "FIRST"), at("SS3", "THIRD")), 9);
-});
-
-test("span is direction-agnostic", () => {
-  assert.equal(scopeSpan(at("SS3", "THIRD"), at("SS1", "FIRST")), 9);
 });
 
 // ─── Labels ────────────────────────────────────────────────

@@ -42,9 +42,6 @@ export function ordinalToScope(ordinal: number): ScopePoint {
   };
 }
 
-export const MIN_ORDINAL = 0;
-export const MAX_ORDINAL = CLASS_LEVELS.length * TERMS.length - 1;
-
 export function isValidScope(value: unknown): value is ScopePoint {
   if (!value || typeof value !== "object") return false;
   const point = value as ScopePoint;
@@ -91,12 +88,3 @@ export function describeScopeRange(from: ScopePoint, to: ScopePoint): string {
   return `${scopeLabel(lo)} to ${scopeLabel(hi)}`;
 }
 
-/** Number of syllabus slots the range covers. */
-export function scopeSpan(from: ScopePoint, to: ScopePoint): number {
-  return Math.abs(scopeOrdinal(from) - scopeOrdinal(to)) + 1;
-}
-
-export const ALL_SCOPES: ScopePoint[] = Array.from(
-  { length: MAX_ORDINAL + 1 },
-  (_, i) => ordinalToScope(i),
-);

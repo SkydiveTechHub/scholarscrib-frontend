@@ -5,7 +5,6 @@ import {
   resolveClassLevel,
   selectResources,
   toNotes,
-  topicNeighbours,
   type TopicNavItem,
 } from "../src/lib/classroom";
 import type { LessonBlock } from "../src/lib/lesson-engine";
@@ -99,53 +98,6 @@ const SYLLABUS: TopicNavItem[] = [
   topic("d", "SS1", "THIRD", 0),
   topic("e", "SS2", "FIRST", 0),
 ];
-
-test("topicNeighbours moves within a term by orderIndex", () => {
-  const { previous, next } = topicNeighbours(SYLLABUS, "a");
-  assert.equal(previous, null);
-  assert.equal(next?.slug, "b");
-});
-
-test("topicNeighbours carries across a term boundary", () => {
-  const { previous, next } = topicNeighbours(SYLLABUS, "b");
-  assert.equal(previous?.slug, "a");
-  assert.equal(next?.slug, "c");
-});
-
-test("topicNeighbours stops at the end of a class", () => {
-  // "d" is the last SS1 topic; "e" is SS2 and must not be offered.
-  const { previous, next } = topicNeighbours(SYLLABUS, "d");
-  assert.equal(previous?.slug, "c");
-  assert.equal(next, null);
-});
-
-test("topicNeighbours stops at the start of a class", () => {
-  const { previous, next } = topicNeighbours(SYLLABUS, "e");
-  assert.equal(previous, null);
-  assert.equal(next, null);
-});
-
-test("topicNeighbours sorts by term before orderIndex", () => {
-  // orderIndex deliberately disagrees with term order: sorting by orderIndex
-  // alone would put the SECOND-term topic first and pick the wrong neighbour.
-  const topics = [
-    topic("late-first", "SS1", "FIRST", 9),
-    topic("early-second", "SS1", "SECOND", 0),
-  ];
-  const { next } = topicNeighbours(topics, "late-first");
-  assert.equal(next?.slug, "early-second");
-
-  const back = topicNeighbours(topics, "early-second");
-  assert.equal(back.previous?.slug, "late-first");
-  assert.equal(back.next, null);
-});
-
-test("topicNeighbours returns nulls for an unknown slug", () => {
-  assert.deepEqual(topicNeighbours(SYLLABUS, "missing"), {
-    previous: null,
-    next: null,
-  });
-});
 
 // ─── selectResources ───────────────────────────────────────
 

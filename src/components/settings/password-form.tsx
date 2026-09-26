@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { fetchApi } from "@/lib/api/client";
+import { useChangePassword } from "@/hooks/api/use-user";
 import {
   FormMessage,
   Section,
@@ -17,6 +17,7 @@ export function PasswordForm() {
     confirmPassword: "",
   });
   const [loading, setLoading] = useState(false);
+  const changePassword = useChangePassword();
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
@@ -40,12 +41,9 @@ export function PasswordForm() {
     setSuccess("");
 
     try {
-      await fetchApi("/api/user/password", {
-        method: "POST",
-        body: {
-          currentPassword: form.currentPassword,
-          newPassword: form.newPassword,
-        },
+      await changePassword.mutateAsync({
+        currentPassword: form.currentPassword,
+        newPassword: form.newPassword,
       });
 
       setSuccess("Password changed. Your other devices have been signed out.");

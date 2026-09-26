@@ -25,13 +25,11 @@ export default async function proxy(req: NextRequest) {
 
   const adminPath = classifyAdminPath(pathname);
   if (adminPath) {
-    if (adminPath === "auth") return NextResponse.next();
-
-    if (adminPath === "login") {
-      return hasAdminTokenCookie(req)
-        ? NextResponse.redirect(new URL("/admin", req.url))
-        : NextResponse.next();
-    }
+    // Always let /admin/login through, as with /login: a present cookie may
+    // hold an expired token, and bouncing it to /admin — which sends a rejected
+    // session back here — loops forever. The (entry) layout does the
+    // authoritative "already signed in" check.
+    if (adminPath === "auth" || adminPath === "login") return NextResponse.next();
 
     if (hasAdminTokenCookie(req)) return NextResponse.next();
 

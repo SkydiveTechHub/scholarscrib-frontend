@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getSessionUser } from "@/lib/session";
-import { isBillingEnabled } from "@/lib/billing/paystack";
+import { isBillingEnabled } from "@/lib/features";
 import { currentEntitlement } from "@/lib/billing/subscription-data";
 import { TIER_DISPLAY_NAMES } from "@/lib/subscription";
 import { PlanPicker } from "@/components/billing/plan-picker";

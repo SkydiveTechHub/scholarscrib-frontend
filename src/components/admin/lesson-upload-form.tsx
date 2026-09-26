@@ -7,8 +7,7 @@ import { StatusBanner } from "@/components/admin/status-banner";
 import { ConfirmDialog } from "@/components/admin/confirm-dialog";
 import { LessonNotes } from "@/components/classroom/lesson-notes";
 import { validateLessonMarkdown, type ParsedLesson } from "@/lib/lesson-markdown";
-import { fetchApi } from "@/lib/api/client";
-import type { LessonImportOut, LessonTopicOut } from "@/lib/api/types";
+import { useFetchAdminLessonTopic, useImportLesson } from "@/hooks/api/use-admin-lessons";
 import type { CheckBlock } from "@/lib/lesson-engine";
 
 type TopicOption = {
@@ -112,6 +111,8 @@ export function LessonUploadForm({
   // unversioned and irreversible. Same shape as the AbortController in
   // src/app/admin/questions/page.tsx.
   const currentRequestRef = useRef<AbortController | null>(null);
+  const fetchLessonTopic = useFetchAdminLessonTopic();
+  const importLesson = useImportLesson();
 
   async function loadCurrent(nextTopicId: string) {
     currentRequestRef.current?.abort();
@@ -122,10 +123,7 @@ export function LessonUploadForm({
     setCurrentStatus(nextTopicId ? "loading" : "idle");
     if (!nextTopicId) return;
     try {
-      const data = await fetchApi<LessonTopicOut>(`/admin/api/lessons/${nextTopicId}`, {
-        realm: "admin",
-        signal: controller.signal,
-      });
+      const data = await fetchLessonTopic(nextTopicId, controller.signal);
       // `abort()` does not always reject a fetch that has already resolved, so
       // re-check before every state write: a superseded response must never
       // overwrite the newer request's state.
@@ -193,11 +191,7 @@ export function LessonUploadForm({
   async function handleSave() {
     setSubmitting(true);
     try {
-      const data = await fetchApi<LessonImportOut>("/admin/api/lessons/import", {
-        method: "POST",
-        body: { topicId, markdown, confirm: true },
-        realm: "admin",
-      });
+      const data = await importLesson.mutateAsync({ topicId, markdown, confirm: true });
       setResult({ ok: true, message: data.message });
       void loadCurrent(topicId);
     } catch (e) {

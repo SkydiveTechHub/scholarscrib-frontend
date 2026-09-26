@@ -2,7 +2,7 @@
 
 import { Suspense, useCallback, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
-import { fetchApi } from "@/lib/api/client";
+import { useGenerateMockExam } from "@/hooks/api/use-assessments";
 import { ExamSurface } from "@/components/assessment/exam-surface";
 import {
   useExamSession,
@@ -49,12 +49,11 @@ function MockExamSession() {
     [examType, subjectId, from, to, count],
   );
 
+  // mutateAsync is stable, so `generate` only changes with the scope.
+  const { mutateAsync: generateMockExam } = useGenerateMockExam();
   const generate = useCallback(async (): Promise<GeneratedExam> => {
-    return fetchApi<GeneratedExam>("/api/assessments/mock-exam/scoped", {
-      method: "POST",
-      body: { examType, subjectId, from, to, count },
-    });
-  }, [examType, subjectId, from, to, count]);
+    return generateMockExam({ examType, subjectId, from, to, count });
+  }, [generateMockExam, examType, subjectId, from, to, count]);
 
   const toResult = useCallback(
     (attemptId: string) => `/practice/results/${attemptId}`,

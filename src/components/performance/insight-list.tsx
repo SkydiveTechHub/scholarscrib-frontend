@@ -1,5 +1,5 @@
 import Link from "next/link";
-import type { Insight } from "@/engines/analytics/insight";
+import type { Insight } from "@/types/analytics";
 
 const TONE: Record<Insight["severity"], string> = {
   CRITICAL: "border-danger/30 bg-danger-soft",

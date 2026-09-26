@@ -1,5 +1,6 @@
 import { cache } from "react";
 import { api } from "@/lib/api/server";
+import { endpoints } from "@/lib/api/endpoints";
 import { TOPIC_SAMPLE_COUNT } from "./eligibility";
 import { keepRenderable } from "./question-scope";
 import { pickSamples } from "./samples";
@@ -138,7 +139,7 @@ function toCatalogSubject(raw: unknown): CatalogSubject | null {
 }
 
 async function fetchCatalog(): Promise<CatalogSubject[]> {
-  const payload = (await api("/api/subjects", { anonymous: true }).catch(
+  const payload = (await api(endpoints.subjects.list, { anonymous: true }).catch(
     () => null,
   )) as unknown;
   if (!isRecord(payload)) return [];
@@ -154,19 +155,6 @@ async function fetchCatalog(): Promise<CatalogSubject[]> {
 }
 
 const loadCatalog = cache(fetchCatalog);
-
-export const loadPublicSubjects = cache(async (): Promise<PublicSubject[]> => {
-  const subjects = await loadCatalog();
-  return subjects.map((subject) => ({
-    slug: subject.slug,
-    name: subject.name,
-    description: subject.description,
-    trackCategory: subject.trackCategory,
-    isWaec: subject.isWaec,
-    isJamb: subject.isJamb,
-    isNeco: subject.isNeco,
-  }));
-});
 
 /**
  * Hub-publishable subjects: those whose catalogue entry carries at least one
@@ -246,7 +234,7 @@ type PublicQuestionRow = {
 async function fetchTopicQuestions(topicId: string): Promise<PublicQuestionRow[]> {
   const rows: PublicQuestionRow[] = [];
   for (let page = 1; page <= 4; page += 1) {
-    const payload = (await api("/api/questions", {
+    const payload = (await api(endpoints.questions.list, {
       anonymous: true,
       params: { topicId, page, limit: 50 },
     }).catch(() => null)) as unknown;

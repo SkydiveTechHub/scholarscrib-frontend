@@ -1,11 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import {
-  MIN_OBJECTIVE_OPTIONS,
-  checkQuestionInvariants,
-  checkTopicOwnership,
-  normalizeOptions,
-} from "../src/lib/admin-question";
+import { MIN_OBJECTIVE_OPTIONS, checkQuestionInvariants, normalizeOptions } from "../src/lib/admin-question";
 
 const FOUR = { A: "one", B: "two", C: "three", D: "four" };
 
@@ -78,40 +73,4 @@ test("duplicate option keys are reported rather than silently collapsed", () => 
 test("option keys are upper-cased and values trimmed", () => {
   const { options } = normalizeOptions({ a: "  one  ", b: "two" });
   assert.deepEqual(options, { A: "one", B: "two" });
-});
-
-test("a topic belonging to the chosen subject is accepted", () => {
-  assert.equal(
-    checkTopicOwnership({
-      topicRef: "algebra",
-      topicSubjectId: "subj_1",
-      subjectId: "subj_1",
-    }),
-    null,
-  );
-});
-
-test("a topic from another subject is rejected", () => {
-  const issue = checkTopicOwnership({
-    topicRef: "algebra",
-    topicSubjectId: "subj_2",
-    subjectId: "subj_1",
-  });
-  assert.equal(issue?.field, "topicId");
-});
-
-test("an unresolved topic reference is rejected", () => {
-  const issue = checkTopicOwnership({
-    topicRef: "does-not-exist",
-    topicSubjectId: null,
-    subjectId: "subj_1",
-  });
-  assert.equal(issue?.field, "topicId");
-});
-
-test("no topic at all is allowed — topicId is nullable", () => {
-  assert.equal(
-    checkTopicOwnership({ topicRef: null, topicSubjectId: null, subjectId: "subj_1" }),
-    null,
-  );
 });

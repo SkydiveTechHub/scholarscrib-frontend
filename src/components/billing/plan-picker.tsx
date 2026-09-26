@@ -4,9 +4,8 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { StatusBanner } from "@/components/admin/status-banner";
-import { fetchApi } from "@/lib/api/client";
 import { isApiError } from "@/lib/api/errors";
-import type { CheckoutOut } from "@/lib/api/types";
+import { useCheckout } from "@/hooks/api/use-billing";
 import {
   BILLING_PERIODS,
   PERIOD_LABELS,
@@ -34,6 +33,7 @@ export function PlanPicker({
   awaitingSettlement?: boolean;
 }) {
   const router = useRouter();
+  const checkout = useCheckout();
   const [period, setPeriod] = useState<BillingPeriod>("YEARLY");
   const [busy, setBusy] = useState<SubscriptionTier | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -65,10 +65,7 @@ export function PlanPicker({
     setBusy(tier);
     setError(null);
     try {
-      const data = await fetchApi<CheckoutOut>("/api/billing/checkout", {
-        method: "POST",
-        body: { tier, period },
-      });
+      const data = await checkout.mutateAsync({ tier, period });
       // Paystack hosts the payment page; we never touch card details.
       // `assign` rather than setting `location.href`: the React Compiler lint
       // treats the assignment as mutating a value defined outside the component.

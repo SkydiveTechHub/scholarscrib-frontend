@@ -9,6 +9,7 @@ import "server-only";
 
 import { cache } from "react";
 import { api } from "@/lib/api/server";
+import { endpoints } from "@/lib/api/endpoints";
 import { isApiError } from "@/lib/api/errors";
 import type {
   AdminSessionOut,
@@ -23,7 +24,7 @@ import type {
  */
 export const getSession = cache(async (): Promise<SessionOut | null> => {
   try {
-    return await api<SessionOut>("/api/auth/session");
+    return await api<SessionOut>(endpoints.auth.session);
   } catch (error) {
     if (isApiError(error) && error.isAuthFailure) return null;
     throw error;
@@ -39,7 +40,7 @@ export const getSessionUser = cache(async (): Promise<SessionUserOut | null> => 
 /** The signed-in admin, or null. Admin actions re-read the row on the backend. */
 export const getAdminSession = cache(async (): Promise<AdminSessionOut | null> => {
   try {
-    return await api<AdminSessionOut>("/admin/api/auth/session");
+    return await api<AdminSessionOut>(endpoints.admin.auth.session);
   } catch (error) {
     if (isApiError(error) && error.isAuthFailure) return null;
     throw error;

@@ -4,6 +4,8 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { LuTrash2, LuTriangleAlert } from "react-icons/lu";
 import { Button } from "@/components/ui/button";
+import { isApiError } from "@/lib/api/errors";
+import { useDeleteDeck } from "@/hooks/api/use-flashcards";
 
 /**
  * Removes a deck from the student's list — which, for a deck they created,
@@ -28,28 +30,25 @@ export function DeleteDeckButton({
 }) {
   const router = useRouter();
   const [confirming, setConfirming] = useState(false);
-  const [busy, setBusy] = useState(false);
+  const deleteDeck = useDeleteDeck();
+  const busy = deleteDeck.isPending;
   const [error, setError] = useState<string | null>(null);
 
-  async function remove() {
-    setBusy(true);
+  function remove() {
     setError(null);
-    try {
-      const res = await fetch(`/api/flashcards/decks/${deckId}`, {
-        method: "DELETE",
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        setError(data.error ?? "Couldn’t delete this deck.");
-        return;
-      }
-      router.push("/flashcards");
-      router.refresh();
-    } catch {
-      setError("Something went wrong. Please try again.");
-    } finally {
-      setBusy(false);
-    }
+    deleteDeck.mutate(deckId, {
+      onSuccess: () => {
+        router.push("/flashcards");
+        router.refresh();
+      },
+      onError: (err) => {
+        setError(
+          isApiError(err)
+            ? (err.body?.error ?? "Couldn’t delete this deck.")
+            : "Something went wrong. Please try again.",
+        );
+      },
+    });
   }
 
   if (!confirming) {

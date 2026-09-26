@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { evidenceLabel } from "@/lib/evidence-display";
-import type { TopicGroupKey, TopicRow } from "@/engines/analytics/topic-groups";
+import type { TopicGroupKey, TopicRow } from "@/types/analytics";
 
 /**
  * Where a row sends the student depends on what the group means. A measured

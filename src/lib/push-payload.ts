@@ -5,14 +5,6 @@
 export const TITLE_MAX = 60;
 export const BODY_MAX = 180;
 const URL_MAX = 500;
-const FALLBACK_URL = "/dashboard";
-
-export type PushPayload = {
-  title: string;
-  body: string;
-  url: string;
-  tag: string;
-};
 
 /**
  * A same-origin path. "//host" and "/\host" are both treated by browsers as
@@ -24,28 +16,3 @@ export function isInternalPath(url: unknown): url is string {
   return /^\/(?![/\\])[^\s\\]*$/.test(url);
 }
 
-export function truncate(text: string, max: number): string {
-  const clean = text.trim();
-  if (clean.length <= max) return clean;
-  return clean.slice(0, max - 1).trimEnd() + "…";
-}
-
-export function buildPushPayload(input: {
-  title: string;
-  body: string;
-  url?: string | null;
-  tag: string;
-}): PushPayload {
-  return {
-    title: truncate(input.title, TITLE_MAX),
-    body: truncate(input.body, BODY_MAX),
-    url: isInternalPath(input.url) ? input.url : FALLBACK_URL,
-    tag: input.tag,
-  };
-}
-
-export const pushTag = {
-  morning: (dayKey: string) => `morning-${dayKey}`,
-  streak: (dayKey: string) => `streak-${dayKey}`,
-  announcement: (id: string) => `announcement-${id}`,
-};

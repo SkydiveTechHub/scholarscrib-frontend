@@ -13,7 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { FlashcardView } from "./flashcard-view";
 import { RateBar } from "./rate-bar";
-import { fetchApi } from "@/lib/api/client";
+import { useReviewFlashcard } from "@/hooks/api/use-flashcards";
 import { intervalLabel } from "@/lib/spaced-repetition";
 import type { ReviewOutcome, StudyCardState } from "@/types/flashcards";
 import type { ReviewRating } from "@/lib/spaced-repetition";
@@ -37,6 +37,7 @@ type CardResult = {
 };
 
 export function StudySession({ deckId, initialQueue }: StudySessionProps) {
+  const { mutateAsync: reviewFlashcard } = useReviewFlashcard();
   const [index, setIndex] = useState(0);
   const [revealed, setRevealed] = useState(false);
   const [done, setDone] = useState(false);
@@ -79,18 +80,12 @@ export function StudySession({ deckId, initialQueue }: StudySessionProps) {
       if (busy || !card) return;
       setBusy(true);
       try {
-        const data = await fetchApi<{ review: ReviewOutcome }>(
-          "/api/flashcards/review",
-          {
-            method: "POST",
-            body: {
-              flashcardId: card.cardId,
-              rating,
-              responseTimeMs,
-              objectiveCorrect,
-            },
-          },
-        );
+        const data = await reviewFlashcard({
+          flashcardId: card.cardId,
+          rating,
+          responseTimeMs,
+          objectiveCorrect,
+        });
         const outcome: ReviewOutcome | null = data.review ?? null;
         if (!outcome) throw new Error("Failed to record review");
 
@@ -122,7 +117,7 @@ export function StudySession({ deckId, initialQueue }: StudySessionProps) {
         setBusy(false);
       }
     },
-    [busy, card, advance],
+    [busy, card, advance, reviewFlashcard],
   );
 
   // Keyboard: Space to reveal, 1–4 to rate.

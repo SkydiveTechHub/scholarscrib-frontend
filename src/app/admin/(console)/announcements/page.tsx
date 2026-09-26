@@ -2,7 +2,7 @@ import { requireAdminPage } from "@/lib/admin-session";
 import { PageHeader } from "@/components/ui/page-header";
 import { StatusBanner } from "@/components/admin/status-banner";
 import { listAnnouncements } from "@/lib/announcement-data";
-import { isPushEnabled } from "@/lib/push-config";
+import { isPushEnabled } from "@/lib/features";
 import { AnnouncementComposer } from "@/components/admin/announcement-composer";
 import { AnnouncementList } from "@/components/admin/announcement-list";
 

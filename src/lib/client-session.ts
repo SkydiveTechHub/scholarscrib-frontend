@@ -9,12 +9,11 @@
  */
 "use client";
 
-import { ACCESS_COOKIE, ADMIN_ACCESS_COOKIE, API_URL } from "@/lib/api/config";
+import { ACCESS_COOKIE, ADMIN_ACCESS_COOKIE } from "@/lib/api/config";
+import { endpoints } from "@/lib/api/endpoints";
+import { request } from "@/lib/api/http";
 
 const MAX_AGE_SECONDS = 60 * 60 * 24 * 30;
-
-const STUDENT_AUTH = "/api/auth";
-const ADMIN_AUTH = "/admin/api/auth";
 
 function writeCookie(name: string, value: string): void {
   const secure = typeof location !== "undefined" && location.protocol === "https:";
@@ -27,22 +26,6 @@ export function setStudentToken(token: string): void {
 
 export function setAdminToken(token: string): void {
   writeCookie(ADMIN_ACCESS_COOKIE, token);
-}
-
-export function getStudentToken(): string | null {
-  return readToken(ACCESS_COOKIE);
-}
-
-export function getAdminToken(): string | null {
-  return readToken(ADMIN_ACCESS_COOKIE);
-}
-
-function readToken(name: string): string | null {
-  const match = document.cookie
-    .split(";")
-    .map((pair) => pair.trim())
-    .find((pair) => pair.startsWith(`${name}=`));
-  return match ? decodeURIComponent(match.slice(name.length + 1)) : null;
 }
 
 function clearCookie(name: string): void {
@@ -58,14 +41,9 @@ export function clearAdminToken(): void {
   clearCookie(ADMIN_ACCESS_COOKIE);
 }
 
-export function clearAllTokens(): void {
-  clearStudentToken();
-  clearAdminToken();
-}
-
 async function postLogout(path: string): Promise<void> {
   try {
-    await fetch(`${API_URL}${path}`, { method: "POST", credentials: "omit" });
+    await request({ method: "POST", url: path, anonymous: true });
   } catch {
     // The token is cleared regardless: a logout that cannot reach the backend
     // must still look signed out locally.
@@ -78,7 +56,7 @@ async function postLogout(path: string): Promise<void> {
  * profile step.
  */
 export async function studentLogout(callbackUrl = "/login"): Promise<void> {
-  await postLogout(STUDENT_AUTH + "/logout");
+  await postLogout(endpoints.auth.logout);
   clearStudentToken();
   window.location.assign(callbackUrl);
 }
@@ -88,7 +66,7 @@ export async function studentLogout(callbackUrl = "/login"): Promise<void> {
  * the visitor on the admin login page. The student token is untouched.
  */
 export async function adminLogout(callbackUrl = "/admin/login"): Promise<void> {
-  await postLogout(ADMIN_AUTH + "/logout");
+  await postLogout(endpoints.admin.auth.logout);
   clearAdminToken();
   window.location.assign(callbackUrl);
 }
