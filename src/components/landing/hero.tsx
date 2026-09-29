@@ -5,8 +5,8 @@ import {
   LuBrainCircuit,
   LuCheck,
   LuFlame,
-  LuSparkles,
-  LuStar,
+  LuLightbulb,
+  LuTarget,
   LuTrendingUp,
 } from "react-icons/lu";
 import { buttonClass } from "@/components/ui/button";
@@ -31,20 +31,30 @@ function FloatingCard({
   );
 }
 
-function AiTutorBubble() {
+const MASTERY_LEVELS = ["Weak", "Developing", "Competent", "Strong"];
+
+function MasteryCard() {
   return (
     <div className="glass glass-strong rounded-2xl p-3 shadow-lift">
       <div className="flex items-center gap-2">
         <span className="flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-br from-primary to-brand text-white">
-          <LuSparkles className="h-3.5 w-3.5" />
+          <LuTarget className="h-3.5 w-3.5" />
         </span>
         <div>
-          <p className="text-[11px] font-extrabold ink">AI Tutor</p>
-          <p className="text-[10px] font-medium ink-faint">scholarscrib.com</p>
+          <p className="text-[11px] font-extrabold ink">Indices · SS2 Term 1</p>
+          <p className="text-[10px] font-medium ink-faint">Topic mastery</p>
         </div>
       </div>
-      <p className="mt-2 rounded-xl bg-primary-soft px-3 py-2 text-[11px] font-semibold leading-relaxed text-primary-soft-foreground">
-        Can you explain the chain rule again?
+      <div className="mt-2.5 flex items-center gap-1">
+        {MASTERY_LEVELS.map((level, i) => (
+          <span
+            key={level}
+            className={`h-1.5 w-7 rounded-full ${i <= 2 ? "bg-success" : "bg-secondary"}`}
+          />
+        ))}
+      </div>
+      <p className="mt-1.5 text-[10px] font-extrabold uppercase tracking-widest text-success">
+        Competent
       </p>
     </div>
   );
@@ -66,15 +76,15 @@ function StreakCard() {
   );
 }
 
-function ScoreCard() {
+function GradeCard() {
   return (
     <div className="glass glass-strong rounded-2xl px-4 py-3 shadow-lift">
       <p className="text-[10px] font-bold uppercase tracking-widest ink-faint">
-        Weekly score
+        Predicted grade
       </p>
       <div className="mt-1 flex items-center gap-2">
         <LuTrendingUp className="h-4 w-4 text-success" />
-        <span className="text-lg font-extrabold text-success">+18%</span>
+        <span className="text-lg font-extrabold text-success">B3 → A1</span>
       </div>
     </div>
   );
@@ -86,12 +96,12 @@ function FlashcardCard() {
       <div className="flex items-center gap-1.5">
         <LuBrainCircuit className="h-3.5 w-3.5 text-primary" />
         <p className="text-[10px] font-extrabold uppercase tracking-widest ink-faint">
-          Flashcard
+          Due for review
         </p>
       </div>
       <p className="mt-2 text-[11px] font-bold ink">What is osmosis?</p>
       <p className="mt-1 text-[10px] leading-relaxed ink-faint">
-        Water moving across a membrane…
+        Last seen 6 days ago · Biology SS1
       </p>
     </div>
   );
@@ -124,7 +134,7 @@ function HeroAppWindow() {
             <div className="flex flex-wrap items-center justify-between gap-2">
               <span className="chip bg-primary-soft text-primary-soft-foreground">
                 <LuBookOpen className="h-3 w-3" />
-                Practice · JAMB style
+                Topic practice · Indices
               </span>
               <span className="text-[10px] font-bold uppercase tracking-widest ink-faint">
                 Q8 of 30
@@ -137,8 +147,8 @@ function HeroAppWindow() {
 
             <div className="mt-4 space-y-2">
               {[
-                { letter: "A", text: "4", state: "correct" },
-                { letter: "B", text: "5", state: "idle" },
+                { letter: "A", text: "4", state: "idle" },
+                { letter: "B", text: "5", state: "correct" },
                 { letter: "C", text: "6", state: "idle" },
                 { letter: "D", text: "3", state: "idle" },
               ].map((opt) => (
@@ -167,11 +177,11 @@ function HeroAppWindow() {
 
             <div className="mt-4 flex items-start gap-3 rounded-2xl bg-gradient-to-br from-primary/10 via-brand/10 to-accent/10 p-4">
               <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary to-brand text-white">
-                <LuSparkles className="h-4 w-4" />
+                <LuLightbulb className="h-4 w-4" />
               </span>
               <div>
                 <p className="text-[10px] font-extrabold uppercase tracking-widest text-primary">
-                  AI explanation
+                  Worked explanation
                 </p>
                 <p className="mt-1 text-xs leading-relaxed ink-muted">
                   2<sup>x</sup> = 32 means 2 multiplied by itself x times. Since
@@ -184,7 +194,7 @@ function HeroAppWindow() {
       </div>
 
       <FloatingCard className="-right-5 -top-8 lg:-right-12" delay="0.4s">
-        <AiTutorBubble />
+        <MasteryCard />
       </FloatingCard>
 
       <FloatingCard className="-left-6 top-16 lg:-left-12" delay="0.9s">
@@ -196,11 +206,18 @@ function HeroAppWindow() {
       </FloatingCard>
 
       <FloatingCard className="-bottom-6 left-8 lg:-left-8" delay="1.1s">
-        <ScoreCard />
+        <GradeCard />
       </FloatingCard>
     </div>
   );
 }
+
+const PROOF_POINTS = [
+  "Full 180-question JAMB CBT",
+  "Graded on the real A1–F9 scale",
+  "Past questions by year",
+  "Retention you can see",
+];
 
 export function Hero() {
   return (
@@ -227,31 +244,31 @@ export function Hero() {
 
       <div className="landing-container relative grid items-center gap-14 pb-20 lg:grid-cols-2 lg:gap-10 lg:pb-28">
         <div>
-          {/* <Reveal>
+          <Reveal>
             <span className="inline-flex items-center gap-2 rounded-full glass px-3.5 py-1.5 text-xs font-bold ink-muted">
-              <span className="flex items-center gap-1 rounded-full bg-accent-soft px-2 py-0.5 text-accent">
-                <LuSparkles className="h-3 w-3" />
-                New
+              <span className="rounded-full bg-accent-soft px-2 py-0.5 text-accent">
+                SS1 – SS3 &amp; resits
               </span>
-              AI tutor now explains any question, step by step
+              Your class curriculum, term by term
             </span>
-          </Reveal> */}
+          </Reveal>
 
           <Reveal delay={80}>
             <h1 className="mt-6 text-[2.6rem] font-extrabold leading-[1.06] tracking-tight ink sm:text-5xl lg:text-6xl">
-              Learn Smarter.{" "}
+              Learn it.{" "}
               <span className="gradient-text animate-gradient-pan">
-                Score Higher.
+                Remember it.
               </span>{" "}
-              Build Your Future.
+              Ace WAEC, JAMB &amp; NECO.
             </h1>
           </Reveal>
 
           <Reveal delay={160}>
             <p className="mt-6 max-w-xl text-base leading-relaxed ink-muted sm:text-lg">
-              Interactive lesson notes, an AI tutor that explains anything,
-              smart flashcards, quizzes, CBT practice and a revision plan that
-              adapts to you — built for WAEC, JAMB and NECO.
+              ScholarsCrib brings school to your phone. Study your syllabus term
+              by term, practise with real past questions, sit full CBT mock
+              exams and see what you actually remember — so every class counts,
+              not just the last few weeks before the exam.
             </p>
           </Reveal>
 
@@ -264,47 +281,30 @@ export function Hero() {
                 Start Learning Free
                 <LuArrowRight className="h-4 w-4" />
               </Link>
-              {/* <a
-                href="/#product"
+              <Link
+                href="/#how-it-works"
                 className={buttonClass("outline", "lg", "px-7")}
               >
-                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary text-white">
-                  <LuPlay className="ml-0.5 h-3 w-3" />
-                </span>
-                Watch Demo
-              </a> */}
+                See how it works
+              </Link>
             </div>
             <p className="mt-4 text-xs font-semibold ink-faint">
-              Free to start · Works on any phone
+              Free to start · No card required · Works on any phone
             </p>
           </Reveal>
 
           <Reveal delay={320}>
-            <div className="mt-9 flex flex-wrap items-center gap-4">
-              <div className="flex -space-x-2.5">
-                {["Adaeze", "Tunde", "Aisha", "Chidi", "Fatima"].map((name) => (
-                  <span
-                    key={name}
-                    className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-background bg-gradient-to-br from-primary via-blue-600 to-brand text-[10px] font-extrabold text-white"
-                  >
-                    {name.charAt(0)}
-                  </span>
-                ))}
-              </div>
-              <div>
-                <div className="flex items-center gap-0.5">
-                  {Array.from({ length: 5 }).map((_, i) => (
-                    <LuStar key={i} className="h-3.5 w-3.5 fill-accent text-accent" />
-                  ))}
-                  <span className="ml-1.5 text-xs font-extrabold ink">
-                    4.9/5
-                  </span>
-                </div>
-                <p className="mt-0.5 text-xs ink-faint">
-                  Loved by students in Lagos, Kano, Enugu &amp; beyond
-                </p>
-              </div>
-            </div>
+            <ul className="mt-9 flex flex-wrap items-center gap-2">
+              {PROOF_POINTS.map((point) => (
+                <li
+                  key={point}
+                  className="inline-flex items-center gap-1.5 rounded-full surface hairline px-3 py-1.5 text-xs font-bold ink-muted"
+                >
+                  <LuCheck className="h-3.5 w-3.5 text-success" />
+                  {point}
+                </li>
+              ))}
+            </ul>
           </Reveal>
         </div>
 

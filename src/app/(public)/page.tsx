@@ -1,13 +1,14 @@
 import { Hero } from "@/components/landing/hero";
-import { TrustedBy } from "@/components/landing/trusted-by";
+import { BuiltFor } from "@/components/landing/built-for";
+import { ForEveryClass } from "@/components/landing/for-every-class";
+import { Journey } from "@/components/landing/journey";
 import { WhyUs } from "@/components/landing/why-us";
 import { Showcase } from "@/components/landing/showcase";
-import { Journey } from "@/components/landing/journey";
-import { Subjects } from "@/components/landing/subjects";
 import { DeepDive } from "@/components/landing/deep-dive";
-import { Testimonials } from "@/components/landing/testimonials";
+import { Subjects } from "@/components/landing/subjects";
 import { StatsBand } from "@/components/landing/stats";
 import { Pricing } from "@/components/landing/pricing";
+import { Roadmap } from "@/components/landing/roadmap";
 import { Faq } from "@/components/landing/faq";
 import { FinalCta } from "@/components/landing/final-cta";
 import { buildMetadata } from "@/lib/seo/metadata";
@@ -16,12 +17,16 @@ import { FAQS } from "@/components/landing/faq-data";
 import { faqPageJsonLd, organisationJsonLd, websiteJsonLd } from "@/lib/seo/jsonld";
 
 export const metadata = buildMetadata({
-  title: "ScholarsCrib — Learn Smarter. Score Higher. Build Your Future.",
+  title: "ScholarsCrib — Learn It. Remember It. Ace WAEC, JAMB & NECO.",
   description:
-    "Nigeria's learning platform for WAEC, JAMB and NECO. Interactive lessons, an AI tutor, smart flashcards, quizzes, CBT practice and a study plan that adapts to you.",
+    "School on your phone for Nigerian SS1–SS3 students. Term-by-term lessons, real past questions, a full JAMB CBT simulation, spaced-repetition flashcards and a study plan built around what you actually remember.",
   path: "/",
 });
 
+/**
+ * Section order follows the PRD v0.3 positioning: exam readiness is the way
+ * in (hero), learning quality across every class is the product (the rest).
+ */
 export default function LandingPage() {
   return (
     <>
@@ -29,17 +34,16 @@ export default function LandingPage() {
       <JsonLd data={websiteJsonLd()} />
       <JsonLd data={faqPageJsonLd(FAQS)} />
       <Hero />
-      <TrustedBy />
+      <BuiltFor />
+      <ForEveryClass />
+      <Journey />
       <WhyUs />
       <Showcase />
-      <Journey />
-      <Subjects />
       <DeepDive />
-      {/* <Users /> */}
-      <Testimonials />
+      <Subjects />
       <StatsBand />
       <Pricing />
-      {/* <MobileApp /> */}
+      <Roadmap />
       <Faq />
       <FinalCta />
     </>

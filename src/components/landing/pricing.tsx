@@ -5,66 +5,76 @@ import Link from "next/link";
 import { LuCheck, LuCrown, LuSparkles, LuZap } from "react-icons/lu";
 import { cn } from "@/lib/utils";
 import { buttonClass } from "@/components/ui/button";
+import {
+  planFor,
+  TIER_DISPLAY_NAMES,
+  type SubscriptionTier,
+} from "@/lib/subscription";
 import { SectionHeader } from "./section";
 import { Reveal } from "./reveal";
 
-const PLANS = [
+/**
+ * Prices come from `planFor` so this page cannot drift from what Paystack
+ * charges. Feature lists must match `ENTITLEMENTS` in lib/subscription.ts:
+ * flashcards and the study planner need STANDARD ("Basic"); premium library
+ * resources and the subject-level analytics breakdown need PREMIUM. Do not
+ * list anything here that is not built — see PRD §10 item 3.
+ */
+const PLANS: {
+  tier: SubscriptionTier;
+  icon: typeof LuSparkles;
+  blurb: string;
+  cta: string;
+  highlight: boolean;
+  features: string[];
+}[] = [
   {
-    name: "Free",
+    tier: "FREEMIUM",
     icon: LuSparkles,
     blurb: "For getting started",
-    monthly: 0,
-    yearly: 0,
     cta: "Start free",
-    href: "/register",
     highlight: false,
     features: [
       "Up to 3 subjects",
+      "Lesson notes for your class and term",
       "25 practice questions a day",
       "1 mock CBT exam",
       "Basic progress tracking",
     ],
   },
   {
-    name: "Premium",
-    icon: LuCrown,
-    blurb: "Everything, unlocked",
-    monthly: 5000,
-    yearly: 50000,
-    cta: "Go Premium",
-    href: "/register",
-    highlight: true,
+    tier: "STANDARD",
+    icon: LuZap,
+    blurb: "For steady, term-by-term learning",
+    cta: "Choose Basic",
+    highlight: false,
     features: [
-      "All 12+ subjects, unlimited",
-      "Unlimited practice + mock exams",
-      "AI tutor — unlimited questions",
-      "Library — Access to useful resources",
+      "All subjects on your curriculum",
+      "Unlimited practice, past questions & mock exams",
       "Smart flashcards & spaced repetition",
-      "Full analytics & study planner",
-      "Offline mode",
+      "Personal study planner",
     ],
   },
   {
-    name: "Basic",
-    icon: LuZap,
-    blurb: "For schools & classes",
-    monthly: 2500,
-    yearly: 24000,
-    cta: "Subscribe",
-    href: "/register",
-    highlight: false,
+    tier: "PREMIUM",
+    icon: LuCrown,
+    blurb: "Everything, unlocked",
+    cta: "Go Premium",
+    highlight: true,
     features: [
-      "All 12+ subjects",
-      "Unlimited practice + mock exams",
-      "Smart flashcards & spaced repetition",
-      "Basic analytics & study planner",
-
+      "Everything in Basic",
+      "Subject-by-subject analytics breakdown",
+      "Premium library: textbooks, videos & past papers",
     ],
   },
 ];
 
 function formatPrice(naira: number) {
   return `₦${naira.toLocaleString("en-NG")}`;
+}
+
+function nairaFor(tier: SubscriptionTier, yearly: boolean) {
+  return planFor(tier, yearly ? "YEARLY" : "MONTHLY").amountKobo / 100;
 }
 
 export function Pricing() {
@@ -83,7 +93,7 @@ export function Pricing() {
               </span>
             </>
           }
-          description="No hidden fees, no contracts. Pay for what moves you forward — and nothing more."
+          description="No hidden fees, no contracts. Pay securely with Paystack, and only for what moves you forward."
         />
 
         <Reveal delay={100}>
@@ -118,17 +128,18 @@ export function Pricing() {
               Yearly
             </span>
             <span className="rounded-full bg-success-soft px-2.5 py-1 text-[11px] font-extrabold text-success">
-              Save 20%
+              Save up to 20%
             </span>
           </div>
         </Reveal>
 
         <div className="mt-12 grid gap-6 lg:grid-cols-3 lg:items-stretch">
           {PLANS.map((plan, i) => {
-            const price = plan.monthly < 0 ? null : yearly ? plan.yearly : plan.monthly;
-            const isFree = plan.monthly === 0;
+            const price = nairaFor(plan.tier, yearly);
+            const isFree = price === 0;
+            const name = TIER_DISPLAY_NAMES[plan.tier];
             return (
-              <Reveal key={plan.name} delay={i * 100} className="h-full">
+              <Reveal key={plan.tier} delay={i * 100} className="h-full">
                 <div
                   className={cn(
                     "relative flex h-full flex-col rounded-3xl p-7 transition-all duration-300",
@@ -156,7 +167,7 @@ export function Pricing() {
                     </span>
                     <div>
                       <h3 className="text-lg font-extrabold tracking-tight ink">
-                        {plan.name}
+                        {name}
                       </h3>
                       <p
                         className={cn(
@@ -170,39 +181,21 @@ export function Pricing() {
                   </div>
 
                   <div className="mt-6">
-                    {price === null ? (
-                      <>
-                        <p className="text-4xl font-extrabold tracking-tight ink">
-                          Custom
-                        </p>
-                        <p
-                          className={cn(
-                            "mt-1 text-xs font-semibold",
-                            plan.highlight ? "text-blue-100" : "ink-faint",
-                          )}
-                        >
-                          Quoted for your school’s size
-                        </p>
-                      </>
-                    ) : (
-                      <>
-                        <p className="text-4xl font-extrabold tracking-tight ink">
-                          {isFree ? "₦0" : formatPrice(price)}
-                        </p>
-                        <p
-                          className={cn(
-                            "mt-1 text-xs font-semibold",
-                            plan.highlight ? "text-blue-100" : "ink-faint",
-                          )}
-                        >
-                          {isFree
-                            ? "Free forever"
-                            : yearly
-                              ? "per year, billed yearly"
-                              : "per month, cancel anytime"}
-                        </p>
-                      </>
-                    )}
+                    <p className="text-4xl font-extrabold tracking-tight ink">
+                      {formatPrice(price)}
+                    </p>
+                    <p
+                      className={cn(
+                        "mt-1 text-xs font-semibold",
+                        plan.highlight ? "text-blue-100" : "ink-faint",
+                      )}
+                    >
+                      {isFree
+                        ? "Free forever"
+                        : yearly
+                          ? "per year, billed yearly"
+                          : "per month, cancel anytime"}
+                    </p>
                   </div>
 
                   <ul className="mt-6 flex-1 space-y-3">
@@ -236,7 +229,7 @@ export function Pricing() {
                   </ul>
 
                   <Link
-                    href={plan.href}
+                    href="/register"
                     className={cn(
                       "mt-8 w-full",
                       buttonClass(
@@ -256,8 +249,8 @@ export function Pricing() {
 
         <Reveal delay={120}>
           <p className="mt-8 text-center text-xs font-semibold ink-faint">
-            All plans include data-friendly apps that work on any phone. Schools
-            with 50+ students get volume pricing.
+            Every plan runs in the browser on any phone — no download needed.
+            Cancel anytime.
           </p>
         </Reveal>
       </div>

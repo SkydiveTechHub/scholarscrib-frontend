@@ -3,14 +3,14 @@
 | | |
 |---|---|
 | **Product** | ScholarsCrib |
-| **Category** | Exam preparation / EdTech (Secondary Education) |
-| **Market** | Nigeria (WAEC, JAMB, NECO candidates) |
+| **Category** | Digital learning platform / EdTech (Senior Secondary Education) |
+| **Market** | Nigeria (senior secondary students; WAEC, JAMB and NECO preparation is the market-entry offer) |
 | **Target users** | SS1–SS3 students, resitting WASSCE/GCE candidates, private candidates |
-| **Document version** | v0.2 |
-| **Date** | 2026-09-03 |
+| **Document version** | v0.3 |
+| **Date** | 2026-09-28 |
 | **Product version** | 0.1.0 (pre-beta) |
 | **Stage** | Feature-rich, content-poor. Pre-beta. |
-| **Next milestone** | Closed beta, Nov–Dec 2026 (free) |
+| **Next milestone** | Launch, November 2026 |
 
 > **How to read this document.** Sections 1–8 are the product case: problem,
 > users, value, competitive position, and what has been built. Sections 9–14 are
@@ -22,13 +22,26 @@
 
 ## 1. Executive Summary
 
-ScholarsCrib is an all-in-one digital exam-preparation platform for Nigerian
-secondary-school students preparing for WAEC WASSCE, JAMB UTME, and NECO SSCE.
-It combines a syllabus-aligned curriculum (SS1–SS3), a past-question bank, full
-CBT and mock-exam simulations, spaced-repetition flashcards, a personalized
-study-plan generator, an evidence-based mastery model, and gamification into a
-single product — closing the gap between the "practice-only" apps and the
-"notes-only" portals currently fragmented across the Nigerian EdTech market.
+ScholarsCrib is a digital learning platform that brings school to devices for
+Nigerian senior-secondary students (SS1–SS3) and for candidates retaking an
+exam after SS3. Its purpose is to make learning easy and to change how students
+study and prepare for exams: not to produce crammers who read only to pass, but
+students for whom every learning phase counts. It combines a curriculum aligned
+to the government-approved syllabus and organised by class level and term,
+topic notes (with videos planned), a past-question bank, full CBT and
+mock-exam simulations, spaced-repetition flashcards, a personalized study-plan
+generator, an evidence-based mastery model, and gamification into a single
+product, with progress tracking and retention evaluation throughout. An AI
+study assistant is planned. This closes the gap between the "practice-only"
+apps and the "notes-only" portals fragmented across the Nigerian EdTech market.
+
+**Positioning.** Preparation for WAEC WASSCE, JAMB UTME, and NECO SSCE is an
+integral service and the **market-entry offer**: it is the most urgent and most
+easily understood reason a student or parent pays attention to a learning
+product. It is not the whole product. The end goal is excellent students, not
+students who merely pass and scale through, whether they are in SS1, SS2, SS3,
+or resitting. At launch, marketing and onboarding lead with exam readiness;
+the product, roadmap, and success metrics are built around learning quality.
 
 **Where the build actually stands.** The learning machine is built and tested.
 Thirteen design-to-implementation cycles between 2026-07-27 and 2026-09-02 have
@@ -48,12 +61,51 @@ path to beta. A live probe measured 87% usable yield across 249 questions
 spanning 2005–2022, so the approach is validated; what remains is finishing the
 pipeline and sweeping the catalogue into our own database.
 
-**The plan.** Land the in-flight work through September, fill the bank through
-October, harden and run a free closed beta in November–December 2026, then add
-payments and launch v1.0 publicly ahead of the 2027 exam season.
+**The plan.** Land the in-flight work through September, fill the bank and
+harden through October, and launch in November 2026 with exam preparation as
+the entry offer. After launch, extend toward video lessons, the AI study
+assistant, and teacher and school tooling. Payments are already built and
+active (see section 10).
+
+### Beyond the student app: platform vision
+Bringing school to devices extends past the individual student. Three further
+layers are part of the platform vision. None is in launch scope (see section 10):
+
+- **Teacher portal.** Teachers generate lesson notes from the curriculum or a
+  textbook, generate tests and exam questions seeded from the question bank,
+  and upload videos for students.
+- **School portal.** Schools subscribe to a plan, create teacher accounts
+  attached to subjects, onboard students, and run CBT exams as school term
+  exams. The relationship model is School → Teachers → Class → Students.
+- **Marketplace.** Students purchase teacher-recorded lessons, exam pins, and
+  scholarship applications.
+
+The overall goal is to digitise the productivity hassles of the academic sector
+and make it more effective.
 
 ## 2. Problem Statement (Nigerian Context)
 
+### 2.1 The learning problem
+Nigerian secondary education pulls students toward passing exams rather than
+understanding subjects. The result is students who cram to pass and forget soon
+after:
+
+1. **Cramming over understanding.** Study effort concentrates in the months
+   before an exam. Earlier learning phases (SS1, SS2, and each term of SS3) are
+   treated as if they do not matter.
+2. **No continuous view of progress.** Students, and those supporting them,
+   rarely see how well a topic was actually understood until an exam result
+   arrives.
+3. **Retention is never measured.** Nothing checks whether last term's topics
+   are still remembered, so forgetting goes unnoticed until it costs marks.
+4. **Scattered resources.** Notes, videos, PDFs, practice questions, and
+   revision aids live in separate places and are not connected to each other or
+   to the student's progress.
+5. **Uneven access to quality teaching.** Many students have no
+   well-structured, self-paced way to learn a topic they missed or did not
+   follow in class.
+
+### 2.2 The exam-preparation problem
 Every year ~1.5–2 million candidates sit JAMB UTME and millions more sit WAEC
 and NECO. Yet the prep experience is broken:
 
@@ -80,28 +132,35 @@ and NECO. Yet the prep experience is broken:
 |---|---|---|
 | **Chiamaka (SS3, Science)** | Lagos public-school student aiming for Medicine (JAMB cut-off ~280+). | Predict-grade accuracy, weak-topic coaching, full CBT simulation. |
 | **Ibrahim (SS2, Commercial)** | Kano student planning Accounting. | Track-aligned subjects (Maths, Econ, Commerce), structured study plan. |
+| **Adaeze (SS1, Arts)** | Enugu student in her first senior-secondary year, with no external exam in sight. | Understand each term's topics as they are taught, build study habits early, and see whether she retains what she learns, not only her scores. |
 | **Resitter / private candidate** | Out-of-school WASSCE/GCE candidate. | Affordable full-curriculum coverage plus past questions in one place. |
 | **Admin / content curator** | Internal operator maintaining the question and lesson bank. | Bulk import, review, audit, and student administration tooling. |
-| **Teacher / school** *(deferred)* | School staff assigning and monitoring work. | Classroom assignment and cohort analytics. Not in v1.0 — see section 10. |
+| **Teacher / school** *(platform vision, deferred)* | School staff creating lesson notes and tests, uploading videos, assigning and monitoring work, and running term CBT exams. | Lesson and test generation, classroom assignment, cohort analytics. Not in launch scope — see section 10. |
 
 ## 4. Value Proposition
 
-> "One platform that **teaches** you the WAEC/JAMB/NECO syllabus, **tests** you
-> with real past questions, **scores** you on the actual grading scale, and
-> **plans** your revision backwards from exam day — built specifically for
-> Nigerian students."
+> "One platform that **teaches** you your senior-secondary curriculum, **tests**
+> you, **tracks** what you actually retain, and **plans** your study, so every
+> stage of school counts and exam success follows from real understanding.
+> Built specifically for Nigerian students."
+
+**Market-entry message (launch marketing).** Exam readiness is the way in:
+
+> "Prepare for WAEC, JAMB and NECO the right way: learn the syllabus, practise
+> with real past questions, get scored on the actual grading scale, and plan
+> your revision backwards from exam day."
 
 ## 5. The Closed Loop
 
 The product's organizing idea is a loop that competitors only ever cover one or
-two stages of. Each stage is a shipped subsystem, not an aspiration:
+two stages of. Each stage is backed by a shipped subsystem; planned additions are marked:
 
 | Stage | What happens | Backing subsystem |
 |---|---|---|
-| **Teach** | Syllabus-structured lessons with key points, worked examples, LaTeX maths, and media. | Lesson engine, classroom, admin lesson upload |
+| **Teach** | Curriculum-aligned lessons by class level and term: topic notes with key points, worked examples, and LaTeX maths today; videos and an AI study assistant planned. | Lesson engine, classroom, admin lesson upload |
 | **Test** | Four practice modes over a tagged past-question bank, timed and exam-accurate. | Assessment generation, JAMB CBT, mock exams |
-| **Diagnose** | Every answer writes to an append-only ledger; mastery decays with time; gaps are classified. | Learning evidence layer, topic mastery, gap analysis |
-| **Plan** | Revision sequenced backwards from exam date against the knowledge graph and detected weaknesses. | Learning-path engine, study plan, spaced repetition |
+| **Diagnose** | Every answer writes to an append-only ledger; mastery decays with time, so retention is measured rather than assumed; gaps are classified. | Learning evidence layer, topic mastery, gap analysis |
+| **Plan** | Study sequenced against the knowledge graph and detected weaknesses, and backwards from the exam date when one is set. | Learning-path engine, study plan, spaced repetition |
 
 Each stage feeds the next. A wrong answer in Test changes what Diagnose
 believes, which changes what Plan schedules, which routes the student back to
@@ -124,6 +183,12 @@ per class level and term, with topics carrying WAEC and JAMB weightings,
 prerequisites expressed as a directed knowledge graph, and estimated study
 minutes. Lessons carry markdown content with LaTeX rendering, segmented key
 points, worked examples, and attached resources.
+
+**Classroom flow.** The curriculum follows the government-approved curriculum
+and is already divided into terms. A student chooses a subject and then a topic
+and lands on that topic's notes. Notes are shipped. Video lessons are planned
+for the topic page (targeted for v2, see section 10), so that a topic shows its
+notes and videos together.
 
 ### 6.3 Question Bank
 Past-paper questions filed by exam type and year, each tagged to a syllabus
@@ -190,6 +255,12 @@ profile editing, subscription-tier override, suspension, owner-only force
 sign-out and deletion, an admin team page, and an audit log viewer with entity
 filtering.
 
+### 6.12 AI Study Assistant *(planned, not built)*
+A general study assistant that students can interact with while learning. It
+supports the Teach and Diagnose stages of the loop by explaining concepts,
+answering questions, and helping with revision. Scope, grounding in curriculum
+content, safeguards, and tier placement are open decisions (section 14).
+
 ## 7. Technical Architecture
 
 | Layer | Choice |
@@ -222,6 +293,7 @@ evidence rather than recollection.
 | **Myschool.ng / Flashlearners** | Past questions + news/info | Content portal; weak learner analytics, no grading-simulation depth |
 | **ClassNotes.ng** | Lesson notes | Notes only — no practice, timing, or performance tracking |
 | **Local CBT centres (EduTams, etc.)** | Exam-hall mock CBT | Expensive, location-bound, one-off sittings; no continuous learning loop |
+| **Video-led learning apps (e.g., uLesson)** | Curriculum video lessons | To be benchmarked. Assumed lighter on past-question depth, exam-format simulation, and evidence-based mastery. Verify before external use |
 | **International apps (Khan Academy, Quizlet, Anki)** | Generic learning | Not syllabus/exam-aligned to WAEC/JAMB/NECO; wrong grading scale; not Nigeria-specific |
 
 ### 8.2 What Makes ScholarsCrib Different
@@ -239,12 +311,16 @@ evidence rather than recollection.
 5. **Full official-format simulation.** A complete 180-question, 4-subject,
    timed, tabbed JAMB CBT that mirrors the real interface, including focus-loss
    tracking — not just a Q&A drill.
-6. **One subscription, whole prep.** Replaces two to four separate paid products
-   with a single platform.
+6. **One subscription, whole journey.** Covers learning from SS1 through exam
+   day and any resit, and replaces two to four separate paid products with a
+   single platform.
 7. **An owned content pipeline.** The provider cache is designed so that every
    third-party call is captured permanently into our own database on the way
    past. Once a paper is drawn once, we hold it forever. The provider becomes
    unnecessary rather than a permanent dependency, cost, and outage risk.
+8. **Learning quality, not just pass rates.** Retention evaluation, mastery
+   decay, and spaced repetition are built to produce students who understand and
+   remember, not students who only pass.
 
 ---
 
@@ -304,6 +380,8 @@ deliberately undefined. **Not started** — designed or scoped, no code.
 | **`PerformanceMetric.masteryLevel` is stale** | Written by topic-practice and pre-test paths only, never by ordinary question answering. Documented divergence; the evidence layer is the source of truth. Not fixed in analytics phase 1. |
 | **README is unedited boilerplate** | Still the `create-next-app` template plus one env-var note. Onboarding cost for anyone new. |
 | **Branch backlog** | Three unmerged branches, one 28 commits behind `main`. Merge debt compounds. |
+| **No video lessons** | Topic pages carry notes only. Videos are a stated priority for the classroom and are planned for v2. Until then, "learning platform" claims must rest on notes, practice, and mastery tracking. |
+| **No AI study assistant** | Advertised in the landing page's Premium column but not built. |
 
 ## 10. v1.0 Scope
 
@@ -339,11 +417,19 @@ deliberately undefined. **Not started** — designed or scoped, no code.
    and **offline mode**. Neither exists — offline is explicitly deferred beyond
    v1.0 below — and neither can be gated, because there is nothing to gate. They
    must come off the pricing page before it takes real money, or move onto the
-   roadmap as v1.0 scope.
+   roadmap. The AI tutor is now defined as a general study assistant (section 6.12,
+   decision 7 in section 14).
 
 ### Deferred beyond v1.0
-- **Teacher / school accounts.** Classroom assignment, cohort analytics, school
-  administration. Has its own consent, access, and pricing questions.
+- **Video lessons on topic pages.** A stated priority for the classroom,
+  targeted for v2. Timing and sourcing are open (section 14).
+- **AI study assistant.** Defined in section 6.12. Timing relative to launch is
+  open (section 14).
+- **Teacher portal, school portal, and marketplace.** The platform vision in
+  section 1: teacher lesson-note and test generation, School → Teachers → Class →
+  Students, school subscriptions and term CBT exams, and a marketplace for
+  teacher-recorded lessons, exam pins, and scholarship applications. Has its own
+  consent, access, and pricing questions.
 - **PWA, offline, and low-bandwidth mode.** Real for the target market, but it
   does not gate beta learning.
 - Live proctoring, official exam registration, JAMB portal integration.
@@ -353,22 +439,25 @@ deliberately undefined. **Not started** — designed or scoped, no code.
 
 ## 11. Timeline
 
-Anchored on a **free closed beta in November–December 2026**, working backwards
-from today (2026-09-03). Roughly seven months of runway to the 2027 exam season.
+Anchored on a **November 2026 launch**, working backwards from the date of this
+revision (2026-09-28). The 2027 exam season follows, with the April 2027 JAMB
+the next major exam date that the exam-prep entry offer is aimed at.
 
 | Milestone | Window | Goal | Exit criteria |
 |---|---|---|---|
 | **M1 — Land in flight** | Sep 2026 | Clear the branch backlog and finish the ingestion pipeline | `feat/performance-analytics-phase-1` and `feat/admin-console-structure` merged to `main`; provider cache Tasks 11–15 complete and merged; full test suite green |
 | **M2 — Fill the bank** | Sep–Oct 2026 | Turn the pipeline into content | Catalogue sweep run to saturation across target subject-years; topic-tagging designed, built, and applied to imports; coverage reported per subject and exam |
 | **M3 — Beta hardening** | Oct 2026 | Make it safe to put in front of real students | Content QA pass on ingested questions; rate limiting and abuse review; error monitoring and observability; onboarding flow tested end to end; beta cohort recruited |
-| **M4 — Closed beta** | Nov–Dec 2026 | Learn from real usage | Cohort live on `0.9.0`; activation, engagement, and accuracy-improvement metrics instrumented and reporting; weekly feedback triage. **No longer free by default** — gating shipped early, so the cohort must be comped to a paid tier or the beta runs paywalled; see §10 item 3 |
+| **M4 — Launch** | Nov 2026 | Launch to students with exam preparation as the entry offer; learn from real usage. Whether the launch is public or a gated cohort is open (section 14, decision 6) | Cohort live on `0.9.0`; activation, engagement, and accuracy-improvement metrics instrumented and reporting; weekly feedback triage. **No longer free by default** — gating shipped early, so the cohort must be comped to a paid tier or the beta runs paywalled; see §10 item 3 |
 | **M5 — Launch** | Dec 2026 – Q1 2027 | Public v1.0 before the exam season | ~~Payment provider integrated; tier entitlements defined and gated~~ — both done 2026-09-05. Remaining: usage metering for the Free numeric caps; beta findings addressed; `1.0.0` public ahead of April 2027 JAMB |
 
 **Critical path: M1 → M2.** Everything else has slack; these do not. M2 depends
 on a third-party API whose behaviour we have measured but do not control, and it
-carries a new, undesigned workstream (topic-tagging). If either slips, the beta
-window compresses into December rather than moving — cut beta cohort size and
-subject breadth before cutting the hardening in M3.
+carries a new, undesigned workstream (topic-tagging). With launch fixed for
+November, M1–M3 now overlap and there is no December to absorb a slip. If
+either slips, launch with the narrower subject set that is ready rather than
+moving the date, and cut subject breadth and cohort size before cutting the
+hardening in M3.
 
 ## 12. Version Scheme
 
@@ -389,8 +478,8 @@ should establish the practice.
 
 ## 13. Success Metrics
 
-**Beta targets (M4)** — the beta is a learning exercise, so these are diagnostic
-thresholds rather than growth goals:
+**Launch targets (M4)** — the first weeks after launch are a learning exercise,
+so these are diagnostic thresholds rather than growth goals:
 
 | Metric | Target | Why |
 |---|---|---|
@@ -399,6 +488,9 @@ thresholds rather than growth goals:
 | Practice attempts per active user per week | ≥3 | Enough signal for the evidence layer to produce non-trivial mastery |
 | Students with enough data for a confident verdict | ≥50% by week 4 | Directly tests whether the evidence layer's confidence floors are set right against real usage |
 | Content faults reported per 1,000 questions served | Tracked, no target | Establishes the ingested-content quality baseline |
+| Retention — share of reviewed cards and topics still recalled after 7 and 30 days | Tracked, no target | Tests whether students retain what they learn, not just whether they pass. The core learning-quality signal |
+| Classroom engagement — topics completed per active user per week, by class level | Tracked, no target | Shows whether SS1 and SS2 students use the platform outside exam season |
+| Class-level mix of active users (SS1 / SS2 / SS3 / resit) | Tracked, no target | Tests whether exam-prep entry marketing is drawing in learners beyond SS3 |
 
 **Post-launch (v1.0+):** accuracy improvement between first and last attempt;
 free-to-premium conversion; 7-day streak retention; reach per school and state.
@@ -412,6 +504,9 @@ free-to-premium conversion; 7-day streak retention; reach per school and state.
 | 3 | **Beta cohort sourcing** | School partnership vs. direct student recruitment vs. mixed. Determines size, support load, and how representative the metrics are | M3 (Oct 2026) |
 | 4 | **Topic-tagging approach** | Manual curation, heuristic matching against syllabus topics, or model-assisted tagging with review. Cost and accuracy differ sharply; drives M2 duration | M2 start (Sep 2026) |
 | 5 | **Subject breadth for beta** | Full 45-subject curriculum vs. a deliberately narrow set done well. Narrow is likely right for a beta but it constrains cohort composition | M3 (Oct 2026) |
+| 6 | **Shape of the November launch** | Public launch vs. gated cohort (comped or paid). Determines the support load, the meaning of the launch metrics, and whether the beta-comping question in section 10 still applies | Now |
+| 7 | **AI study assistant scope and timing** | In launch scope vs. post-launch. If in scope: grounding in curriculum content, safeguards for students, and which tier includes it | Before the pricing page is finalised |
+| 8 | **Video lessons: timing and sourcing** | v2 as currently intended. Open: who records and hosts videos, whether teachers upload them, and how they relate to the marketplace | Before v2 planning |
 
 ## 15. Risks & Assumptions
 
@@ -425,3 +520,5 @@ free-to-premium conversion; 7-day streak retention; reach per school and state.
 | **Exam-body branding and trust** | Medium | Must be transparent throughout that ScholarsCrib is a practice tool and not affiliated with WAEC, JAMB, or NECO. Review copy before any public launch. |
 | **Merge debt** | Low | Three unmerged branches, one significantly behind `main`. M1 exists partly to retire this. |
 | **Single-maintainer bus factor** | Medium | Mitigated in practice by the design-and-plan discipline in `docs/superpowers/`, which records intent rather than just outcome. The unedited README is the weak link in that story. |
+| **Positioning outruns the product** | High | Launch messaging leads with exam preparation, which the product can deliver today. Broader learning claims are made only as fast as they become real: notes coverage per subject, videos, and the AI study assistant. Track lesson-note coverage per subject alongside question coverage. |
+| **Fixed November launch against the content critical path** | High | See section 11. Launch with the narrow subject set that is ready; do not move the date or ship untested content. |

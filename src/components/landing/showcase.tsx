@@ -5,15 +5,14 @@ import {
   LuChartColumn,
   LuBookOpen,
   LuBrainCircuit,
+  LuCalendarClock,
   LuCheck,
   LuClipboardList,
   LuClock,
   LuFlame,
   LuLayoutDashboard,
   LuPlay,
-  LuSparkles,
   LuTrendingUp,
-  LuWandSparkles,
 } from "react-icons/lu";
 import { cn } from "@/lib/utils";
 import { SectionHeader } from "./section";
@@ -22,9 +21,9 @@ import { Reveal } from "./reveal";
 const TABS = [
   { key: "dashboard", label: "Dashboard", icon: LuLayoutDashboard },
   { key: "lesson", label: "Lesson", icon: LuBookOpen },
+  { key: "quiz", label: "Practice", icon: LuClipboardList },
   { key: "flashcards", label: "Flashcards", icon: LuBrainCircuit },
-  { key: "tutor", label: "AI Tutor", icon: LuWandSparkles },
-  { key: "quiz", label: "Quiz", icon: LuClipboardList },
+  { key: "plan", label: "Study Plan", icon: LuCalendarClock },
   { key: "analytics", label: "Analytics", icon: LuChartColumn },
 ] as const;
 
@@ -131,7 +130,7 @@ function LessonScreen() {
     <div className="p-5 sm:p-6">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <span className="chip bg-primary-soft text-primary-soft-foreground">
-          Biology · SS2
+          Biology · SS1 · Term 2
         </span>
         <span className="flex items-center gap-1 text-[11px] font-bold ink-faint">
           <LuClock className="h-3.5 w-3.5" /> 8 min read
@@ -182,10 +181,10 @@ function FlashcardsScreen() {
             Question
           </p>
           <p className="text-base font-extrabold ink sm:text-lg">
-            What is the capital of a country where rivers flow into the sea?
+            What is osmosis?
           </p>
           <span className="text-[11px] font-bold ink-faint">
-            Economics · SS2
+            Biology · SS1 · built from your lesson
           </span>
         </div>
       </div>
@@ -195,8 +194,8 @@ function FlashcardsScreen() {
             Answer
           </p>
           <p className="mt-2 text-base font-extrabold leading-snug">
-            The answer shows the economic principle behind trade routes —
-            cities grow where goods and people can move.
+            The movement of water across a semi-permeable membrane, from a
+            dilute solution to a more concentrated one.
           </p>
         </div>
         <div className="mt-4 flex items-center justify-between">
@@ -211,46 +210,63 @@ function FlashcardsScreen() {
               />
             ))}
           </div>
-          <span className="text-[11px] font-bold ink-faint">Card 1 of 4</span>
+          <span className="text-[11px] font-bold ink-faint">Next review in 6 days</span>
         </div>
       </div>
     </div>
   );
 }
 
-function TutorScreen() {
+const PLAN_DAYS = [
+  { day: "Mon", task: "Lesson · Quadratic Equations", color: "bg-primary" },
+  { day: "Tue", task: "Practice · Chemistry: Mole Concept", color: "bg-brand" },
+  { day: "Wed", task: "Revision · Indices (fading)", color: "bg-accent" },
+  { day: "Thu", task: "Past questions · Biology 2019", color: "bg-success" },
+  { day: "Sat", task: "Mock exam · JAMB UTME", color: "bg-primary" },
+];
+
+function StudyPlanScreen() {
   return (
-    <div className="space-y-4 p-5 sm:p-6">
-      <div className="flex max-w-[85%] items-start gap-2.5 rounded-2xl rounded-tl-md surface-2 hairline p-3.5">
-        <span className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-primary-soft text-primary">
-          <LuSparkles className="h-3.5 w-3.5" />
-        </span>
-        <div className="space-y-1.5">
-          <p className="text-xs font-semibold ink">
-            Explain the mole concept simply.
-          </p>
-          <p className="text-xs font-semibold ink">
-            And why is 1 mole = 6.022 × 10²³?
-          </p>
+    <div className="grid gap-4 p-5 sm:grid-cols-5 sm:p-6">
+      <div className="sm:col-span-3">
+        <p className="text-[10px] font-bold uppercase tracking-widest ink-faint">
+          Week 6 of 24 · 2 hours a day
+        </p>
+        <h3 className="mt-1 text-lg font-extrabold ink">This week’s plan</h3>
+        <div className="mt-4 space-y-2">
+          {PLAN_DAYS.map((row) => (
+            <div
+              key={row.day}
+              className="flex items-center gap-3 rounded-xl surface-2 px-3.5 py-2.5"
+            >
+              <span className="w-8 text-[11px] font-extrabold ink-faint">
+                {row.day}
+              </span>
+              <span className={cn("h-2 w-2 flex-shrink-0 rounded-full", row.color)} />
+              <p className="truncate text-xs font-bold ink">{row.task}</p>
+            </div>
+          ))}
         </div>
       </div>
-      <div className="ml-auto max-w-[88%] rounded-2xl rounded-tr-md bg-gradient-to-br from-primary to-brand p-3.5 text-white shadow-soft">
-        <p className="text-xs leading-relaxed">
-          Imagine eggs in a crate — you count by crates, not individual eggs. A
-          mole is the chemist’s “crate”: one mole always holds 6.022 × 10²³
-          particles, called Avogadro’s number. So 2 moles of atoms = 2 ×
-          (6.022 × 10²³) atoms. Want a practice question?
-        </p>
-      </div>
-      <div className="flex items-center gap-2 rounded-2xl surface-2 hairline p-2.5">
-        <input
-          aria-label="Ask the AI tutor a question"
-          placeholder="Ask anything…"
-          className="w-full bg-transparent px-2 text-sm text-foreground outline-none placeholder:text-muted"
-        />
-        <span className="inline-flex items-center gap-1 rounded-xl bg-primary px-3 py-1.5 text-[11px] font-bold text-white">
-          <LuWandSparkles className="h-3.5 w-3.5" /> Ask
-        </span>
+      <div className="grid gap-4 sm:col-span-2">
+        <div className="rounded-xl bg-gradient-to-br from-primary to-brand p-4 text-white shadow-soft">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-blue-100">
+            Exam day
+          </p>
+          <p className="mt-1 text-sm font-extrabold">JAMB UTME</p>
+          <p className="mt-0.5 text-[11px] text-blue-100">
+            Plan counts back from your date
+          </p>
+        </div>
+        <div className="rounded-xl surface-2 p-4">
+          <p className="text-[10px] font-bold uppercase tracking-widest ink-faint">
+            Why these topics?
+          </p>
+          <p className="mt-1.5 text-xs leading-relaxed ink-muted">
+            Indices is fading — you haven’t practised it in 3 weeks. Mole
+            Concept is still weak and is a prerequisite for Stoichiometry.
+          </p>
+        </div>
       </div>
     </div>
   );
@@ -328,17 +344,17 @@ function AnalyticsScreen() {
       </div>
       <div className="space-y-3 sm:col-span-2">
         <p className="text-[10px] font-bold uppercase tracking-widest ink-faint">
-          Subject mastery
+          Mastery by subject
         </p>
         {[
-          { name: "Mathematics", value: 88, color: "bg-primary" },
-          { name: "English", value: 71, color: "bg-brand" },
-          { name: "Physics", value: 64, color: "bg-accent" },
+          { name: "Mathematics", level: "Strong", value: 88, color: "bg-success" },
+          { name: "English", level: "Competent", value: 71, color: "bg-primary" },
+          { name: "Physics", level: "Developing", value: 48, color: "bg-accent" },
         ].map((row) => (
           <div key={row.name} className="rounded-xl surface-2 p-3">
             <div className="flex items-center justify-between text-xs font-bold">
               <span className="ink">{row.name}</span>
-              <span className="ink-faint">{row.value}%</span>
+              <span className="ink-faint">{row.level}</span>
             </div>
             <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-secondary">
               <div
@@ -357,7 +373,7 @@ const SCREENS: Record<TabKey, () => React.JSX.Element> = {
   dashboard: DashboardScreen,
   lesson: LessonScreen,
   flashcards: FlashcardsScreen,
-  tutor: TutorScreen,
+  plan: StudyPlanScreen,
   quiz: QuizScreen,
   analytics: AnalyticsScreen,
 };
@@ -379,7 +395,7 @@ export function Showcase() {
               </span>
             </>
           }
-          description="Explore every corner of ScholarsCrib — from your personal dashboard to the AI tutor that’s with you through every topic."
+          description="From the topic notes for your class and term to the plan that tells you what to do next — every screen is part of the same loop."
         />
 
         <Reveal delay={120}>

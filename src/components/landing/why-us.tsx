@@ -1,10 +1,10 @@
 import {
   LuBookOpen,
-  LuBot,
   LuBrainCircuit,
-  LuCalendarClock,
-  LuClipboardList,
   LuChartLine,
+  LuClipboardList,
+  LuHistory,
+  LuLayers,
   LuTarget,
   LuTrophy,
 } from "react-icons/lu";
@@ -12,66 +12,46 @@ import { SectionHeader } from "./section";
 import { Reveal } from "./reveal";
 
 const FEATURES = [
-  // {
-  //   icon: LuWandSparkles,
-  //   title: "AI Tutor",
-  //   text: "Ask any question in plain English and get a step-by-step explanation, whenever you're stuck — day or night.",
-  // },
   {
     icon: LuBookOpen,
-    title: "Interactive Lesson Notes",
-    text: "Bite-sized notes for every topic with worked examples, key points and practice built straight in.",
+    title: "Term-by-Term Lessons",
+    text: "Your class curriculum organised by SS1–SS3 and by term. Pick a subject, pick a topic, and the notes are there.",
+  },
+  {
+    icon: LuClipboardList,
+    title: "Real Past Questions",
+    text: "WAEC, JAMB and NECO past questions filed by year and topic, each with a full explanation.",
+  },
+  {
+    icon: LuLayers,
+    title: "Full CBT Simulation",
+    text: "180 questions, 4 subjects, 120 minutes — the JAMB UTME format, subject tabs and all.",
+  },
+  {
+    icon: LuHistory,
+    title: "Retention Tracking",
+    text: "Mastery fades when a topic goes unpractised, so you see what you still remember — not just what you once scored.",
   },
   {
     icon: LuBrainCircuit,
     title: "Smart Flashcards",
-    text: "Turn any topic into flashcards in seconds and drill them until the facts truly stick.",
-  },
-  {
-    icon: LuClipboardList,
-    title: "CBT Practice",
-    text: "Timed mock exams under real computer-based conditions for WAEC, JAMB and NECO.",
-  },
-  {
-    icon: LuCalendarClock,
-    title: "Spaced Repetition",
-    text: "A smart revision schedule resurfacing topics right before you'd forget them.",
+    text: "Build decks from any lesson. Spaced repetition brings each card back just before you’d forget it.",
   },
   {
     icon: LuChartLine,
-    title: "Performance Analytics",
-    text: "Scores by subject, topic and exam type — so your weak areas become your strengths.",
+    title: "Honest Analytics",
+    text: "Weak → Developing → Competent → Strong for every topic, plus a predicted grade once there’s enough evidence.",
   },
   {
     icon: LuTarget,
-    title: "Personalized Study Plans",
-    text: "Tell us your exam date and daily hours, and we map every week to a clear next step.",
+    title: "Personal Study Plan",
+    text: "Tell us your subjects and daily hours; we map each week to lessons, practice, revision and mock exams.",
   },
   {
     icon: LuTrophy,
-    title: "Gamified Learning",
-    text: "Streaks, badges and milestones that keep even five focused minutes a day going.",
+    title: "Streaks & Badges",
+    text: "Achievements for streaks, perfect scores and mastered subjects keep even five focused minutes a day going.",
   },
-  // {
-  //   icon: LuMonitorSmartphone,
-  //   title: "Offline Learning",
-  //   text: "Download lessons and flashcards and keep studying even when data runs out.",
-  // },
-  // {
-  //   icon: LuUsers,
-  //   title: "Teacher Dashboard",
-  //   text: "Assign topics, track whole-class progress and spot struggling students early.",
-  // },
-  // {
-  //   icon: LuChartColumn,
-  //   title: "Parent Dashboard",
-  //   text: "See real progress and get weekly updates without hovering over your child.",
-  // },
-  // {
-  //   icon: LuSmartphone,
-  //   title: "Mobile Learning",
-  //   text: "Built light and fast for the phones students actually use — even on 2G.",
-  // },
 ];
 
 export function WhyUs() {
@@ -82,13 +62,13 @@ export function WhyUs() {
           eyebrow="Why ScholarsCrib"
           title={
             <>
-              Everything you need to{" "}
+              Everything you need to learn,{" "}
               <span className="gradient-text animate-gradient-pan">
-                actually pass
+                in one place
               </span>
             </>
           }
-          description="Not just videos and notes — an active, adaptive study system that keeps you practising, learning and improving every single day."
+          description="No more jumping between a notes website, a past-question app and a stack of textbooks. Lessons, practice, revision and progress live together — and talk to each other."
         />
 
         <div className="mt-14 grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -112,13 +92,6 @@ export function WhyUs() {
             </Reveal>
           ))}
         </div>
-
-        <Reveal delay={120}>
-          <p className="mt-12 flex items-center justify-center gap-2 text-sm font-semibold ink-muted">
-            <LuBot className="h-4 w-4 text-primary" />
-            And the AI tutor never sleeps — it’s there at 2am before your exam.
-          </p>
-        </Reveal>
       </div>
     </section>
   );

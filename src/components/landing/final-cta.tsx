@@ -28,9 +28,9 @@ export function FinalCta() {
                 Start Your Learning Journey Today.
               </h2>
               <p className="mx-auto mt-5 max-w-xl text-base leading-relaxed text-blue-100 sm:text-lg">
-                Five focused minutes a day is all it takes to begin. Your WAEC,
-                JAMB and NECO score is built question by question — start
-                building yours now.
+                Whether you’re in SS1 or a month from JAMB, every topic you
+                truly learn now is marks you keep on exam day. Five focused
+                minutes a day is all it takes to begin.
               </p>
               <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
                 <Link

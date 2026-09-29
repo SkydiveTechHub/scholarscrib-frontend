@@ -8,8 +8,8 @@ import {
   LuClock,
   LuFlame,
   LuListChecks,
+  LuLibrary,
   LuTrendingUp,
-  LuWifiOff,
 } from "react-icons/lu";
 import { cn } from "@/lib/utils";
 import { SectionHeader } from "./section";
@@ -167,11 +167,11 @@ const DEEP_DIVES = [
   {
     eyebrow: "Interactive Lessons",
     title: "Learn the concept, not just the answer",
-    text: "Every topic is broken into short, focused lessons with real definitions, worked examples and key points — written for Nigerian classrooms and examiners.",
+    text: "Choose a subject, choose a topic from your class and term, and land on its notes — real definitions, worked examples and key points, following the government-approved curriculum.",
     bullets: [
-      "Bite-sized lessons you can finish between classes",
-      "Worked examples that mirror exam marking",
-      "Key points and summaries for fast revision",
+      "Organised by SS1, SS2, SS3 and by term",
+      "Worked examples and properly rendered maths",
+      "Topics that build on each other, in the right order",
     ],
     cta: { label: "Explore lessons", href: "/register" },
     panel: <LessonsPanel />,
@@ -193,11 +193,11 @@ const DEEP_DIVES = [
   {
     eyebrow: "Exam Practice",
     title: "Mock exams that feel like the real thing",
-    text: "Timed CBT sessions under exam conditions for WAEC, JAMB and NECO. When you walk into that hall, the only new thing will be the venue.",
+    text: "A full JAMB UTME simulation — 180 questions across 4 subjects in 120 minutes — plus WAEC and NECO mock exams. When you walk into that hall, the only new thing will be the venue.",
     bullets: [
-      "Real exam timing and CBT format",
-      "Instant scores with area-by-area feedback",
-      "Past questions organised by year and topic",
+      "Official format: timer, subject tabs, auto-submit",
+      "Scored instantly on the A1–F9 and JAMB scales",
+      "Past questions by year, with a full explanation for each",
     ],
     cta: { label: "Start practising", href: "/register" },
     panel: <ExamPanel />,
@@ -205,12 +205,12 @@ const DEEP_DIVES = [
   },
   {
     eyebrow: "Learning Analytics",
-    title: "Watch your weak areas become strengths",
-    text: "See exactly where you stand across subjects, topics and exam types — with clear next steps every single day, not vague averages.",
+    title: "Know what you know — and what you’re forgetting",
+    text: "Every answer, lesson and flashcard review is recorded as evidence. Mastery fades when a topic goes untouched, so your progress reflects what you remember today, not what you scored months ago.",
     bullets: [
-      "Scores by subject, topic and exam type",
-      "Personalised revision plan that adapts weekly",
-      "Motivation nudges that keep streaks alive",
+      "Weak → Developing → Competent → Strong, per topic",
+      "Weak, fading and blocking topics flagged for you",
+      "A predicted grade — and an honest “not enough data yet”",
     ],
     cta: { label: "See your progress", href: "/register" },
     panel: <AnalyticsPanel />,
@@ -222,19 +222,19 @@ const MINI_FEATURES = [
   {
     icon: LuBrainCircuit,
     title: "Smart Flashcards",
-    text: "Turn any topic into cards in seconds and drill until the facts truly stick — then spaced repetition brings them back at the perfect time.",
+    text: "Build decks straight from your lessons. Spaced repetition brings each card back just before you’d forget it, and decks update when the lesson does.",
     accent: "from-brand to-purple-600",
   },
   {
     icon: LuCalendarClock,
     title: "Study Planner",
-    text: "Tell us your exam date and free hours. We map every week to a clear next step, so you never have to wonder what to study.",
+    text: "Pick your subjects and daily hours. We map every week to lessons, practice, revision and mocks — counted back from exam day when you set one.",
     accent: "from-primary to-blue-600",
   },
   {
-    icon: LuWifiOff,
-    title: "Offline Mode",
-    text: "Download lessons and flashcards and keep studying even when data runs out. Study on the bus, at home, anywhere.",
+    icon: LuLibrary,
+    title: "Resource Library",
+    text: "Textbooks, videos, PDFs, worksheets and past papers for each subject, with a built-in PDF reader.",
     accent: "from-emerald-500 to-teal-600",
   },
 ];
@@ -253,7 +253,7 @@ export function DeepDive() {
               </span>
             </>
           }
-          description="Every feature exists for one reason — to turn study time into exam confidence. Here’s the thinking behind the big four."
+          description="Every feature exists for one reason — to turn study time into understanding that lasts until exam day and beyond."
         />
 
         <div className="mt-16 space-y-20 lg:space-y-24">

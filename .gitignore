@@ -52,3 +52,5 @@ scripts/_*.mts
 
 # Worktrees created for isolated feature work (see superpowers:using-git-worktrees).
 .claude/worktrees/
+doc
+doc/superpowers/

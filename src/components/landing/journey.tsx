@@ -1,119 +1,97 @@
 import {
+  LuArrowRight,
   LuBookOpen,
-  LuBrainCircuit,
-  LuCircleCheck,
+  LuCalendarClock,
   LuClipboardList,
-  LuMapPin,
-  LuTarget,
-  LuTrendingUp,
-  LuTrophy,
-  LuWandSparkles,
+  LuScanSearch,
 } from "react-icons/lu";
 import { SectionHeader } from "./section";
 import { Reveal } from "./reveal";
 
-const STEPS = [
-  {
-    icon: LuMapPin,
-    title: "Choose your subject",
-    text: "Pick from 12+ subjects following the Nigerian curriculum.",
-  },
+/** The Teach → Test → Diagnose → Plan loop from PRD §5. */
+const LOOP = [
   {
     icon: LuBookOpen,
-    title: "Learn with interactive lessons",
-    text: "Short, focused lessons with worked examples that make sense.",
+    stage: "Teach",
+    title: "Learn the topic",
+    text: "Notes for every topic in your class and term, with key points, worked examples and properly rendered maths.",
   },
   {
     icon: LuClipboardList,
-    title: "Practice questions",
-    text: "Thousands of WAEC, JAMB & NECO style questions with answers.",
+    stage: "Test",
+    title: "Practise like the real thing",
+    text: "Past questions, topic practice, mock exams and a full JAMB CBT — timed and graded exactly like the real papers.",
   },
   {
-    icon: LuBrainCircuit,
-    title: "Review with flashcards",
-    text: "Drill the facts until they stick, at your own pace.",
+    icon: LuScanSearch,
+    stage: "Diagnose",
+    title: "See what you really know",
+    text: "Every answer counts as evidence. Mastery fades if you don’t revisit a topic, so forgetting is caught before it costs you marks.",
   },
   {
-    icon: LuWandSparkles,
-    title: "Ask the AI tutor",
-    text: "Stuck? Get a step-by-step explanation in plain English.",
-  },
-  {
-    icon: LuTarget,
-    title: "Master the topic",
-    text: "Spaced repetition brings it back right before you forget.",
-  },
-  {
-    icon: LuTrendingUp,
-    title: "Track your progress",
-    text: "See your scores climb across subjects, topics and exams.",
-  },
-  {
-    icon: LuTrophy,
-    title: "Ace your exams",
-    text: "Walk into the hall calm, prepared and confident.",
+    icon: LuCalendarClock,
+    stage: "Plan",
+    title: "Know what to study next",
+    text: "A week-by-week plan built around your weak and fading topics — and counted back from exam day once you set one.",
   },
 ];
 
 export function Journey() {
   return (
-    <section className="relative overflow-hidden">
+    <section id="how-it-works" className="relative scroll-mt-20 overflow-hidden">
       <div
         className="pointer-events-none absolute inset-0 bg-dots opacity-50 mask-fade-b"
         aria-hidden
       />
       <div className="landing-container relative py-20 lg:py-28">
         <SectionHeader
-          eyebrow="Your learning journey"
+          eyebrow="How it works"
           title={
             <>
-              From first lesson to{" "}
+              One loop that turns study into{" "}
               <span className="gradient-text animate-gradient-pan">
-                exam-day confidence
+                real understanding
               </span>
             </>
           }
-          description="A clear, guided path — you always know exactly what to do next, and why it works."
+          description="Most apps give you notes or questions. ScholarsCrib connects them: a wrong answer changes what we know about you, which changes your plan, which sends you back to the right lesson."
         />
 
-        <div className="relative mt-14">
-          <div
-            className="absolute left-0 right-0 top-9 hidden lg:block"
-            aria-hidden
-          >
-            <div className="mx-14 border-t-2 border-dashed border-primary/20" />
-          </div>
-
-          <div className="grid gap-x-6 gap-y-10 sm:grid-cols-2 lg:grid-cols-4">
-            {STEPS.map((step, i) => (
-              <Reveal key={step.title} delay={(i % 4) * 90}>
-                <div className="group relative h-full">
-                  <div className="flex items-center gap-4 lg:flex-col lg:items-start">
-                    <div className="relative">
-                      <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-primary via-blue-600 to-brand text-white shadow-soft transition-transform duration-300 group-hover:scale-105">
-                        <step.icon className="h-6 w-6" />
-                      </div>
-                      <span className="absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full surface-2 text-[11px] font-extrabold text-primary shadow-card hairline">
-                        {i + 1}
-                      </span>
-                    </div>
-                    <div className="lg:mt-4">
-                      <h3 className="text-base font-extrabold tracking-tight ink">
-                        {step.title}
-                      </h3>
-                      <p className="mt-1.5 text-sm leading-relaxed ink-muted">
-                        {step.text}
-                      </p>
-                    </div>
+        <div className="relative mt-14 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          {LOOP.map((step, i) => (
+            <Reveal key={step.stage} delay={i * 90}>
+              <div className="group relative h-full rounded-2xl surface hairline p-6 shadow-card transition-all duration-300 hover:-translate-y-1 hover:shadow-lift">
+                <div className="flex items-center justify-between">
+                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-primary via-blue-600 to-brand text-white shadow-soft transition-transform duration-300 group-hover:scale-105">
+                    <step.icon className="h-6 w-6" />
                   </div>
-                  {i < STEPS.length - 1 ? (
-                    <LuCircleCheck className="absolute -bottom-6 left-16 hidden h-4 w-4 text-primary/40 lg:block" />
-                  ) : null}
+                  <span className="text-[11px] font-extrabold uppercase tracking-widest text-primary">
+                    {i + 1} · {step.stage}
+                  </span>
                 </div>
-              </Reveal>
-            ))}
-          </div>
+                <h3 className="mt-5 text-base font-extrabold tracking-tight ink">
+                  {step.title}
+                </h3>
+                <p className="mt-2 text-sm leading-relaxed ink-muted">
+                  {step.text}
+                </p>
+                {i < LOOP.length - 1 ? (
+                  <LuArrowRight
+                    className="absolute -right-5 top-1/2 hidden h-4 w-4 -translate-y-1/2 text-primary/40 lg:block"
+                    aria-hidden
+                  />
+                ) : null}
+              </div>
+            </Reveal>
+          ))}
         </div>
+
+        <Reveal delay={200}>
+          <p className="mt-10 text-center text-sm font-semibold ink-muted">
+            …and back to Teach. The loop keeps running from your first SS1 topic
+            to exam day.
+          </p>
+        </Reveal>
       </div>
     </section>
   );

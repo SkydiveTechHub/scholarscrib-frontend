@@ -2,40 +2,50 @@
  * Shared so the rendered accordion and the FAQPage structured data cannot
  * drift. Marking up copy that is not on the page is a rich-result violation.
  */
+import { formatNaira, planFor, type SubscriptionTier } from "@/lib/subscription";
+
+const price = (tier: SubscriptionTier, period: "MONTHLY" | "YEARLY") =>
+  formatNaira(planFor(tier, period).amountKobo);
+
 export const FAQS = [
   {
-    question: "Which exams does ScholarsCrib cover?",
+    question: "Is ScholarsCrib only for students writing WAEC, JAMB or NECO?",
     answer:
-      "WAEC (WASSCE), JAMB UTME and NECO — the three big examinations Nigerian secondary students sit for. Content follows the national curriculum from SS1 to SS3, and mock exams run under CBT conditions like JAMB's.",
+      "No. ScholarsCrib is for every senior-secondary student — SS1, SS2 and SS3 — and for anyone resitting WASSCE or GCE. Lessons follow your class curriculum term by term, so the work you do in SS1 counts. When exam season comes, you are revising, not cramming.",
   },
   {
-    question: "How does the AI tutor work?",
+    question: "Which exams does ScholarsCrib prepare me for?",
     answer:
-      "Type any question in plain English — a definition, a past question, or a topic you're stuck on — and the AI tutor explains it step by step, at your level. It's available 24/7, so late-night confusion never has to wait until morning.",
+      "WAEC (WASSCE), JAMB UTME and NECO SSCE. You get past questions by year, mock exams scored on the real A1–F9 and JAMB scales, and a full 180-question, 120-minute JAMB CBT simulation that mirrors the official interface.",
   },
   {
-    question: "Can I study offline?",
+    question: "How does ScholarsCrib know what I actually remember?",
     answer:
-      "Yes. Download lessons, flashcards and question packs while you have data, then keep studying without a connection. Your progress syncs automatically the next time you're online.",
+      "Every answer, lesson checkpoint and flashcard review is recorded. Your mastery of a topic fades if you don't revisit it, so a topic you aced three months ago will show as fading until you practise it again. That's how forgetting gets caught before it costs you marks.",
   },
   {
-    question: "Can teachers assign work and track students?",
+    question: "Is there an AI tutor or video lessons?",
     answer:
-      "Yes. Teachers get a dashboard where they can assign topics and mocks to a whole class, then see live scores and progress to spot struggling students early — before the report card does it for them.",
+      "Not yet. Both are on our roadmap: video lessons alongside each topic's notes, and an AI study assistant you can ask questions while you learn. Today, every topic has written notes with worked examples, and every past question comes with a full explanation.",
   },
   {
-    question: "What does Premium cost, and can I cancel?",
+    question: "Can teachers or schools use ScholarsCrib?",
     answer:
-      "Premium is ₦2,500 a month or ₦24,000 a year (a 20% saving). There are no contracts — you can cancel anytime, and the Free plan is genuinely free, forever, with no card required.",
+      "Not yet — ScholarsCrib is currently for individual students. Teacher and school portals, where teachers create lesson notes and tests and schools run term exams on CBT, are part of what we're building next.",
+  },
+  {
+    question: "What does it cost, and can I cancel?",
+    answer:
+      `The Free plan is free forever with no card required. Basic is ${price("STANDARD", "MONTHLY")} a month or ${price("STANDARD", "YEARLY")} a year and unlocks every subject, flashcards and the study planner. Premium is ${price("PREMIUM", "MONTHLY")} a month or ${price("PREMIUM", "YEARLY")} a year and adds subject-by-subject analytics and the premium library. There are no contracts — cancel anytime.`,
   },
   {
     question: "I have limited data. Can I still use it?",
     answer:
-      "Yes. ScholarsCrib is built to be light and fast even on slower connections, and everything is designed to load quickly on the phones most students actually use.",
+      "Yes. ScholarsCrib runs in the browser on the phones students actually use and is built to load quickly on slower connections. A full offline mode is not available yet.",
   },
   {
-    question: "How is ScholarsCrib different from just reading?",
+    question: "Is ScholarsCrib affiliated with WAEC, JAMB or NECO?",
     answer:
-      "Reading tells you what to know; practice shows you what you actually know. ScholarsCrib pairs short lessons with thousands of questions, timed mock exams, flashcards and progress tracking so you always know your next best step.",
+      "No. ScholarsCrib is an independent learning and practice platform. We model our mock exams on the official formats and grading scales, but we are not affiliated with any examination body.",
   },
 ] as const;

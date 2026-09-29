@@ -8,8 +8,8 @@ import { buttonClass } from "@/components/ui/button";
 import { Logo } from "@/components/ui/logo";
 
 const NAV_LINKS = [
+  { name: "How it works", href: "/#how-it-works" },
   { name: "Features", href: "/#features" },
-  { name: "Product", href: "/#product" },
   { name: "Subjects", href: "/#subjects" },
   { name: "Pricing", href: "/#pricing" },
   { name: "FAQ", href: "/#faq" },

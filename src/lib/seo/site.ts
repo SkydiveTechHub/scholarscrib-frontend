@@ -26,7 +26,7 @@ export function normaliseSiteUrl(raw: string | null | undefined): string {
 export const siteUrl = normaliseSiteUrl(process.env.NEXT_PUBLIC_APP_URL);
 export const siteName = "ScholarsCrib";
 export const siteDescription =
-  "Nigeria's learning platform for WAEC, JAMB and NECO. Structured lessons, past questions with worked answers, mock exams and a study plan that adapts to you.";
+  "Nigeria's learning platform for SS1–SS3 students. Term-by-term lessons, past questions with worked answers, CBT mock exams for WAEC, JAMB and NECO, and progress tracking that shows what you actually remember.";
 
 /**
  * Absolute URL for a site-relative path. Already-absolute inputs pass through,

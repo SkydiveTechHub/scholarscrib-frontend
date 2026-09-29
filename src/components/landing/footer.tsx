@@ -12,21 +12,19 @@ const COLUMNS: { heading: string; links: { label: string; href: string }[] }[] =
     heading: "Product",
     links: [
       { label: "Features", href: "/#features" },
+      { label: "How it works", href: "/#how-it-works" },
       { label: "Product tour", href: "/#product" },
       { label: "Subjects", href: "/#subjects" },
       { label: "Pricing", href: "/#pricing" },
-      { label: "Browse subjects", href: "/learn" },
-      { label: "Past questions", href: "/past-questions" },
     ],
   },
   {
-    heading: "Subjects",
+    heading: "Learn",
     links: [
-      { label: "Mathematics", href: "/#subjects" },
-      { label: "English Language", href: "/#subjects" },
-      { label: "Physics", href: "/#subjects" },
-      { label: "Chemistry", href: "/#subjects" },
-      { label: "Biology", href: "/#subjects" },
+      { label: "Browse subjects", href: "/learn" },
+      { label: "Past questions", href: "/past-questions" },
+      { label: "Who it’s for", href: "/#who-its-for" },
+      { label: "What’s next", href: "/#roadmap" },
     ],
   },
   {
@@ -64,9 +62,9 @@ export function Footer() {
           <div>
             <Logo />
             <p className="mt-3 max-w-xs text-sm leading-relaxed ink-muted">
-              Nigeria’s learning platform for WAEC, JAMB and NECO. Helping
-              students across Nigeria learn with confidence — one question at a
-              time.
+              School on your device for Nigerian senior-secondary students —
+              learn every term, remember what you learn, and walk into WAEC,
+              JAMB and NECO ready.
             </p>
             <div className="mt-6 flex items-center gap-2">
               {SOCIALS.map((social) => (
@@ -114,7 +112,7 @@ export function Footer() {
             © {new Date().getFullYear()} ScholarsCrib. All rights reserved.
           </p>
           <p className="text-xs font-semibold ink-faint">
-            Built for Nigeria’s next generation of achievers.
+            Not affiliated with WAEC, JAMB or NECO.
           </p>
         </div>
       </div>

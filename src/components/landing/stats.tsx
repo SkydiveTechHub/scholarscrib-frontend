@@ -50,11 +50,15 @@ export function AnimatedNumber({
   );
 }
 
+/**
+ * Product facts, not usage figures. Pre-launch there are no honest usage
+ * numbers to show; swap these for real ones once they exist.
+ */
 const BAND_STATS = [
-  { value: 100000, suffix: "+", label: "lessons completed" },
-  { value: 50000, suffix: "+", label: "questions answered" },
-  { value: 10000, suffix: "+", label: "students learning" },
-  { value: 95, suffix: "%", label: "satisfaction rate" },
+  { value: 180, label: "questions in a full JAMB CBT" },
+  { value: 120, label: "minutes on the clock, like the real thing" },
+  { value: 3, label: "exam bodies: WAEC, JAMB & NECO" },
+  { value: 4, label: "mastery levels, tracked per topic" },
 ];
 
 export function StatsBand() {
@@ -73,13 +77,13 @@ export function StatsBand() {
           />
           <div className="relative">
             <p className="text-xs font-extrabold uppercase tracking-[0.2em] text-blue-100">
-              The numbers that matter
+              Built to the real exam
             </p>
             <div className="mt-10 grid grid-cols-2 gap-8 lg:grid-cols-4">
               {BAND_STATS.map((stat) => (
                 <div key={stat.label}>
                   <p className="text-4xl font-extrabold tracking-tight text-white sm:text-5xl">
-                    <AnimatedNumber value={stat.value} suffix={stat.suffix} />
+                    <AnimatedNumber value={stat.value} />
                   </p>
                   <p className="mt-2 text-sm font-bold text-blue-100">
                     {stat.label}
