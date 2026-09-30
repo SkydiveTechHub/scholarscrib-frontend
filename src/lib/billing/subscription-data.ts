@@ -4,9 +4,7 @@
  * needs to know is what the backend says the caller is entitled to.
  */
 
-import { api } from "@/lib/api/server";
-import { endpoints } from "@/lib/api/endpoints";
-import type { SettingsProfileOut } from "@/lib/api/types";
+import { getSettingsProfile } from "@/lib/settings";
 import { isSubscriptionTier, type SubscriptionTier } from "@/lib/subscription";
 import type { Entitlement } from "@/lib/billing/entitlement";
 
@@ -20,7 +18,10 @@ export async function currentEntitlement(
   _userId: string,
   _now: Date = new Date(),
 ): Promise<Entitlement> {
-  const profile = await api<SettingsProfileOut>(endpoints.user.profile);
+  const profile = await getSettingsProfile();
+  if (!profile) {
+    return { tier: "FREEMIUM", expiresAt: null };
+  }
   return {
     tier: isSubscriptionTier(profile.tier)
       ? (profile.tier as SubscriptionTier)

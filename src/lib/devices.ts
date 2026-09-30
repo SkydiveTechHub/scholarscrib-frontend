@@ -1,12 +1,13 @@
-import { api } from "@/lib/api/server";
-import { endpoints } from "@/lib/api/endpoints";
-import type { SettingsDevice } from "@/lib/api/types";
+import { getSettingsProfile } from "@/lib/settings";
 import { DEVICE_LIMIT } from "./device-limit";
 
 /**
  * Device reads for the app. Registering, touching and revoking devices all
  * happen on the backend during sign-in and via its own endpoints; the app only
  * lists what the backend reports for this caller.
+ *
+ * Listing comes from `GET /api/user/profile` (`SettingsProfileOut.devices`).
+ * `POST /api/user/devices` is revoke-only — a GET there returns 405.
  */
 
 export type ActiveDevice = {
@@ -21,8 +22,8 @@ export type ActiveDevice = {
  * Settings profile read uses.
  */
 export async function listActiveDevices(_userId: string): Promise<ActiveDevice[]> {
-  const { devices } = await api<{ devices: SettingsDevice[] }>(endpoints.user.devices);
-  return (devices ?? []).map((device) => ({
+  const profile = await getSettingsProfile();
+  return (profile?.devices ?? []).map((device) => ({
     id: device.id,
     label: device.label ?? null,
     lastSeenAt: device.lastSeenAt ?? null,

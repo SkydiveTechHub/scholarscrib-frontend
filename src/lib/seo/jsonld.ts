@@ -15,7 +15,7 @@ export function organisationJsonLd() {
     name: siteName,
     url: absoluteUrl("/"),
     description: siteDescription,
-    logo: absoluteUrl("/icon.svg"),
+    logo: absoluteUrl("/icon-512.png"),
     areaServed: "NG",
   } as const;
 }

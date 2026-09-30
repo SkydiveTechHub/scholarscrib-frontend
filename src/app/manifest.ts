@@ -25,8 +25,6 @@ export default function manifest(): MetadataRoute.Manifest {
     // through the viewport's media-array themeColor in src/app/layout.tsx.
     theme_color: "#f8fafc",
     icons: [
-      // Vector first, so desktop installs get the crisp version.
-      { src: "/icon.svg", sizes: "any", type: "image/svg+xml", purpose: "any" },
       { src: "/icon-192.png", sizes: "192x192", type: "image/png", purpose: "any" },
       { src: "/icon-512.png", sizes: "512x512", type: "image/png", purpose: "any" },
       {

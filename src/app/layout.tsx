@@ -60,7 +60,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${nunito.variable} h-full`}>
+    <html lang="en" className={`${nunito.variable} h-full`} data-scroll-behavior="smooth">
       <body className="h-full">
         <QueryProvider>{children}</QueryProvider>
         <ServiceWorkerRegistrar />

@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="ScholarsCrib">
+  <!-- Same artwork as the PNG icons; SVG wrapper satisfies the manifest + JSON-LD logo URL. -->
+  <image href="/icon-512.png" width="512" height="512" preserveAspectRatio="xMidYMid meet"/>
+</svg>

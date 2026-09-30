@@ -151,14 +151,30 @@ function asGaps(value: unknown): TopicGap[] {
 /**
  * The dashboard read. `attemptPage` pages "Recent activity" the way the old
  * loader did — the backend resolves it from the caller's session.
+ *
+ * Dashboard and performance are fetched in parallel so the page does not pay
+ * two backend round-trips back-to-back (that waterfall was the main reason
+ * `/dashboard` felt multi-second even when each call was fine on its own).
  */
 export async function getDashboardData(
   _userId: string,
   attemptPage = 1,
 ): Promise<DashboardData> {
-  const dash = await api<DashboardOut>(endpoints.dashboard, {
-    params: { activity: attemptPage },
-  });
+  const [dash, perfResult] = await Promise.all([
+    api<DashboardOut>(endpoints.dashboard, {
+      params: { activity: attemptPage },
+    }),
+    // Headline counts come from the performance aggregate. Fire it with the
+    // dashboard read; ignore failures so a slow/broken performance endpoint
+    // cannot take the whole home page down.
+    api<PerformanceOut>(endpoints.performance, { params: { page: 1 } }).then(
+      (perf) => ({ ok: true as const, perf }),
+      (error: unknown) => {
+        console.error("Dashboard performance read failed:", error);
+        return { ok: false as const };
+      },
+    ),
+  ]);
   const recentAttempts = (dash.recentAttempts ?? []).map(asAttempt);
 
   const hasActivity =
@@ -179,38 +195,28 @@ export async function getDashboardData(
       })()
     : null;
 
-  // Headline counts come from the performance aggregate; only fetched once the
-  // student actually has activity, mirroring the old conditional read.
   let totalResponses = 0;
   let accuracy: number | null = null;
   const pathSubjects: Record<string, DashboardSubject> = {};
-  if (hasActivity) {
-    try {
-      const perf = await api<PerformanceOut>(endpoints.performance, {
-        params: { page: 1, pageSize: 100 },
-      });
-      let answered = 0;
-      let correct = 0;
-      for (const subject of perf.subjects ?? []) {
-        const attempted = subject.totalAttempted ?? 0;
-        answered += attempted;
-        const c = subject.totalCorrect ?? 0;
-        correct += c;
-        const meta = {
-          slug: subject.slug ?? "",
-          name: subject.name ?? "",
-          code: subject.code ?? "",
-        };
-        if (subject.id) pathSubjects[subject.id] = meta;
-        if (meta.slug) pathSubjects[meta.slug] = meta;
-      }
-      totalResponses = answered;
-      if (answered > 0) {
-        accuracy = Math.round((correct / answered) * 100);
-      }
-    } catch (error) {
-      // The performance read is supplementary; the page renders either way.
-      console.error("Dashboard performance read failed:", error);
+  if (hasActivity && perfResult.ok) {
+    let answered = 0;
+    let correct = 0;
+    for (const subject of perfResult.perf.subjects ?? []) {
+      const attempted = subject.totalAttempted ?? 0;
+      answered += attempted;
+      const c = subject.totalCorrect ?? 0;
+      correct += c;
+      const meta = {
+        slug: subject.slug ?? "",
+        name: subject.name ?? "",
+        code: subject.code ?? "",
+      };
+      if (subject.id) pathSubjects[subject.id] = meta;
+      if (meta.slug) pathSubjects[meta.slug] = meta;
+    }
+    totalResponses = answered;
+    if (answered > 0) {
+      accuracy = Math.round((correct / answered) * 100);
     }
   }
 
