@@ -1,6 +1,10 @@
 import { api } from "@/lib/api/server";
 import { isApiError } from "@/lib/api/errors";
-import type { ClassroomSubjectsOut, SubjectPageOut } from "@/lib/api/types";
+import type {
+  ClassroomSubjectsOut,
+  SubjectCurriculumOut,
+  SubjectPageOut,
+} from "@/lib/api/types";
 import { TRACK_CATEGORIES, relevantTrackCategories } from "./subjects";
 import type {
   GraphNodeState,
@@ -134,15 +138,25 @@ export async function getSubjectPageData(
   subjectSlug: string,
   userClassLevel: string | null,
 ): Promise<SubjectPageData | null> {
-  let data: SubjectPageOut;
-  try {
-    data = await api<SubjectPageOut>(
-      `/api/classroom/subjects/${encodeURIComponent(subjectSlug)}`,
-    );
-  } catch (error) {
+  const slug = encodeURIComponent(subjectSlug);
+  // The classroom payload carries progress but no class/term per topic; the
+  // curriculum route carries the scope. Fetched together and joined by topic
+  // id so the browser can split topics into SS1–SS3 × three terms.
+  const [subjectResult, curriculumResult] = await Promise.allSettled([
+    api<SubjectPageOut>(`/api/classroom/subjects/${slug}`),
+    api<SubjectCurriculumOut>(`/api/subjects/${slug}/curriculum`),
+  ]);
+  if (subjectResult.status === "rejected") {
+    const error = subjectResult.reason;
     if (isApiError(error) && error.status === 404) return null;
     throw error;
   }
+  const data = subjectResult.value;
+  // A failed curriculum read only costs the class/term split, never the page.
+  const scopeById =
+    curriculumResult.status === "fulfilled"
+      ? scopeIndex(curriculumResult.value)
+      : new Map<string, TopicScope>();
 
   const subjectRow = (data.subject ?? {}) as Record<string, unknown>;
   const topicRows = Array.isArray(data.topics) ? (data.topics as Record<string, unknown>[]) : [];
@@ -184,7 +198,7 @@ export async function getSubjectPageData(
   // renders as an ordered spine with navigation arrows only.
   const graphEdges: GraphViewEdge[] = [];
 
-  const classes = buildClasses(topicRows, nodeStates, userClassLevel);
+  const classes = buildClasses(topicRows, nodeStates, userClassLevel, scopeById);
 
   const classesWithTopics = classes
     .filter((group) => group.terms.some((t) => t.topics.length > 0))
@@ -220,18 +234,43 @@ export async function getSubjectPageData(
   };
 }
 
-/** Per-topic curriculum scope the subject payload may or may not carry. */
-function scopeOf(row: Record<string, unknown>): { classLevel: string; term: string } | null {
+type TopicScope = { classLevel: string; term: string };
+
+function isScope(classLevel: string, term: string): boolean {
+  return (
+    (CLASS_LEVELS as readonly string[]).includes(classLevel) &&
+    (TERMS as readonly string[]).includes(term)
+  );
+}
+
+/** topicId → class/term, from the curriculum route's `levels` buckets. */
+function scopeIndex(curriculum: SubjectCurriculumOut): Map<string, TopicScope> {
+  const index = new Map<string, TopicScope>();
+  for (const level of curriculum.levels ?? []) {
+    const classLevel = str(level.classLevel).toUpperCase();
+    const term = str(level.term).toUpperCase();
+    if (!isScope(classLevel, term)) continue;
+    for (const topic of level.topics ?? []) {
+      const id = str(topic.id);
+      if (id) index.set(id, { classLevel, term });
+    }
+  }
+  return index;
+}
+
+/**
+ * Per-topic curriculum scope: from the topic row when the subject payload
+ * carries it, otherwise from the curriculum index.
+ */
+function scopeOf(
+  row: Record<string, unknown>,
+  scopeById: Map<string, TopicScope>,
+): TopicScope | null {
   const nested = (row.curriculumLevel ?? row) as Record<string, unknown>;
   const classLevel = str(nested.classLevel ?? nested.class_level);
   const term = str(nested.term);
-  if (
-    (CLASS_LEVELS as readonly string[]).includes(classLevel) &&
-    (TERMS as readonly string[]).includes(term)
-  ) {
-    return { classLevel, term };
-  }
-  return null;
+  if (isScope(classLevel, term)) return { classLevel, term };
+  return scopeById.get(str(row.id)) ?? null;
 }
 
 function asBrowserTopic(
@@ -253,9 +292,10 @@ function buildClasses(
   topicRows: Record<string, unknown>[],
   states: Record<string, GraphNodeState>,
   userClassLevel: string | null,
+  scopeById: Map<string, TopicScope>,
 ): ClassGroup[] {
   const scoped = topicRows
-    .map((row) => ({ row, scope: scopeOf(row) }))
+    .map((row) => ({ row, scope: scopeOf(row, scopeById) }))
     .filter((entry) => entry.scope !== null);
 
   if (scoped.length === 0) {

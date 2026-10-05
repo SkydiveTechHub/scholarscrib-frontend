@@ -370,6 +370,28 @@ export type SubjectPageOut = {
   topics: Record<string, unknown>[];
 };
 
+export type CurriculumTopicOut = {
+  id: string;
+  title: string;
+  slug: string;
+  orderIndex: number;
+  estimatedMinutes?: number | null;
+  waecWeight?: number | null;
+  jambWeight?: number | null;
+};
+
+export type CurriculumLevelOut = {
+  classLevel: string;
+  term: string;
+  topics: CurriculumTopicOut[];
+};
+
+/** `GET /api/subjects/{slug}/curriculum` — topics bucketed by class and term. */
+export type SubjectCurriculumOut = {
+  subject: Record<string, unknown>;
+  levels: CurriculumLevelOut[];
+};
+
 export type TopicPageOut = {
   subject: Record<string, unknown>;
   topic: Record<string, unknown>;
