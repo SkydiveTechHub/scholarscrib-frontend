@@ -37,6 +37,9 @@ export const endpoints = {
       options: "/api/assessments/mock-exam/options",
       scoped: "/api/assessments/mock-exam/scoped",
     },
+    pastPaper: "/api/assessments/past-paper",
+    pastPaperMore: (attemptId: string) =>
+      `/api/assessments/past-paper/${seg(attemptId)}/more`,
     jambCbt: {
       options: "/api/assessments/jamb-cbt/options",
       prepare: "/api/assessments/jamb-cbt/prepare",

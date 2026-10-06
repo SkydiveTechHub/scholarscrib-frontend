@@ -1,17 +1,16 @@
 "use client";
 
-import Link from "next/link";
 import { useMemo, useState } from "react";
-import {
-  COVERAGE_EXAMS,
-  coverageYears,
-  isTrackSubject,
-  subjectsForExam,
-} from "@/lib/subject-coverage";
+import { LuCheck, LuInbox, LuPencil } from "react-icons/lu";
+import { COVERAGE_EXAMS } from "@/lib/subject-coverage";
+import { assessBoards } from "@/lib/board-availability";
+import { isRelevantSubject } from "@/lib/subjects";
+import type { PastPaper } from "@/lib/api/types";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Spinner } from "@/components/ui/spinner";
 import { usePastPapers } from "@/hooks/api/use-assessments";
+import { PastPaperExam, type PastPaperSubject } from "./past-paper-exam";
 
 const EXAM_BADGES: Record<string, "blue" | "green" | "purple" | "neutral"> = {
   jamb: "green",
@@ -31,20 +30,11 @@ export function PastQuestionPicker({ track }: { track: string | null }) {
   const failed = pastPapers.isError;
 
   const [exam, setExam] = useState<string | null>(null);
-  const [subjectName, setSubjectName] = useState<string | null>(null);
+  const [subjectSlug, setSubjectSlug] = useState<string | null>(null);
   const [showAllSubjects, setShowAllSubjects] = useState(false);
   const [year, setYear] = useState<number | null>(null);
 
-  // ① Exams that actually have papers.
-  const exams = useMemo(() => {
-    const counts = new Map<string, number>();
-    for (const p of papers) {
-      counts.set(p.examType, (counts.get(p.examType) ?? 0) + (p.questionCount ?? 0));
-    }
-    return [...counts.entries()].sort((a, b) => a[0].localeCompare(b[0]));
-  }, [papers]);
-
-  // Which of those exams are open, decided from the papers themselves rather
+  // ① Which of those exams are open, decided from the papers themselves rather
   // than a hard-coded list. The unit is papers per subject, not questions: a
   // paper we have never pulled is fetched on the way into the quiz, so it
   // counts as coverage the moment the provider lists it.
@@ -68,19 +58,33 @@ export function PastQuestionPicker({ track }: { track: string | null }) {
 
   function chooseExam(key: string) {
     setExam(key);
-    setSubjectName(null);
+    setSubjectSlug(null);
     setShowAllSubjects(false);
-    loadCoverage();
   }
 
-  // ② Subjects offered for the chosen exam.
-  const subjects = useMemo(
-    () => (exam && coverage ? subjectsForExam(coverage, exam) : []),
-    [coverage, exam],
-  );
+  // ② Subjects offered for the chosen exam, with the years each holds a paper
+  // for. Exam keys are lower-case here and upper-case on the papers.
+  const subjects = useMemo<PastPaperSubject[]>(() => {
+    if (!exam) return [];
+    const bySlug = new Map<string, PastPaperSubject>();
+    for (const p of papers) {
+      if (p.examType.toLowerCase() !== exam) continue;
+      const entry = bySlug.get(p.subjectSlug) ?? {
+        slug: p.subjectSlug,
+        name: p.subjectName,
+        trackCategory: p.trackCategory,
+        years: [],
+      };
+      if (!entry.years.includes(p.examYear)) entry.years.push(p.examYear);
+      bySlug.set(p.subjectSlug, entry);
+    }
+    return [...bySlug.values()]
+      .map((s) => ({ ...s, years: [...s.years].sort((a, b) => b - a) }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [papers, exam]);
 
   const trackSubjects = useMemo(
-    () => subjects.filter((s) => isTrackSubject(s, track)),
+    () => subjects.filter((s) => isRelevantSubject(s.trackCategory, track)),
     [subjects, track],
   );
 
@@ -88,21 +92,18 @@ export function PastQuestionPicker({ track }: { track: string | null }) {
   const narrows = trackSubjects.length < subjects.length;
   const visibleSubjects = showAllSubjects || !narrows ? subjects : trackSubjects;
 
-  const chosenSubject = subjects.find((s) => s.name === subjectName);
+  const chosenSubject = subjects.find((s) => s.slug === subjectSlug);
   const examLabel = COVERAGE_EXAMS.find((e) => e.key === exam)?.label ?? exam;
 
-  // ③ Years the provider holds for the chosen subject.
-  const years = useMemo(
-    () => (chosenSubject ? coverageYears(chosenSubject) : []),
-    [chosenSubject],
-  );
+  // ③ Years a paper is on offer for, for the chosen subject.
+  const years = chosenSubject?.years ?? [];
 
   // ④ The paper itself, sat in place of the picker. Leaving it lands back on
   // the year step with exam and subject still chosen.
   if (exam && chosenSubject && year !== null) {
     return (
       <PastPaperExam
-        key={`${exam}:${chosenSubject.name}:${year}`}
+        key={`${exam}:${chosenSubject.slug}:${year}`}
         exam={exam}
         examLabel={examLabel ?? exam}
         subject={chosenSubject}
@@ -122,22 +123,34 @@ export function PastQuestionPicker({ track }: { track: string | null }) {
           value={examLabel ?? ""}
           onEdit={() => {
             setExam(null);
-            setSubjectName(null);
+            setSubjectSlug(null);
           }}
         />
       ) : (
         <Step number={1} title="Choose an exam">
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            {COVERAGE_EXAMS.map(({ key, label }) => (
-              <button
-                key={key}
-                type="button"
-                onClick={() => chooseExam(key)}
-                className="card card-interactive p-4 text-left"
-              >
-                <Badge variant={EXAM_BADGES[key] ?? "neutral"}>{label}</Badge>
-              </button>
-            ))}
+            {COVERAGE_EXAMS.map(({ key, label }) => {
+              // Only judged once the papers are in: until then, don't lock
+              // anything. A board with no papers at all is not open.
+              const status = boardStatus[key.toUpperCase()];
+              const closed = !loading && !failed && !status?.ready;
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => chooseExam(key)}
+                  disabled={closed}
+                  className="card card-interactive p-4 text-left disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <Badge variant={EXAM_BADGES[key] ?? "neutral"}>{label}</Badge>
+                  {closed && (
+                    <p className="mt-2 text-xs text-muted">
+                      {status?.reason ?? `No ${label} papers yet`}
+                    </p>
+                  )}
+                </button>
+              );
+            })}
           </div>
         </Step>
       )}
@@ -148,8 +161,8 @@ export function PastQuestionPicker({ track }: { track: string | null }) {
           <SummaryChip
             step={2}
             label="Subject"
-            value={chosenSubject.displayName}
-            onEdit={() => setSubjectName(null)}
+            value={chosenSubject.name}
+            onEdit={() => setSubjectSlug(null)}
           />
         ) : (
           <Step
@@ -178,7 +191,7 @@ export function PastQuestionPicker({ track }: { track: string | null }) {
                 action={
                   <button
                     type="button"
-                    onClick={loadCoverage}
+                    onClick={() => void pastPapers.refetch()}
                     className="text-sm font-semibold text-primary hover:underline"
                   >
                     Retry
@@ -193,17 +206,18 @@ export function PastQuestionPicker({ track }: { track: string | null }) {
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {visibleSubjects.map((s) => (
                   <button
-                    key={s.name}
+                    key={s.slug}
                     type="button"
-                    onClick={() => setSubjectName(s.name)}
+                    onClick={() => setSubjectSlug(s.slug)}
                     className="card card-interactive p-4 text-left"
                   >
-                    <p className="text-sm font-semibold text-foreground">{s.displayName}</p>
+                    <p className="text-sm font-semibold text-foreground">{s.name}</p>
                     <p className="mt-1 text-xs text-muted">
-                      {s.questionCount} questions &middot;{" "}
-                      {s.yearRange.min === s.yearRange.max
-                        ? s.yearRange.min
-                        : `${s.yearRange.min}–${s.yearRange.max}`}
+                      {s.years.length} {s.years.length === 1 ? "paper" : "papers"}{" "}
+                      &middot;{" "}
+                      {s.years[0] === s.years[s.years.length - 1]
+                        ? s.years[0]
+                        : `${s.years[s.years.length - 1]}–${s.years[0]}`}
                     </p>
                   </button>
                 ))}

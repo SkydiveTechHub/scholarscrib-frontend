@@ -12,8 +12,6 @@ import {
   type GeneratedExam,
 } from "@/components/assessment/use-exam-session";
 import { JAMB_SPEC } from "@/lib/jamb-cbt";
-import type { QuizOut } from "@/lib/api/types";
-import { toExamQuestion } from "@/lib/past-question-exam";
 
 function JambCbtSession() {
   const searchParams = useSearchParams();

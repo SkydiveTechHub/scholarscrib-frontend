@@ -1,12 +1,9 @@
 "use client";
 
 import { useCallback } from "react";
-import { fetchApi } from "@/lib/api/client";
-import type {
-  CoverageSubjectOut,
-  PastPaperPageOut,
-  QuizOut,
-} from "@/lib/api/types";
+import { endpoints } from "@/lib/api/endpoints";
+import { request } from "@/lib/api/http";
+import type { PastPaperPageOut, QuizOut } from "@/lib/api/types";
 import { SECONDS_PER_QUESTION, toExamQuestion } from "@/lib/past-question-exam";
 import { ExamSurface } from "@/components/assessment/exam-surface";
 import {
@@ -14,6 +11,15 @@ import {
   type ExamPage,
   type GeneratedExam,
 } from "@/components/assessment/use-exam-session";
+
+/** A subject with the years a paper is on offer for. `slug` is the key the API takes. */
+export type PastPaperSubject = {
+  slug: string;
+  name: string;
+  trackCategory: string;
+  /** Newest first. */
+  years: number[];
+};
 
 /**
  * One past paper, sat CBT-style and recorded like any other attempt.
@@ -34,18 +40,19 @@ export function PastPaperExam({
 }: {
   exam: string;
   examLabel: string;
-  subject: CoverageSubjectOut;
+  subject: PastPaperSubject;
   year: number;
   onExit: () => void;
 }) {
   // Versioned: papers saved by the old browser-graded flow carry a "local:"
   // attempt id the backend has never seen, so they must not be resumed.
-  const sessionKey = `past-paper:v2:${exam}:${subject.name}:${year}`;
+  const sessionKey = `past-paper:v2:${exam}:${subject.slug}:${year}`;
 
   const generate = useCallback(async (): Promise<GeneratedExam> => {
-    const paper = await fetchApi<QuizOut>("/api/assessments/past-paper", {
+    const paper = await request<QuizOut>({
       method: "POST",
-      body: { subject: subject.name, examType: exam, examYear: year },
+      url: endpoints.assessments.pastPaper,
+      data: { subject: subject.slug, examType: exam, examYear: year },
     });
     return {
       attemptId: paper.attemptId,
@@ -55,20 +62,21 @@ export function PastPaperExam({
       deadlineAt: paper.deadlineAt ?? undefined,
       nextCursor: paper.nextCursor ?? null,
     };
-  }, [exam, subject.name, year]);
+  }, [exam, subject.slug, year]);
 
   const loadMore = useCallback(
     async (cursor: string, attemptId: string): Promise<ExamPage> => {
-      const page = await fetchApi<PastPaperPageOut>(
-        `/api/assessments/past-paper/${encodeURIComponent(attemptId)}/more`,
-        { method: "POST", body: { subject: subject.name, cursor } },
-      );
+      const page = await request<PastPaperPageOut>({
+        method: "POST",
+        url: endpoints.assessments.pastPaperMore(attemptId),
+        data: { subject: subject.slug, cursor },
+      });
       return {
         questions: page.questions.map(toExamQuestion),
         nextCursor: page.nextCursor ?? null,
       };
     },
-    [subject.name],
+    [subject.slug],
   );
 
   const resultHref = useCallback(

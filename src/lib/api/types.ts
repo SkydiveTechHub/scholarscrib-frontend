@@ -137,6 +137,84 @@ export type JambCoverageOut = {
   available: number;
 };
 
+/** A question as the exam routes hand it out: never carries the answer key. */
+export type QuestionOut = {
+  id: string;
+  subjectId?: string | null;
+  topicId?: string | null;
+  examType?: string | null;
+  examYear?: number | null;
+  questionNumber?: number | null;
+  questionText: string;
+  questionImageUrl?: string | null;
+  questionType?: string | null;
+  options?: Record<string, unknown> | unknown[] | null;
+  difficulty?: string | null;
+  marks?: number | null;
+  passage?: string | null;
+  hasPassage?: boolean | null;
+  instruction?: string | null;
+  subjectName?: string | null;
+  subjectCode?: string | null;
+};
+
+/** `POST /api/assessments/past-paper`: the paper's first page, as a live attempt. */
+export type QuizOut = {
+  assessmentId: string;
+  attemptId: string;
+  title: string;
+  source: string;
+  totalQuestions: number;
+  timeLimitMinutes?: number | null;
+  questions: QuestionOut[];
+  resumed?: boolean | null;
+  deadlineAt?: string | null;
+  /** Past papers only: the provider cursor for the paper's next page. */
+  nextCursor?: string | null;
+};
+
+/** `POST /api/assessments/past-paper/{attemptId}/more` */
+export type PastPaperPageOut = {
+  questions: QuestionOut[];
+  nextCursor?: string | null;
+  timeLimitMinutes?: number | null;
+  deadlineAt?: string | null;
+};
+
+/** `GET /api/questions` page: the listing's cursor, spelled either way. */
+export type BankQuestionPageOut = {
+  questions: QuestionOut[];
+  pagination?: {
+    hasMore?: boolean;
+    has_more?: boolean;
+    nextCursor?: string | null;
+    next_cursor?: string | null;
+  } | null;
+};
+
+/** A subject as the provider's coverage listing spells it. */
+export type CoverageSubjectOut = {
+  name: string;
+  displayName: string;
+  category: string;
+  examTypes: string[];
+  questionCount: number;
+  yearRange: { min: number; max: number };
+};
+
+/** One row of `GET /api/questions/past-papers`: a paper on offer. */
+export type PastPaper = {
+  examType: string;
+  examYear: number;
+  subjectId: string;
+  subjectName: string;
+  subjectSlug: string;
+  trackCategory: string;
+  /** Questions already stored; null for a paper only the provider lists. */
+  questionCount: number | null;
+  cached: boolean;
+};
+
 // ─── Flashcards ────────────────────────────────────────────────────────────
 
 export type DeckRow = Record<string, unknown> & { id: string };
