@@ -1,4 +1,5 @@
 import type { PublicSampleQuestion } from "@/lib/seo/learn-data";
+import { RichText } from "@/components/ui/rich-text";
 
 /**
  * A worked question, rendered fully open.
@@ -22,7 +23,7 @@ export function SampleQuestion({
     <article className="surface rounded-2xl border border-black/5 p-5 sm:p-6">
       <h3 className="text-base font-semibold ink">
         <span className="ink-muted mr-2">{index}.</span>
-        {question.questionText}
+        <RichText text={question.questionText} />
       </h3>
 
       <ol className="mt-4 space-y-2">
@@ -36,7 +37,9 @@ export function SampleQuestion({
             }
           >
             <span className="font-bold">{letter}.</span>
-            <span>{text}</span>
+            <span>
+              <RichText text={text} />
+            </span>
           </li>
         ))}
       </ol>
@@ -45,7 +48,7 @@ export function SampleQuestion({
         <p className="text-xs font-bold uppercase tracking-widest ink-muted">
           Answer — {question.correctAnswer}
         </p>
-        <p className="mt-2 text-sm leading-relaxed ink">{question.explanation}</p>
+        <p className="mt-2 text-sm leading-relaxed ink"><RichText text={question.explanation} /></p>
       </div>
     </article>
   );

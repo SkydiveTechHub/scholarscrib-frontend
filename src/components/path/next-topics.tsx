@@ -14,6 +14,9 @@ export interface SubjectMeta {
   code: string;
 }
 
+/** The backend's reason on the pick that resumes an unfinished lesson. */
+const CONTINUE_REASON = "Continue where you left off";
+
 function reasonVariant(
   reason: string,
 ): "purple" | "blue" | "amber" | "green" | "neutral" {
@@ -39,7 +42,7 @@ export function NextTopics({
   items,
   subjects,
 }: {
-  items: NextTopicRecommendation[];
+  items: DashboardPick[];
   subjects: Record<string, SubjectMeta>;
 }) {
   if (items.length === 0) return null;
@@ -86,7 +89,12 @@ export function NextTopics({
         return (
           <li key={item.topicId}>
             <Link
-              href={`/classroom/${subject.slug}/${item.slug}`}
+              href={
+                // An unfinished lesson resumes straight in the player.
+                item.lessonId
+                  ? `/classroom/${subject.slug}/${item.slug}/study`
+                  : `/classroom/${subject.slug}/${item.slug}`
+              }
               className={cn(
                 "card card-interactive group block p-4 transition-opacity",
                 "hover:opacity-90",

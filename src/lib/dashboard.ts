@@ -2,22 +2,20 @@ import { api } from "@/lib/api/server";
 import { endpoints } from "@/lib/api/endpoints";
 import type {
   DashboardAttempt as ApiDashboardAttempt,
+  DashboardGap,
   DashboardOut,
-  PerformanceOut,
+  DashboardPick,
+  DashboardRevisionItem,
 } from "@/lib/api/types";
 import type { NextTopicRecommendation } from "@/types/learning";
 import type { TopicGap } from "@/types/learning";
 import type { RevisionQueueItem } from "@/types/learning";
 
 /**
- * Dashboard read, composed from the backend's aggregate endpoints. The
- * home-page payload (`/api/dashboard`) carries the profile, streak, tier,
- * keep-learning rail, gaps, today's study-plan items and recent attempts; the
- * headline figures it does not guarantee — total questions answered, covered
- * topics, accuracy, weekly activity — are folded in from `/api/performance`,
- * which sums per-subject metrics. Every degraded field is noted at the bottom
- * of this file so the backend team knows which aggregates the page still
- * misses.
+ * Dashboard read: one call to the backend's aggregate `GET /api/dashboard`,
+ * which computes every figure, rail and pager total the page renders. This
+ * module only narrows the payload to the page's shape — it derives nothing
+ * the backend did not send, so the numbers cannot drift from the server's.
  */
 
 /** A subject referenced by a learning-path card, keyed by id in the payload. */
@@ -28,10 +26,9 @@ export type DashboardSubject = {
 };
 
 /**
- * A recent attempt as the dashboard renders it. `assessment.title` is flattened
- * to `title`, and `completedAt` is an ISO string rather than a `Date` — the
- * payload has to survive JSON, so it never carries a live Date across the
- * boundary.
+ * A recent attempt as the dashboard renders it. `completedAt` is an ISO
+ * string rather than a `Date` — the payload has to survive JSON, so it never
+ * carries a live Date across the boundary.
  */
 export type DashboardAttempt = {
   id: string;
@@ -56,30 +53,24 @@ export type DashboardData = {
   /** Completed attempts in total, for the activity pager. */
   attemptTotal: number;
   subjects: Record<string, DashboardSubject>;
-  learningPicks: NextTopicRecommendation[];
-  gaps: TopicGap[];
-  revision: RevisionQueueItem[];
+  learningPicks: DashboardPick[];
+  gaps: DashboardGap[];
+  revision: DashboardRevisionItem[];
+  /** Every topic due for revision, of which `revision` is the top slice. */
+  revisionTotal: number;
 };
 
-/** How many cards the "Keep learning" rail shows. */
-const KEEP_LEARNING_K = 3;
-
-/** Attempts per page in the dashboard's "Recent activity" section. */
+/** Attempts per page in "Recent activity". Must match the backend's page size. */
 export const DASHBOARD_ATTEMPTS_PAGE_SIZE = 5;
-
-function num(value: unknown): number | null {
-  return typeof value === "number" && Number.isFinite(value) ? value : null;
-}
-
-function str(value: unknown): string {
-  return value === null || value === undefined ? "" : String(value);
-}
 
 function asAttempt(row: ApiDashboardAttempt): DashboardAttempt {
   return {
     id: row.id,
     title: row.title ?? "",
-    percentage: num(row.percentage),
+    percentage:
+      typeof row.percentage === "number" && Number.isFinite(row.percentage)
+        ? row.percentage
+        : null,
     completedAt: row.completedAt ?? null,
   };
 }
@@ -157,7 +148,6 @@ function asGaps(value: unknown): TopicGap[] {
  * `/dashboard` felt multi-second even when each call was fine on its own).
  */
 export async function getDashboardData(
-  _userId: string,
   attemptPage = 1,
 ): Promise<DashboardData> {
   const [dash, perfResult] = await Promise.all([
@@ -242,35 +232,20 @@ export async function getDashboardData(
   );
 
   return {
-    totalResponses,
-    accuracy,
-    topicCount,
-    // The backend does not return a bounded "this week" count, so the newest
-    // page of recent attempts is the closest honest figure available.
-    lastWeekActivity: recentAttempts.length,
-    hasActivity,
-    // todayItems only exists when the active plan has items today; an empty
-    // list cannot be told apart from "no plan" on this contract.
-    hasStudyPlan: (dash.todayItems?.length ?? 0) > 0,
+    totalResponses: dash.totalResponses ?? 0,
+    accuracy: dash.accuracy ?? null,
+    topicCount: dash.topicCount ?? 0,
+    lastWeekActivity: dash.lastWeekActivity ?? 0,
+    hasActivity: dash.hasActivity ?? false,
+    hasStudyPlan: dash.hasStudyPlan ?? false,
     todayPlan,
-    bestScore,
-    recentAttempts,
-    attemptTotal: recentAttempts.length,
-    subjects: pathSubjects,
-    learningPicks: keepLearning,
-    gaps,
-    // The merged flashcard + cadence revision queue has no aggregate endpoint;
-    // the "Revise today" rail falls back to its empty state until one ships.
-    revision: [],
+    bestScore: dash.bestScore ?? null,
+    recentAttempts: (dash.recentAttempts ?? []).map(asAttempt),
+    attemptTotal: dash.attemptTotal ?? 0,
+    subjects: dash.subjects ?? {},
+    learningPicks: dash.learningPicks ?? [],
+    gaps: dash.gaps ?? [],
+    revision: dash.revision ?? [],
+    revisionTotal: dash.revisionTotal ?? 0,
   };
 }
-
-/*
- * Fields this page still reads that no backend endpoint currently guarantees:
- *   - totalResponses / accuracy            -> approximated from /api/performance sums
- *   - topicCount                           -> distinct topic ids in the rails, else subject count
- *   - lastWeekActivity                     -> count of the newest recent attempts
- *   - hasStudyPlan vs empty todayItems     -> indistinguishable on this contract
- *   - attemptTotal (recent-activity pager) -> set to the returned attempt count
- *   - revision (merged revision queue)     -> not returned; rail shows its empty state
- */

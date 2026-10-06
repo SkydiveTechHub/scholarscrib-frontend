@@ -1,15 +1,14 @@
 "use client";
 
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   LuLock,
   LuCheck,
   LuTriangleAlert,
   LuArrowRight,
-  LuCalendarDays,
   LuInfo,
-  LuDownload,
+  LuRotateCcw,
 } from "react-icons/lu";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
@@ -21,78 +20,89 @@ import {
   usePrepareJambCbt,
 } from "@/hooks/api/use-assessments";
 import { Spinner } from "@/components/ui/spinner";
+import { JAMB_SPEC, sharedYears } from "@/lib/jamb-cbt";
+import { fetchApi } from "@/lib/api/client";
+import type { JambPrepareOut } from "@/lib/api/types";
+import { isTrackSubject } from "@/lib/subject-coverage";
+import type { JambSubjectOption } from "@/lib/jamb-availability";
 
-/** What the bank holds for one subject in the chosen year. */
-type Requirement = {
-  subjectId: string;
-  subjectName: string;
-  required: number;
-  available: number;
-};
+/** What picking a year did: still syncing, synced, or failed outright. */
+type YearState =
+  | { status: "idle" }
+  | { status: "syncing" }
+  | { status: "done"; report: JambPrepareOut }
+  | { status: "error"; message: string };
 
-type Preparation = {
-  ready: boolean;
-  message: string | null;
-  coverage: Requirement[];
-};
+function message(error: unknown): string {
+  return error instanceof Error
+    ? error.message
+    : "Network error. Please check your connection and try again.";
+}
 
-export type PickerSubject = {
-  id: string;
-  code: string;
-  name: string;
-  eligibleYears: number[];
-};
-
+/**
+ * The UTME sitting builder. English is fixed; the student adds three subjects
+ * from the ones the question provider carries for JAMB (their track's first,
+ * everything else a click away), then picks from the years all four share a
+ * full paper for. Picking a year syncs its four papers into the bank, so
+ * "ready" means the paper is really there to sit.
+ */
 export function JambCbtPicker({
   english,
-  englishYears,
   subjects,
+  track,
 }: {
-  english: { id: string; code: string; name: string } | null;
-  englishYears: number[];
-  subjects: PickerSubject[];
+  english: JambSubjectOption | null;
+  subjects: JambSubjectOption[];
+  track: string | null;
 }) {
   const router = useRouter();
   const { mutateAsync: prepareJambCbt } = usePrepareJambCbt<Preparation>();
   const { mutateAsync: generateJambCbt } = useGenerateJambCbt();
   const [chosen, setChosen] = useState<string[]>([]);
+  const [showAll, setShowAll] = useState(false);
   const [year, setYear] = useState<number | null>(null);
+  const [yearState, setYearState] = useState<YearState>({ status: "idle" });
   const [starting, setStarting] = useState(false);
-  const [error, setError] = useState("");
-  const [preparing, setPreparing] = useState(false);
-  const [prep, setPrep] = useState<Preparation | null>(null);
-  // Only the newest year's answer may land: a student clicking through years
-  // faster than the provider responds must not see an older year's coverage.
-  const prepRun = useRef(0);
+  const [startError, setStartError] = useState("");
+  // Only the newest year's sync may land: a student clicking through years
+  // faster than the provider answers must not see an older year's report.
+  const run = useRef(0);
+
+  const trackSubjects = useMemo(
+    () =>
+      subjects.filter((s) =>
+        isTrackSubject({ name: s.providerKey, category: s.category }, track),
+      ),
+    [subjects, track],
+  );
+  const narrows = trackSubjects.length > 0 && trackSubjects.length < subjects.length;
+  // A chosen subject stays visible even when the list is narrowed again.
+  const visible = useMemo(() => {
+    if (showAll || !narrows) return subjects;
+    return subjects.filter(
+      (s) => trackSubjects.includes(s) || chosen.includes(s.id),
+    );
+  }, [showAll, narrows, subjects, trackSubjects, chosen]);
 
   const chosenSubjects = useMemo(
     () => subjects.filter((s) => chosen.includes(s.id)),
     [subjects, chosen],
   );
+  const complete = chosen.length === JAMB_SPEC.otherSubjectCount;
 
-  // A sitting is one year across all four papers, so a year is sittable
-  // straight away only when English *and* every chosen subject already cover it.
-  const readyYears = useMemo(() => {
-    if (chosenSubjects.length !== JAMB_SPEC.otherSubjectCount) {
-      return new Set<number>();
-    }
-    return new Set(
-      englishYears.filter((y) =>
-        chosenSubjects.every((s) => s.eligibleYears.includes(y)),
-      ),
-    );
-  }, [englishYears, chosenSubjects]);
-
-  // Every year is offered, not just the covered ones: picking one pulls its
-  // four papers from the provider. Restricting the list to what the bank
-  // already held made a year nobody could pick a year nobody ever fetched.
+  // A sitting is one year across all four papers.
   const years = useMemo(
+    () => (english && complete ? sharedYears([english, ...chosenSubjects]) : []),
+    [english, complete, chosenSubjects],
+  );
+  // When nothing is shared, name the subject with the fewest years: it is the
+  // one most worth swapping.
+  const narrowest = useMemo(
     () =>
-      examYearRange([
-        ...englishYears,
-        ...subjects.flatMap((s) => s.eligibleYears),
-      ]),
-    [englishYears, subjects],
+      complete && years.length === 0
+        ? [...chosenSubjects].sort((a, b) => a.years.length - b.years.length)[0]
+        : null,
+    [complete, years.length, chosenSubjects],
   );
 
   // Pull the four papers for the chosen year and report what the bank now
@@ -128,41 +138,44 @@ export function JambCbtPicker({
   function clearYear() {
     prepRun.current++;
     setYear(null);
-    setPrep(null);
-    setPreparing(false);
-  }
-
-  // A year the bank already covers needs no round trip; anything else is
-  // prepared the moment it is picked.
-  function selectYear(chosenYear: number) {
-    setYear(chosenYear);
-    setError("");
-    if (readyYears.has(chosenYear)) {
-      prepRun.current++;
-      setPrep({ ready: true, message: null, coverage: [] });
-      setPreparing(false);
-      return;
-    }
-    prepare(chosenYear, chosen);
+    setYearState({ status: "idle" });
+    setStartError("");
   }
 
   function toggle(id: string) {
-    setError("");
     setChosen((prev) => {
       if (prev.includes(id)) return prev.filter((s) => s !== id);
       if (prev.length >= JAMB_SPEC.otherSubjectCount) return prev;
       return [...prev, id];
     });
-    // The chosen year's coverage was measured against the old combination.
-    clearYear();
+    // The year was matched to the old combination.
+    resetYear();
   }
 
-  const ready = prep?.ready === true;
+  async function sync(chosenYear: number) {
+    const mine = ++run.current;
+    setYear(chosenYear);
+    setYearState({ status: "syncing" });
+    setStartError("");
+    try {
+      const report = await fetchApi<JambPrepareOut>(
+        "/api/assessments/jamb-cbt/prepare",
+        { method: "POST", body: { subjectIds: chosen, examYear: chosenYear } },
+      );
+      if (mine === run.current) setYearState({ status: "done", report });
+    } catch (error) {
+      if (mine === run.current) {
+        setYearState({ status: "error", message: message(error) });
+      }
+    }
+  }
+
+  const ready = yearState.status === "done" && yearState.report.ready;
 
   async function start() {
-    if (!year || !ready || chosen.length !== JAMB_SPEC.otherSubjectCount) return;
+    if (!year || !ready || !complete) return;
     setStarting(true);
-    setError("");
+    setStartError("");
     try {
       await generateJambCbt({ subjectIds: chosen, examYear: year });
       const params = new URLSearchParams({
@@ -171,17 +184,12 @@ export function JambCbtPicker({
       });
       router.push(`/practice/cbt/session?${params.toString()}`);
     } catch (error) {
-      setError(
-        error instanceof Error
-          ? error.message
-          : "Network error. Please check your connection and try again.",
-      );
+      setStartError(message(error));
       setStarting(false);
     }
   }
 
   const remaining = JAMB_SPEC.otherSubjectCount - chosen.length;
-  const noEnglish = !english;
 
   return (
     <div className="space-y-6">
@@ -205,21 +213,17 @@ export function JambCbtPicker({
         </div>
       </section>
 
-      {noEnglish && (
+      {!english && (
         <div
           role="alert"
           className="flex items-start gap-2.5 rounded-xl border border-warning/25 bg-warning-soft px-4 py-3 text-sm text-warning"
         >
           <LuTriangleAlert className="mt-0.5 h-4 w-4 flex-shrink-0" />
           <div>
-            <p className="font-semibold">
-              English Language isn&apos;t set up yet.
-            </p>
+            <p className="font-semibold">English Language papers aren&apos;t available.</p>
             <p className="mt-0.5 leading-relaxed">
-              English is compulsory in JAMB and makes up{" "}
-              {JAMB_SPEC.englishQuestions} of the {JAMB_SPEC.totalQuestions}{" "}
-              questions, so no sitting can be assembled until it&apos;s added to
-              the subject catalogue.
+              English is compulsory in JAMB, so no sitting can be assembled
+              until its papers are back. Try again later.
             </p>
           </div>
         </div>
@@ -227,110 +231,151 @@ export function JambCbtPicker({
 
       {/* Subject choice */}
       <section>
-        <div className="mb-3 flex items-center justify-between">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
           <h2 className="section-label">
             Choose {JAMB_SPEC.otherSubjectCount} more subjects
           </h2>
-          <span className="text-xs font-semibold text-muted">
-            {remaining > 0
-              ? `${remaining} to go`
-              : `${JAMB_SPEC.subjectCount} subjects selected`}
-          </span>
-        </div>
-
-        <div className="grid grid-cols-2 gap-2.5 md:grid-cols-3">
-          {subjects.map((subject) => {
-            const selected = chosen.includes(subject.id);
-            const full =
-              !selected && chosen.length >= JAMB_SPEC.otherSubjectCount;
-
-            return (
+          <div className="flex items-center gap-3">
+            {narrows && (
               <button
-                key={subject.id}
                 type="button"
-                onClick={() => toggle(subject.id)}
-                disabled={full}
-                aria-pressed={selected}
-                className={cn(
-                  "relative rounded-xl border p-3.5 text-left transition-all",
-                  selected
-                    ? "border-primary bg-primary-soft ring-4 ring-primary/15"
-                    : "border-border bg-card hover:border-primary/40",
-                  full && "opacity-45",
-                  !full && "cursor-pointer",
-                )}
+                onClick={() => setShowAll((v) => !v)}
+                className="text-sm font-semibold text-primary hover:underline"
               >
-                <div className="flex items-start justify-between gap-2">
-                  <span className="text-sm font-bold text-foreground">
-                    {subject.name}
-                  </span>
-                  {selected && (
-                    <LuCheck className="h-4 w-4 flex-shrink-0 text-primary" />
-                  )}
-                </div>
-                <p className="mt-1 text-xs text-muted">
-                  {subject.eligibleYears.length === 0
-                    ? "Loads on demand"
-                    : `${subject.eligibleYears.length} year${subject.eligibleYears.length === 1 ? "" : "s"} ready`}
-                </p>
+                {showAll
+                  ? "Show my track's subjects"
+                  : `Show all subjects (${subjects.length - trackSubjects.length} more)`}
               </button>
-            );
-          })}
+            )}
+            <span className="text-xs font-semibold text-muted">
+              {remaining > 0
+                ? `${remaining} to go`
+                : `${JAMB_SPEC.subjectCount} subjects selected`}
+            </span>
+          </div>
         </div>
-      </section>
 
-      {/* Year choice */}
-      {chosen.length === JAMB_SPEC.otherSubjectCount && (
-        <section className="animate-slide-up">
-          <h2 className="section-label mb-3">Choose the year</h2>
-
-          <div className="grid grid-cols-3 gap-2 sm:grid-cols-5 lg:grid-cols-6">
-            {years.map((y) => {
-              const sittable = readyYears.has(y);
+        {visible.length === 0 ? (
+          <p className="text-sm text-muted">No JAMB subjects are available yet.</p>
+        ) : (
+          <div className="grid grid-cols-2 gap-2.5 md:grid-cols-3">
+            {visible.map((subject) => {
+              const selected = chosen.includes(subject.id);
+              const full = !selected && complete;
               return (
                 <button
-                  key={y}
+                  key={subject.id}
                   type="button"
-                  onClick={() => selectYear(y)}
-                  aria-pressed={year === y}
+                  onClick={() => toggle(subject.id)}
+                  disabled={full || !english}
+                  aria-pressed={selected}
                   className={cn(
-                    "flex items-center justify-center gap-1.5 rounded-xl border px-3 py-2.5 text-sm font-bold transition-colors",
-                    year === y
-                      ? "border-primary bg-primary text-primary-foreground"
-                      : sittable
-                        ? "border-success/40 bg-success-soft text-success hover:border-success"
-                        : "border-border bg-card text-foreground hover:border-primary/40",
+                    "relative rounded-xl border p-3.5 text-left transition-all",
+                    selected
+                      ? "border-primary bg-primary-soft ring-4 ring-primary/15"
+                      : "border-border bg-card hover:border-primary/40",
+                    (full || !english) && "opacity-45",
+                    !full && english && "cursor-pointer",
                   )}
                 >
-                  {sittable && <LuCalendarDays className="h-3.5 w-3.5" />}
-                  {y}
+                  <div className="flex items-start justify-between gap-2">
+                    <span className="text-sm font-bold text-foreground">
+                      {subject.name}
+                    </span>
+                    {selected && (
+                      <LuCheck className="h-4 w-4 flex-shrink-0 text-primary" />
+                    )}
+                  </div>
+                  <p className="mt-1 text-xs text-muted">
+                    {subject.years.length === 0
+                      ? "No full papers yet"
+                      : `${subject.years.length} full paper${subject.years.length === 1 ? "" : "s"}`}
+                  </p>
                 </button>
               );
             })}
           </div>
+        )}
+      </section>
 
-          {/* What picking a year actually did. */}
-          <div className="mt-3">
-            {preparing ? (
-              <Spinner label={`Preparing the ${year} papers...`} />
-            ) : ready ? (
+      {/* Year choice: only years all four subjects share a full paper for */}
+      {complete && english && (
+        <section className="animate-slide-up">
+          <h2 className="section-label mb-1">Choose the year</h2>
+          <p className="mb-3 text-xs text-muted">
+            Years with a full paper in all four subjects.
+          </p>
+
+          {years.length === 0 ? (
+            <div className="flex items-start gap-2.5 rounded-xl border border-warning/25 bg-warning-soft px-4 py-3 text-sm text-warning">
+              <LuTriangleAlert className="mt-0.5 h-4 w-4 flex-shrink-0" />
+              <p className="leading-relaxed">
+                These four subjects don&apos;t share a full paper in any year.
+                {narrowest && (
+                  <>
+                    {" "}
+                    {narrowest.name} has the fewest (
+                    {narrowest.years.length === 0
+                      ? "none"
+                      : narrowest.years.join(", ")}
+                    ) — try swapping it.
+                  </>
+                )}
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-3 gap-2 sm:grid-cols-5 lg:grid-cols-6">
+              {years.map((y) => (
+                <button
+                  key={y}
+                  type="button"
+                  onClick={() => sync(y)}
+                  aria-pressed={year === y}
+                  className={cn(
+                    "rounded-xl border px-3 py-2.5 text-sm font-bold transition-colors",
+                    year === y
+                      ? "border-primary bg-primary text-primary-foreground"
+                      : "border-border bg-card text-foreground hover:border-primary/40",
+                  )}
+                >
+                  {y}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* What picking the year did. */}
+          <div className="mt-3" aria-live="polite">
+            {yearState.status === "syncing" && (
+              <div className="space-y-1">
+                <Spinner label={`Getting the ${year} papers ready…`} />
+                <p className="text-xs text-muted">
+                  The first time a year is used, its four papers are fetched
+                  from the question bank. This can take up to a minute.
+                </p>
+              </div>
+            )}
+
+            {yearState.status === "done" && yearState.report.ready && (
               <p className="flex items-center gap-1.5 text-sm font-semibold text-success">
                 <LuCheck className="h-4 w-4" />
                 The {year} paper is ready to sit.
               </p>
-            ) : prep ? (
+            )}
+
+            {yearState.status === "done" && !yearState.report.ready && (
               <div className="flex items-start gap-2.5 rounded-xl border border-warning/25 bg-warning-soft px-4 py-3 text-sm text-warning">
                 <LuTriangleAlert className="mt-0.5 h-4 w-4 flex-shrink-0" />
                 <div className="min-w-0 flex-1">
                   <p className="font-semibold">
-                    The {year} paper isn&apos;t complete yet.
+                    The {year} paper can&apos;t be sat in full.
                   </p>
                   <p className="mt-0.5 leading-relaxed">
-                    Every subject needs its full complement from the same
-                    sitting.
+                    Some questions in the bank were incomplete, so a subject is
+                    short of its full paper. Pick another year.
                   </p>
                   <ul className="mt-2 space-y-1">
-                    {prep.coverage.map((r) => (
+                    {yearState.report.coverage.map((r) => (
                       <li
                         key={r.subjectId}
                         className="flex items-center justify-between gap-3"
@@ -344,31 +389,46 @@ export function JambCbtPicker({
                   </ul>
                   <button
                     type="button"
-                    onClick={() => year !== null && prepare(year, chosen)}
-                    className="mt-2.5 font-semibold underline underline-offset-2"
+                    onClick={() => year !== null && sync(year)}
+                    className="mt-2.5 inline-flex items-center gap-1.5 font-semibold underline underline-offset-2"
                   >
-                    Load more questions for {year}
+                    <LuRotateCcw className="h-3.5 w-3.5" />
+                    Check {year} again
                   </button>
                 </div>
               </div>
-            ) : (
-              <p className="flex items-start gap-1.5 text-xs text-muted">
-                <LuDownload className="mt-0.5 h-3.5 w-3.5 flex-shrink-0" />
-                Ticked years are ready now. Any other year is pulled from the
-                question bank when you pick it.
-              </p>
+            )}
+
+            {yearState.status === "error" && (
+              <div
+                role="alert"
+                className="flex items-start gap-2.5 rounded-xl border border-danger/25 bg-danger-soft px-4 py-3 text-sm text-danger"
+              >
+                <LuTriangleAlert className="mt-0.5 h-4 w-4 flex-shrink-0" />
+                <div>
+                  <p className="font-medium">{yearState.message}</p>
+                  <button
+                    type="button"
+                    onClick={() => year !== null && sync(year)}
+                    className="mt-1.5 inline-flex items-center gap-1.5 font-semibold underline underline-offset-2"
+                  >
+                    <LuRotateCcw className="h-3.5 w-3.5" />
+                    Try again
+                  </button>
+                </div>
+              </div>
             )}
           </div>
         </section>
       )}
 
-      {error && (
+      {startError && (
         <div
           role="alert"
           className="flex items-start gap-2.5 rounded-xl border border-danger/25 bg-danger-soft px-4 py-3 text-sm font-medium text-danger"
         >
           <LuTriangleAlert className="mt-0.5 h-4 w-4 flex-shrink-0" />
-          <span>{error}</span>
+          <span>{startError}</span>
         </div>
       )}
 
@@ -380,10 +440,10 @@ export function JambCbtPicker({
         </p>
         <Button
           onClick={start}
-          disabled={!year || !ready || preparing || starting}
+          disabled={!ready || starting}
           size="lg"
         >
-          {starting ? "Preparing your paper…" : "Start exam"}
+          {starting ? "Starting your exam…" : "Start exam"}
           {!starting && <LuArrowRight className="h-4 w-4" />}
         </Button>
       </div>

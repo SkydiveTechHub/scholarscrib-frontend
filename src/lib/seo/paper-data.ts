@@ -140,6 +140,14 @@ type PublicQuestionRow = {
   };
 };
 
+/** Upper bound on pages walked for one paper: 12 × 15 covers any real paper. */
+const MAX_PAPER_PAGES = 12;
+
+/**
+ * Every question on one paper. `/api/questions` serves at most
+ * `PAST_PAPER_LIMIT` (15) a page and pages by cursor, so this follows
+ * `nextCursor` until `hasMore` is false.
+ */
 async function fetchPaperQuestions(
   params: Record<string, string | number>,
 ): Promise<PublicQuestionRow[]> {
@@ -147,7 +155,7 @@ async function fetchPaperQuestions(
   for (let page = 1; page <= 8; page += 1) {
     const payload = (await api(endpoints.questions.list, {
       anonymous: true,
-      params: { ...params, page, limit: 50 },
+      params: { ...params, limit: PAST_PAPER_LIMIT, cursor },
     }).catch(() => null)) as unknown;
     if (!isRecord(payload)) break;
     rows.push(
@@ -155,10 +163,12 @@ async function fetchPaperQuestions(
         isRecord(q) ? [{ ...q } as PublicQuestionRow] : [],
       ),
     );
-    const pagination = isRecord(payload.pagination) ? payload.pagination : {};
-    const total = Number(pagination.total);
-    const count = rows.length;
-    if (!Number.isFinite(total) || count >= total || page >= 8) break;
+    cursor = nextPageCursor(
+      isRecord(payload.pagination)
+        ? (payload.pagination as Parameters<typeof nextPageCursor>[0])
+        : null,
+    );
+    if (!cursor) break;
   }
   return rows;
 }

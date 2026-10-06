@@ -110,7 +110,9 @@ export default async function DashboardPage({
   // Its own key rather than `page`, so the activity pager cannot collide with
   // anything else the dashboard grows later.
   const parsedActivity = Number.parseInt((await searchParams).activity ?? "1", 10);
-  const activityPage = Number.isNaN(parsedActivity) ? 1 : parsedActivity;
+  // The backend clamps below 1 too; clamping here keeps the pager honest.
+  const activityPage =
+    Number.isNaN(parsedActivity) || parsedActivity < 1 ? 1 : parsedActivity;
 
   const {
     totalResponses,
@@ -118,7 +120,8 @@ export default async function DashboardPage({
     topicCount,
     lastWeekActivity,
     // "Next for you" and "Revise today" stay hidden until the student has
-    // engaged somewhere — see getDashboardData for what counts as activity.
+    // engaged somewhere: a completed attempt, an answered question, or any
+    // learning evidence (lessons, flashcards). The backend decides.
     hasActivity,
     hasStudyPlan,
     todayPlan,
@@ -129,7 +132,8 @@ export default async function DashboardPage({
     learningPicks,
     gaps,
     revision,
-  } = await getDashboardData(session.id, activityPage);
+    revisionTotal,
+  } = await getDashboardData(activityPage);
 
   const activityWindow = pageWindow({
     page: activityPage,
@@ -318,9 +322,9 @@ export default async function DashboardPage({
                   Merged from your flashcard reviews and revision schedule
                 </p>
               </div>
-              {revision.length > 0 && (
+              {revisionTotal > 0 && (
                 <span className="ml-auto rounded-full bg-tone-orange-soft px-2.5 py-0.5 text-xs font-bold text-tone-orange-ink">
-                  {revision.length} due
+                  {revisionTotal} due
                 </span>
               )}
             </div>

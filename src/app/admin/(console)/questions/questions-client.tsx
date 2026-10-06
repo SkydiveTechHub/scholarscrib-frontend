@@ -16,6 +16,8 @@ import {
   useSubjectCatalogue,
 } from "@/hooks/api/use-admin-questions";
 import { cn } from "@/lib/utils";
+import { questionPlainText } from "@/lib/question-markup";
+import { RichText } from "@/components/ui/rich-text";
 
 interface Question {
   id: string;
@@ -588,13 +590,13 @@ function AdminQuestionsPageInner() {
                           type="checkbox"
                           checked={selected.has(q.id)}
                           onChange={() => toggleRow(q.id)}
-                          aria-label={`Select question: ${q.questionText.slice(0, 60)}`}
+                          aria-label={`Select question: ${questionPlainText(q.questionText).slice(0, 60)}`}
                           className="h-4 w-4 rounded border-border accent-primary"
                         />
                       </td>
                       <td className="px-3 py-3 sm:px-4">
                         <p className="text-foreground line-clamp-2 break-words lg:line-clamp-none lg:truncate lg:max-w-md">
-                          {q.questionText}
+                          <RichText text={q.questionText} />
                         </p>
                         {q.topic && <p className="text-xs text-muted mt-0.5">{q.topic.title}</p>}
                         {/* The columns hidden on a narrow screen, folded in here. */}
@@ -625,7 +627,7 @@ function AdminQuestionsPageInner() {
                         <div className="flex items-center justify-end gap-1">
                           <Link
                             href={`/admin/questions/${q.id}/edit`}
-                            aria-label={`Edit question: ${q.questionText.slice(0, 60)}`}
+                            aria-label={`Edit question: ${questionPlainText(q.questionText).slice(0, 60)}`}
                             className={buttonClass(
                               "ghost",
                               "icon-sm",
@@ -639,7 +641,7 @@ function AdminQuestionsPageInner() {
                             size="icon-sm"
                             onClick={() => openDeleteDialog(q)}
                             disabled={deleting === q.id}
-                            aria-label={`Delete question: ${q.questionText.slice(0, 60)}`}
+                            aria-label={`Delete question: ${questionPlainText(q.questionText).slice(0, 60)}`}
                             className="text-muted hover:text-tone-red-ink hover:bg-tone-red-soft"
                           >
                             <LuTrash2 className="w-4 h-4" aria-hidden />
@@ -700,7 +702,7 @@ function AdminQuestionsPageInner() {
           onConfirm={confirmDelete}
           onCancel={closeDeleteDialog}
         >
-          <p className="mt-3 text-sm text-foreground line-clamp-3">{deleteTarget.questionText}</p>
+          <p className="mt-3 text-sm text-foreground line-clamp-3"><RichText text={deleteTarget.questionText} /></p>
         </ConfirmDialog>
       )}
 

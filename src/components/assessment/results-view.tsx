@@ -19,6 +19,7 @@ import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { QuestionImage } from "@/components/ui/question-image";
+import { RichText } from "@/components/ui/rich-text";
 
 type QuestionResult = {
   questionId: string;
@@ -44,7 +45,7 @@ type TopicBreakdown = {
   status: string;
 };
 
-type ResultData = {
+export type ResultData = {
   attemptId: string;
   assessmentTitle: string;
   assessmentType: string;
@@ -129,7 +130,18 @@ function topicBadge(status: string) {
  * from the server component, so there is no spinner, no client fetch, and the
  * score is in the initial HTML.
  */
-export function ResultsView({ result }: { result: ResultData }) {
+export function ResultsView({
+  result,
+  onBack,
+}: {
+  result: ResultData;
+  /**
+   * Set when the results render in place of the picker (a locally graded
+   * paper). Navigating to /practice/past-questions would be a no-op there,
+   * since the picker is already the page on screen.
+   */
+  onBack?: () => void;
+}) {
   const router = useRouter();
 
   const [expandedQuestions, setExpandedQuestions] = useState<Set<string>>(
@@ -172,7 +184,7 @@ export function ResultsView({ result }: { result: ResultData }) {
     <div className="mx-auto max-w-3xl space-y-6 animate-fade-in">
       <button
         type="button"
-        onClick={() => router.push("/practice/past-questions")}
+        onClick={() => (onBack ? onBack() : router.push("/practice/past-questions"))}
         className="flex items-center gap-1.5 text-sm font-medium text-muted transition-colors hover:text-foreground"
       >
         <LuArrowLeft className="h-4 w-4" />
@@ -299,6 +311,11 @@ export function ResultsView({ result }: { result: ResultData }) {
           <div className="mt-6 flex flex-wrap gap-3">
             <Link
               href="/practice/past-questions"
+              onClick={(event) => {
+                if (!onBack) return;
+                event.preventDefault();
+                onBack();
+              }}
               className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-primary-foreground shadow-soft transition-colors hover:bg-primary-hover sm:flex-none"
             >
               <LuRotateCcw className="h-4 w-4" />
@@ -451,7 +468,7 @@ export function ResultsView({ result }: { result: ResultData }) {
                     <span className="mr-1 font-bold text-muted">
                       Q{questionIndex + 1}.
                     </span>
-                    {q.questionText}
+                    <RichText text={q.questionText} />
                   </span>
                   {isExpanded ? (
                     <LuChevronUp className="mt-0.5 h-4 w-4 flex-shrink-0 text-muted" />
@@ -492,7 +509,7 @@ export function ResultsView({ result }: { result: ResultData }) {
                                 {key}
                               </span>
                               <span className="flex-1 text-foreground">
-                                {value as string}
+                                <RichText text={value as string} />
                               </span>
                               {isCorrectAnswer && (
                                 <LuCheck className="mt-0.5 h-4 w-4 flex-shrink-0 text-success" />
@@ -511,7 +528,7 @@ export function ResultsView({ result }: { result: ResultData }) {
                         Explanation
                       </h4>
                       <p className="mt-2 text-sm leading-relaxed text-tone-blue-ink">
-                        {q.explanation}
+                        <RichText text={q.explanation} />
                       </p>
                       {q.explanationImageUrl && (
                         <QuestionImage

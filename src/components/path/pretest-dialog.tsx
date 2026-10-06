@@ -14,6 +14,7 @@ import {
   LuX,
 } from "react-icons/lu";
 import { cn } from "@/lib/utils";
+import { RichText } from "@/components/ui/rich-text";
 import { Button } from "@/components/ui/button";
 import { isApiError } from "@/lib/api/errors";
 import { usePretest } from "@/hooks/api/use-learning-path";
@@ -260,7 +261,7 @@ export function PretestDialog({
                   <span className="mr-2 inline-flex h-7 w-7 items-center justify-center rounded-lg bg-primary-soft text-sm font-bold text-primary">
                     {currentIndex + 1}
                   </span>
-                  {currentQuestion.questionText}
+                  <RichText text={currentQuestion.questionText} />
                 </h4>
 
                 {currentQuestion.options && (
@@ -296,7 +297,7 @@ export function PretestDialog({
                               isSelected ? "font-semibold" : "text-foreground",
                             )}
                           >
-                            {value as string}
+                            <RichText text={value as string} />
                           </span>
                         </button>
                       );

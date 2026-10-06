@@ -108,11 +108,33 @@ export type JambSpecOut = {
   totalMarks: number;
 };
 
+/** A subject the question provider carries for JAMB. */
+export type JambSubjectOut = {
+  id: string;
+  name: string;
+  slug: string;
+  code?: string | null;
+  /** The provider's key and category (sciences, arts, commercial, ...). */
+  providerKey: string;
+  category?: string | null;
+  /** Questions it contributes to a sitting: 60 for English, 40 otherwise. */
+  questions: number;
+  /** Years the provider holds a full paper for, newest first. */
+  years: number[];
+};
+
 export type JambOptionsOut = {
   spec: JambSpecOut;
-  english?: Record<string, unknown> | null;
-  englishYears: number[];
-  subjects: MockOptionSubject[];
+  english?: JambSubjectOut | null;
+  subjects: JambSubjectOut[];
+};
+
+export type JambCoverageOut = {
+  subjectId: string;
+  subjectName: string;
+  code?: string | null;
+  required: number;
+  available: number;
 };
 
 // ─── Flashcards ────────────────────────────────────────────────────────────
@@ -159,22 +181,98 @@ export type AnnouncementsOut = { announcements: AnnouncementRow[] };
 
 export type DashboardAttempt = {
   id: string;
+  attemptId?: string;
   title?: string | null;
+  subjectId?: string | null;
+  assessmentType?: string | null;
   percentage?: number | null;
+  letter?: string | null;
   completedAt?: string | null;
   subjectName?: string | null;
   score?: number | null;
   totalMarks?: number | null;
 };
 
+/** How much evidence backs a topic's mastery figure (see lib/evidence-display). */
+export type DashboardEvidence = {
+  confidence: number;
+  accObservations: number;
+  lessonObservations: number;
+  srsObservations: number;
+  lastStudy: string | null;
+};
+
+export type DashboardPick = DashboardEvidence & {
+  topicId: string;
+  subjectId: string;
+  title: string;
+  slug: string;
+  mastery: number;
+  score: number;
+  reason: string;
+  unlocks: number;
+  /** Set when the pick is the lesson the student left unfinished. */
+  lessonId: string | null;
+};
+
+export type DashboardGap = DashboardEvidence & {
+  topicId: string;
+  subjectId: string;
+  title: string;
+  slug: string;
+  category: "WEAK" | "DECAYED" | "BOTTLENECK" | "ABANDONED" | "UNTOUCHED";
+  mastery: number;
+  retention: number | null;
+  bottleneckScore: number;
+  blockedCount: number;
+  abandonedCount: number;
+};
+
+export type DashboardRevisionItem = DashboardEvidence & {
+  topicId: string;
+  subjectId: string;
+  title: string;
+  slug: string;
+  mastery: number;
+  retention: number | null;
+  priority: number;
+  reason: string;
+  blockedCount: number;
+  dueSrsCards: number;
+  cadenceDue: boolean;
+};
+
+export type DashboardTodayItem = {
+  id: string;
+  subjectId: string | null;
+  topicId: string | null;
+  activityType: string;
+  durationMinutes: number;
+  status: string;
+};
+
 export type DashboardOut = {
   firstName?: string | null;
-  streak?: number;
-  tier?: string;
+  streak: number;
+  tier: string;
   keepLearning?: Record<string, unknown> | null;
-  gaps?: Record<string, unknown>[];
-  todayItems: Record<string, unknown>[];
+  learningPicks: DashboardPick[];
+  gaps: DashboardGap[];
+  revision: DashboardRevisionItem[];
+  revisionTotal: number;
+  /** Subjects referenced by the rails, keyed by subject id. */
+  subjects: Record<string, { slug: string; name: string; code: string }>;
+  todayItems: DashboardTodayItem[];
+  hasStudyPlan: boolean;
+  hasActivity: boolean;
   recentAttempts: DashboardAttempt[];
+  attemptTotal: number;
+  bestScore: number | null;
+  lastWeekActivity: number;
+  totalResponses: number;
+  correctResponses: number;
+  accuracy: number | null;
+  topicCount: number;
   achievements?: Record<string, unknown> | null;
 };
 
@@ -207,6 +305,28 @@ export type ClassroomSubjectsOut = { subjects: ClassroomSubjectRow[] };
 export type SubjectPageOut = {
   subject: Record<string, unknown>;
   topics: Record<string, unknown>[];
+};
+
+export type CurriculumTopicOut = {
+  id: string;
+  title: string;
+  slug: string;
+  orderIndex: number;
+  estimatedMinutes?: number | null;
+  waecWeight?: number | null;
+  jambWeight?: number | null;
+};
+
+export type CurriculumLevelOut = {
+  classLevel: string;
+  term: string;
+  topics: CurriculumTopicOut[];
+};
+
+/** `GET /api/subjects/{slug}/curriculum` — topics bucketed by class and term. */
+export type SubjectCurriculumOut = {
+  subject: Record<string, unknown>;
+  levels: CurriculumLevelOut[];
 };
 
 export type TopicPageOut = {

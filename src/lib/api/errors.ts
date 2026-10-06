@@ -25,9 +25,18 @@ export class ApiError extends Error {
     this.feature = body.feature ?? null;
   }
 
-  /** A 401/403 on a gated endpoint: the session is missing, stale or banned. */
+  /**
+   * A 401: the session is missing, stale, revoked or the account is inactive.
+   * The backend reserves 403 for "signed in but not allowed" (a plan
+   * entitlement, an owner-only action), which must not sign the student out.
+   */
   get isAuthFailure(): boolean {
-    return this.status === 401 || this.status === 403;
+    return this.status === 401;
+  }
+
+  /** A 403: signed in, but this account may not do this (e.g. needs an upgrade). */
+  get isForbidden(): boolean {
+    return this.status === 403;
   }
 
   get isRateLimited(): boolean {
