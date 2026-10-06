@@ -74,6 +74,10 @@ export interface CheckBlock {
   answer: string;
   explanation: string;
   afterCard: string;
+  /** Bank questions only: a figure the question refers to. */
+  imageUrl?: string | null;
+  /** Bank questions only: the comprehension passage it is asked on. */
+  passage?: string | null;
 }
 
 export type LessonBlock =

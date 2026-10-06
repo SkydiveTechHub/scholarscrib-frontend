@@ -14,12 +14,16 @@ import {
   LuArrowLeft,
   LuRotateCcw,
   LuSparkles,
+  LuLightbulb,
 } from "react-icons/lu";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { QuestionImage } from "@/components/ui/question-image";
 import { RichText } from "@/components/ui/rich-text";
+import {
+  ExplanationModal,
+  type ExplainedQuestion,
+} from "@/components/assessment/explanation-modal";
 
 type QuestionResult = {
   questionId: string;
@@ -29,7 +33,8 @@ type QuestionResult = {
   selectedAnswer: string | null;
   correctAnswer: string;
   isCorrect: boolean;
-  explanation: string;
+  /** Null when the question has none yet; the modal then fetches it. */
+  explanation: string | null;
   explanationImageUrl: string | null;
   topic: string | null;
   difficulty: string;
@@ -151,6 +156,7 @@ export function ResultsView({
   const [filterMode, setFilterMode] = useState<"all" | "correct" | "wrong">(
     "all",
   );
+  const [explaining, setExplaining] = useState<ExplainedQuestion | null>(null);
 
   function toggleQuestion(questionId: string) {
     setExpandedQuestions((prev) => {
@@ -523,21 +529,26 @@ export function ResultsView({
                       </div>
                     )}
 
-                    <div className="mt-4 rounded-xl border border-tone-blue-line bg-tone-blue-soft p-4">
-                      <h4 className="text-xs font-bold uppercase tracking-wider text-tone-blue-ink">
-                        Explanation
-                      </h4>
-                      <p className="mt-2 text-sm leading-relaxed text-tone-blue-ink">
-                        <RichText text={q.explanation} />
-                      </p>
-                      {q.explanationImageUrl && (
-                        <QuestionImage
-                          src={q.explanationImageUrl}
-                          alt="Diagram supporting this explanation"
-                          className="mt-3"
-                        />
-                      )}
-                    </div>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setExplaining({
+                          questionId: q.questionId,
+                          questionNumber: questionIndex + 1,
+                          questionText: q.questionText,
+                          questionImageUrl: q.questionImageUrl,
+                          options: q.options,
+                          selectedAnswer: q.selectedAnswer,
+                          correctAnswer: q.correctAnswer,
+                          explanation: q.explanation,
+                          explanationImageUrl: q.explanationImageUrl,
+                        })
+                      }
+                      className="mt-4 inline-flex items-center gap-2 rounded-xl border border-tone-blue-line bg-tone-blue-soft px-4 py-2.5 text-sm font-bold text-tone-blue-ink transition-opacity hover:opacity-80"
+                    >
+                      <LuLightbulb className="h-4 w-4" />
+                      See Explanation
+                    </button>
 
                     <div className="mt-3 flex flex-wrap gap-4 text-xs text-muted">
                       <span>
@@ -573,6 +584,8 @@ export function ResultsView({
           </button>
         )}
       </div>
+
+      <ExplanationModal question={explaining} onClose={() => setExplaining(null)} />
     </div>
   );
 }

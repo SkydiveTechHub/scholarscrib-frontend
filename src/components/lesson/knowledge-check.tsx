@@ -4,6 +4,7 @@ import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { LuCheck, LuCircleHelp, LuRotateCcw, LuX } from "react-icons/lu";
 import { Button } from "@/components/ui/button";
+import { QuestionImage } from "@/components/ui/question-image";
 import type { CheckBlock } from "@/lib/lesson-engine";
 import { InlineMarkdown, Markdown } from "./markdown";
 
@@ -60,9 +61,21 @@ export function KnowledgeCheck({ block, onResult }: KnowledgeCheckProps) {
       </div>
 
       <div className="p-4">
+        {block.passage && (
+          <div className="mb-3 max-h-64 overflow-y-auto rounded-xl bg-secondary/50 p-3.5 text-sm leading-relaxed text-foreground">
+            <Markdown content={block.passage} />
+          </div>
+        )}
         <p className="text-sm font-medium leading-relaxed text-foreground">
           <InlineMarkdown content={block.question} />
         </p>
+        {block.imageUrl && (
+          <QuestionImage
+            src={block.imageUrl}
+            alt="Figure for this question"
+            className="mt-3"
+          />
+        )}
 
         <div className="mt-4 space-y-2.5" role="group" aria-label="Answer options">
           {Object.entries(block.options).map(([key, value]) => {

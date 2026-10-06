@@ -1,7 +1,8 @@
 import { api } from "@/lib/api/server";
 import { endpoints } from "@/lib/api/endpoints";
 import { isApiError } from "@/lib/api/errors";
-import type { PracticeResultOut, TopicPageOut } from "@/lib/api/types";
+import type { PracticeResultOut, QuestionOut, TopicPageOut } from "@/lib/api/types";
+import { normaliseOptions, passageOf } from "@/lib/past-question-exam";
 import {
   deriveObjectives,
   masteryLevelFromScore,
@@ -253,15 +254,29 @@ function mapNavItem(row: Record<string, unknown>): TopicNavItem {
   };
 }
 
+/** The quick quiz's draw: WAEC first, JAMB when WAEC has nothing for the topic. */
+export const TOPIC_QUIZ_EXAM = "WAEC";
+export const TOPIC_QUIZ_SIZE = 10;
+
 export type TopicQuizData = {
-  /** Authored knowledge checks from the lesson note; empty means fall back. */
+  /** The topic's questions as answer-checked cards; empty when none exist yet. */
   checks: CheckBlock[];
-  lessonTitle: string;
+  topicTitle: string;
+  /** The exam the questions came from, or null when there are none. */
+  examType: string | null;
+  requestedExamType: string;
+};
+
+type TopicQuizQuestionsOut = {
+  questions: (QuestionOut & { correctAnswer?: string | null; explanation?: string | null })[];
+  examType: string | null;
+  requestedExamType: string;
 };
 
 /**
- * The quick quiz serves the lesson note's own questions when it has any, and
- * the caller falls back to the WAEC/JAMB bank when `checks` is empty.
+ * Ten random questions for the topic from `GET /api/questions/topic-quiz`
+ * (our bank first, then the provider), shaped as self-checked cards. Answers
+ * come with the questions: the quiz is untimed and records nothing.
  */
 export async function getTopicQuizData(
   subjectSlug: string,
@@ -270,16 +285,44 @@ export async function getTopicQuizData(
   const payload = await fetchTopicPage(subjectSlug, topicSlug, "quiz");
   if (!payload) return null;
 
-  const lessonRow =
-    payload.lesson && typeof payload.lesson === "object"
-      ? (payload.lesson as Record<string, unknown>)
-      : null;
+  // A failed draw (provider down, rate limit) renders the empty quiz rather
+  // than an error page; the topic itself exists.
+  const quiz = await api<TopicQuizQuestionsOut>(endpoints.questions.topicQuiz, {
+    params: {
+      subjectId: subjectSlug,
+      topic: topicSlug,
+      examType: TOPIC_QUIZ_EXAM,
+      limit: TOPIC_QUIZ_SIZE,
+      random: true,
+    },
+  }).catch((error: unknown): TopicQuizQuestionsOut => {
+    console.error("[topic-quiz] draw failed", error);
+    return { questions: [], examType: null, requestedExamType: TOPIC_QUIZ_EXAM };
+  });
 
   return {
-    checks: lessonRow
-      ? parseBlocks(lessonRow.blocks).filter((block): block is CheckBlock => block.type === "check")
-      : [],
-    lessonTitle: str(lessonRow?.title) || str(payload.topic?.title),
+    checks: quiz.questions.flatMap((q, index) => {
+      const options = normaliseOptions(q.options ?? null);
+      const answer = str(q.correctAnswer).trim().toUpperCase();
+      // Only a question we can actually mark is worth asking.
+      if (!options || !answer || !(answer in options)) return [];
+      return [
+        {
+          type: "check" as const,
+          id: q.id || `q-${index}`,
+          question: q.questionText,
+          options,
+          answer,
+          explanation: str(q.explanation),
+          afterCard: "",
+          imageUrl: q.questionImageUrl ?? null,
+          passage: passageOf(q),
+        },
+      ];
+    }),
+    topicTitle: str(payload.topic?.title),
+    examType: quiz.examType,
+    requestedExamType: quiz.requestedExamType,
   };
 }
 

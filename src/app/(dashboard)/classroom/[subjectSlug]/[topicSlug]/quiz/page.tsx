@@ -2,12 +2,11 @@ import { notFound, redirect } from "next/navigation";
 import { getSessionUser } from "@/lib/session";
 import { getTopicQuizData } from "@/lib/classroom-topic";
 import { LessonQuickQuiz } from "@/components/classroom/lesson-quick-quiz";
-import { TopicBankQuiz } from "@/components/classroom/topic-bank-quiz";
 
-// The quick quiz serves the LESSON NOTE'S OWN questions when the note has any,
-// and falls back to the WAEC/JAMB bank when it does not. `/practice` is always
-// the bank -- timed, JAMB-style, graded -- so the two surfaces now differ in
-// source and purpose rather than only in count and timing.
+// The quick quiz is ten random questions for the topic from
+// `GET /api/questions/topic-quiz`: WAEC first, JAMB when WAEC has none, our
+// bank before the provider. Untimed and unrecorded -- a self-check over the
+// material just read. `/practice` remains the graded, timed exam.
 
 export default async function TopicQuizPage({
   params,
@@ -22,19 +21,21 @@ export default async function TopicQuizPage({
   const data = await getTopicQuizData(subjectSlug, topicSlug);
   if (!data) notFound();
 
-  const topicHref = `/classroom/${subjectSlug}/${topicSlug}`;
-
-  if (data.checks.length === 0) {
-    return (
-      <TopicBankQuiz subjectSlug={subjectSlug} topicSlug={topicSlug} backHref={topicHref} />
-    );
-  }
+  const count = data.checks.length;
+  const fellBack = data.examType !== null && data.examType !== data.requestedExamType;
 
   return (
     <LessonQuickQuiz
       checks={data.checks}
-      lessonTitle={data.lessonTitle}
-      backHref={topicHref}
+      lessonTitle={data.topicTitle}
+      backHref={`/classroom/${subjectSlug}/${topicSlug}`}
+      description={
+        count === 0
+          ? "Untimed, and nothing is recorded."
+          : `${count} ${data.examType} question${count === 1 ? "" : "s"} on this topic${
+              fellBack ? ` (no ${data.requestedExamType} questions yet)` : ""
+            }. Untimed, and nothing is recorded — answer at your own pace.`
+      }
     />
   );
 }

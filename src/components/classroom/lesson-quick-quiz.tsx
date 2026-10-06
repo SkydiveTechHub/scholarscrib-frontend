@@ -24,10 +24,13 @@ export function LessonQuickQuiz({
   checks,
   lessonTitle,
   backHref,
+  description,
 }: {
   checks: CheckBlock[];
   lessonTitle: string;
   backHref: string;
+  /** Replaces the default "from this lesson note" line under the title. */
+  description?: string;
 }) {
   const [results, setResults] = useState<Record<string, Result>>({});
 
@@ -52,10 +55,21 @@ export function LessonQuickQuiz({
           Quick quiz
         </h1>
         <p className="mt-1 text-sm text-muted">
-          {checks.length} question{checks.length === 1 ? "" : "s"} from this lesson
-          note. Untimed, and nothing is recorded — answer at your own pace.
+          {description ??
+            `${checks.length} question${checks.length === 1 ? "" : "s"} from this lesson note. Untimed, and nothing is recorded — answer at your own pace.`}
         </p>
       </div>
+
+      {checks.length === 0 && (
+        <div className="rounded-2xl border border-border bg-card p-5 text-sm text-muted">
+          No quiz questions are available for this topic yet. Check back soon.
+          <div className="mt-4">
+            <Link href={backHref} className={buttonClass("outline", "md")}>
+              Back to the lesson
+            </Link>
+          </div>
+        </div>
+      )}
 
       <div className="space-y-4">
         {checks.map((block, index) => (
@@ -77,7 +91,7 @@ export function LessonQuickQuiz({
         ))}
       </div>
 
-      {done && (
+      {done && checks.length > 0 && (
         <div className="rounded-2xl border border-border-strong bg-card p-5">
           <div className="flex items-center gap-2.5">
             <LuCircleCheck className="h-5 w-5 flex-shrink-0 text-primary" />

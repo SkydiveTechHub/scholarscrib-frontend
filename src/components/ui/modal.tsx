@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useId, useRef } from "react";
+import { createPortal } from "react-dom";
 import { LuX } from "react-icons/lu";
 import { cn } from "@/lib/utils";
 
@@ -91,9 +92,12 @@ export function Modal({
     };
   }, [open]);
 
-  if (!open) return null;
+  if (!open || typeof document === "undefined") return null;
 
-  return (
+  // Portalled to <body>: rendered in place, a `fixed` overlay is trapped inside
+  // the stacking context of any animated ancestor (the results page's fade-in),
+  // which is how the desktop sidebar ended up painting over it.
+  return createPortal(
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm"
       onMouseDown={(e) => {
@@ -145,6 +149,7 @@ export function Modal({
           <div className="border-t border-border p-5">{footer}</div>
         )}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

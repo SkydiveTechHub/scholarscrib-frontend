@@ -202,6 +202,16 @@ export type CoverageSubjectOut = {
   yearRange: { min: number; max: number };
 };
 
+/** `GET /api/questions/{questionId}/explanation`. */
+export type ExplanationOut = {
+  questionId: string;
+  /** Markdown; provider explanations already fold in steps and common mistakes. */
+  explanation: string;
+  simplifiedExplanation?: string | null;
+  solutionImageUrl?: string | null;
+  source: string;
+};
+
 /** `GET /api/questions/coverage/subjects`. */
 export type CoverageSubjectsOut = { provider: string; data: CoverageSubjectOut[] };
 

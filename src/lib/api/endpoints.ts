@@ -27,6 +27,8 @@ export const endpoints = {
   questions: {
     list: "/api/questions",
     pastPapers: "/api/questions/past-papers",
+    topicQuiz: "/api/questions/topic-quiz",
+    explanation: (questionId: string) => `/api/questions/${seg(questionId)}/explanation`,
     coverageSubjects: "/api/questions/coverage/subjects",
     coverageSubjectYears: (subject: string) =>
       `/api/questions/coverage/subjects/${seg(subject)}/years`,

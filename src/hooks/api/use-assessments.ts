@@ -5,7 +5,11 @@ import { endpoints } from "@/lib/api/endpoints";
 import { request } from "@/lib/api/http";
 import { queryKeys } from "@/lib/api/query-keys";
 import type { GeneratedExam } from "@/components/assessment/use-exam-session";
-import type { CoverageSubjectsOut, CoverageYearsOut } from "@/lib/api/types";
+import type {
+  CoverageSubjectsOut,
+  CoverageYearsOut,
+  ExplanationOut,
+} from "@/lib/api/types";
 import type { BoardStatus } from "@/lib/board-availability";
 import type { ScopePoint } from "@/lib/curriculum-scope";
 
@@ -117,6 +121,26 @@ export function mockExamOptionsQuery<T>(examType: string) {
         url: endpoints.assessments.mockExam.options,
         params: { examType },
       }),
+  });
+}
+
+// ─── Explanations ───────────────────────────────────────────
+
+/**
+ * A question's explanation. Only fetched while `enabled`: a provider
+ * explanation is bought on first request, so it must never be prefetched.
+ */
+export function useQuestionExplanation(questionId: string, enabled: boolean) {
+  return useQuery({
+    queryKey: queryKeys.questions.explanation(questionId),
+    queryFn: () =>
+      request<ExplanationOut>({
+        method: "GET",
+        url: endpoints.questions.explanation(questionId),
+      }),
+    enabled,
+    staleTime: Infinity,
+    retry: false,
   });
 }
 
