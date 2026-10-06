@@ -4,6 +4,7 @@ import { LuTarget, LuChevronRight, LuGauge, LuLayers, LuFileCheck } from "react-
 import { getSessionUser } from "@/lib/session";
 import {
   PERFORMANCE_ATTEMPTS_PAGE_SIZE,
+  attemptSubtitle,
   getGrade,
   getPerformanceData,
 } from "@/lib/performance";
@@ -158,7 +159,7 @@ export default async function PerformancePage({
                         {attempt.title}
                       </p>
                       <p className="mt-0.5 text-xs text-muted">
-                        {attempt.subjectName}
+                        {attemptSubtitle(attempt)}
                         {attempt.completedAt &&
                           ` · ${new Date(attempt.completedAt).toLocaleDateString("en-NG", {
                             day: "numeric",

@@ -7,6 +7,8 @@ export type PerformanceAttempt = {
   id: string;
   title: string;
   subjectName: string | null;
+  /** The kind of paper; names multi-subject attempts, which have no subject. */
+  assessmentType: string | null;
   percentage: number | null;
   score: number | null;
   totalMarks: number | null;
@@ -48,6 +50,22 @@ export function getGrade(percentage: number): string {
   return "F";
 }
 
+const ASSESSMENT_LABELS: Record<string, string> = {
+  MOCK_EXAM: "Mock exam",
+  CBT_PRACTICE: "JAMB CBT",
+  PAST_PAPER: "Past paper",
+  TOPIC_QUIZ: "Topic quiz",
+};
+
+/** The subject, or for a multi-subject paper the kind of paper it was. */
+export function attemptSubtitle(attempt: PerformanceAttempt): string {
+  return (
+    attempt.subjectName ||
+    ASSESSMENT_LABELS[attempt.assessmentType ?? ""] ||
+    "Practice"
+  );
+}
+
 function num(value: unknown): number | null {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
@@ -57,6 +75,7 @@ function asAttempt(row: DashboardAttempt): PerformanceAttempt {
     id: row.id,
     title: row.title ?? "",
     subjectName: row.subjectName ?? null,
+    assessmentType: row.assessmentType ?? null,
     percentage: num(row.percentage),
     score: num(row.score),
     totalMarks: num(row.totalMarks),
