@@ -5,6 +5,7 @@ import { endpoints } from "@/lib/api/endpoints";
 import { request } from "@/lib/api/http";
 import { queryKeys } from "@/lib/api/query-keys";
 import type { GeneratedExam } from "@/components/assessment/use-exam-session";
+import type { CoverageSubjectsOut, CoverageYearsOut } from "@/lib/api/types";
 import type { BoardStatus } from "@/lib/board-availability";
 import type { ScopePoint } from "@/lib/curriculum-scope";
 
@@ -120,6 +121,35 @@ export function mockExamOptionsQuery<T>(examType: string) {
 }
 
 // ─── Past papers ────────────────────────────────────────────
+
+/** Every subject the question provider holds, with the exams it covers. */
+export function useCoverageSubjects() {
+  return useQuery({
+    queryKey: queryKeys.questions.coverageSubjects(),
+    queryFn: () =>
+      request<CoverageSubjectsOut>({
+        method: "GET",
+        url: endpoints.questions.coverageSubjects,
+        anonymous: true,
+      }),
+    staleTime: 60 * 60 * 1000,
+  });
+}
+
+/** The years the provider holds for one subject (its provider key), every exam. */
+export function useCoverageSubjectYears(subject: string | null) {
+  return useQuery({
+    queryKey: queryKeys.questions.coverageSubjectYears(subject ?? ""),
+    queryFn: () =>
+      request<CoverageYearsOut>({
+        method: "GET",
+        url: endpoints.questions.coverageSubjectYears(subject ?? ""),
+        anonymous: true,
+      }),
+    enabled: Boolean(subject),
+    staleTime: 60 * 60 * 1000,
+  });
+}
 
 export function usePastPapers<T>() {
   return useQuery({

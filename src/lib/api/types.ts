@@ -202,6 +202,20 @@ export type CoverageSubjectOut = {
   yearRange: { min: number; max: number };
 };
 
+/** `GET /api/questions/coverage/subjects`. */
+export type CoverageSubjectsOut = { provider: string; data: CoverageSubjectOut[] };
+
+/** One year of `GET /api/questions/coverage/subjects/{subject}/years`. */
+export type CoverageYearOut = {
+  year: number;
+  questionCount: number;
+  examTypes: string[];
+  /** Questions per exam key, e.g. `{ jamb: 50, waec: 40 }`. */
+  breakdown?: Record<string, number>;
+};
+
+export type CoverageYearsOut = { provider: string; data: CoverageYearOut[] };
+
 /** One row of `GET /api/questions/past-papers`: a paper on offer. */
 export type PastPaper = {
   examType: string;

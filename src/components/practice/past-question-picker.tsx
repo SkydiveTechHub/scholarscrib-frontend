@@ -2,15 +2,18 @@
 
 import { useMemo, useState } from "react";
 import { LuCheck, LuInbox, LuPencil } from "react-icons/lu";
-import { COVERAGE_EXAMS } from "@/lib/subject-coverage";
-import { assessBoards } from "@/lib/board-availability";
-import { isRelevantSubject } from "@/lib/subjects";
-import type { PastPaper } from "@/lib/api/types";
+import {
+  COVERAGE_EXAMS,
+  isTrackSubject,
+  subjectsForExam,
+  yearsForExam,
+} from "@/lib/subject-coverage";
+import type { CoverageSubjectOut } from "@/lib/api/types";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Spinner } from "@/components/ui/spinner";
-import { usePastPapers } from "@/hooks/api/use-assessments";
-import { PastPaperExam, type PastPaperSubject } from "./past-paper-exam";
+import { useCoverageSubjects, useCoverageSubjectYears } from "@/hooks/api/use-assessments";
+import { PastPaperExam } from "./past-paper-exam";
 
 const EXAM_BADGES: Record<string, "blue" | "green" | "purple" | "neutral"> = {
   jamb: "green",
@@ -19,72 +22,41 @@ const EXAM_BADGES: Record<string, "blue" | "green" | "purple" | "neutral"> = {
 };
 
 // Stable empty list, so the memos below don't recompute every render.
-const NO_PAPERS: PastPaper[] = [];
+const NO_SUBJECTS: CoverageSubjectOut[] = [];
 
+/**
+ * Past questions, one subject at a time, straight from the question provider:
+ * ① exam → ② the provider's subjects for that exam, narrowed to the student's
+ * track → ③ the years the provider holds for that subject under that exam →
+ * ④ the paper, fetched from the provider and sat as a recorded attempt.
+ */
 export function PastQuestionPicker({ track }: { track: string | null }) {
-  // One fetch for the whole picker — the paper list is small (one row per
-  // exam/subject/year), so every step filters in memory instead of re-querying.
-  const pastPapers = usePastPapers<PastPaper>();
-  const papers = pastPapers.data?.papers ?? NO_PAPERS;
-  const loading = pastPapers.isPending;
-  const failed = pastPapers.isError;
+  const coverage = useCoverageSubjects();
+  const allSubjects = coverage.data?.data ?? NO_SUBJECTS;
 
   const [exam, setExam] = useState<string | null>(null);
-  const [subjectSlug, setSubjectSlug] = useState<string | null>(null);
+  // The provider's subject key, e.g. "english-language".
+  const [subjectName, setSubjectName] = useState<string | null>(null);
   const [showAllSubjects, setShowAllSubjects] = useState(false);
   const [year, setYear] = useState<number | null>(null);
 
-  // ① Which of those exams are open, decided from the papers themselves rather
-  // than a hard-coded list. The unit is papers per subject, not questions: a
-  // paper we have never pulled is fetched on the way into the quiz, so it
-  // counts as coverage the moment the provider lists it.
-  const boardStatus = useMemo(() => {
-    const perBoard = new Map<string, Map<string, number>>();
-    for (const p of papers) {
-      const subjects = perBoard.get(p.examType) ?? new Map<string, number>();
-      subjects.set(p.subjectId, (subjects.get(p.subjectId) ?? 0) + 1);
-      perBoard.set(p.examType, subjects);
-    }
-    return assessBoards(
-      "PAST_QUESTIONS",
-      Object.fromEntries(
-        [...perBoard.entries()].map(([board, subjects]) => [
-          board,
-          [...subjects.values()],
-        ]),
-      ),
-    );
-  }, [papers]);
+  const yearsQuery = useCoverageSubjectYears(subjectName);
 
-  function chooseExam(key: string) {
+  function chooseExam(key: string | null) {
     setExam(key);
-    setSubjectSlug(null);
+    setSubjectName(null);
     setShowAllSubjects(false);
+    setYear(null);
   }
 
-  // ② Subjects offered for the chosen exam, with the years each holds a paper
-  // for. Exam keys are lower-case here and upper-case on the papers.
-  const subjects = useMemo<PastPaperSubject[]>(() => {
-    if (!exam) return [];
-    const bySlug = new Map<string, PastPaperSubject>();
-    for (const p of papers) {
-      if (p.examType.toLowerCase() !== exam) continue;
-      const entry = bySlug.get(p.subjectSlug) ?? {
-        slug: p.subjectSlug,
-        name: p.subjectName,
-        trackCategory: p.trackCategory,
-        years: [],
-      };
-      if (!entry.years.includes(p.examYear)) entry.years.push(p.examYear);
-      bySlug.set(p.subjectSlug, entry);
-    }
-    return [...bySlug.values()]
-      .map((s) => ({ ...s, years: [...s.years].sort((a, b) => b - a) }))
-      .sort((a, b) => a.name.localeCompare(b.name));
-  }, [papers, exam]);
+  // ② Subjects the provider holds under the chosen exam.
+  const subjects = useMemo(
+    () => (exam ? subjectsForExam(allSubjects, exam) : []),
+    [allSubjects, exam],
+  );
 
   const trackSubjects = useMemo(
-    () => subjects.filter((s) => isRelevantSubject(s.trackCategory, track)),
+    () => subjects.filter((s) => isTrackSubject(s, track)),
     [subjects, track],
   );
 
@@ -92,21 +64,30 @@ export function PastQuestionPicker({ track }: { track: string | null }) {
   const narrows = trackSubjects.length < subjects.length;
   const visibleSubjects = showAllSubjects || !narrows ? subjects : trackSubjects;
 
-  const chosenSubject = subjects.find((s) => s.slug === subjectSlug);
-  const examLabel = COVERAGE_EXAMS.find((e) => e.key === exam)?.label ?? exam;
+  const chosenSubject = subjects.find((s) => s.name === subjectName) ?? null;
+  const examLabel = COVERAGE_EXAMS.find((e) => e.key === exam)?.label ?? exam ?? "";
 
-  // ③ Years a paper is on offer for, for the chosen subject.
-  const years = chosenSubject?.years ?? [];
+  // ③ Years the provider holds for that subject under that exam.
+  const years = useMemo(
+    () => (exam && yearsQuery.data ? yearsForExam(yearsQuery.data.data, exam) : []),
+    [yearsQuery.data, exam],
+  );
 
   // ④ The paper itself, sat in place of the picker. Leaving it lands back on
-  // the year step with exam and subject still chosen.
+  // the year step with exam and subject still chosen. The past-paper
+  // endpoints take the provider's subject key.
   if (exam && chosenSubject && year !== null) {
     return (
       <PastPaperExam
-        key={`${exam}:${chosenSubject.slug}:${year}`}
+        key={`${exam}:${chosenSubject.name}:${year}`}
         exam={exam}
-        examLabel={examLabel ?? exam}
-        subject={chosenSubject}
+        examLabel={examLabel}
+        subject={{
+          slug: chosenSubject.name,
+          name: chosenSubject.displayName,
+          trackCategory: chosenSubject.category,
+          years: years.map((y) => y.year),
+        }}
         year={year}
         onExit={() => setYear(null)}
       />
@@ -117,40 +98,20 @@ export function PastQuestionPicker({ track }: { track: string | null }) {
     <div className="space-y-4">
       {/* ① Exam */}
       {exam ? (
-        <SummaryChip
-          step={1}
-          label="Exam"
-          value={examLabel ?? ""}
-          onEdit={() => {
-            setExam(null);
-            setSubjectSlug(null);
-          }}
-        />
+        <SummaryChip step={1} label="Exam" value={examLabel} onEdit={() => chooseExam(null)} />
       ) : (
         <Step number={1} title="Choose an exam">
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            {COVERAGE_EXAMS.map(({ key, label }) => {
-              // Only judged once the papers are in: until then, don't lock
-              // anything. A board with no papers at all is not open.
-              const status = boardStatus[key.toUpperCase()];
-              const closed = !loading && !failed && !status?.ready;
-              return (
-                <button
-                  key={key}
-                  type="button"
-                  onClick={() => chooseExam(key)}
-                  disabled={closed}
-                  className="card card-interactive p-4 text-left disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  <Badge variant={EXAM_BADGES[key] ?? "neutral"}>{label}</Badge>
-                  {closed && (
-                    <p className="mt-2 text-xs text-muted">
-                      {status?.reason ?? `No ${label} papers yet`}
-                    </p>
-                  )}
-                </button>
-              );
-            })}
+            {COVERAGE_EXAMS.map(({ key, label }) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => chooseExam(key)}
+                className="card card-interactive p-4 text-left"
+              >
+                <Badge variant={EXAM_BADGES[key] ?? "neutral"}>{label}</Badge>
+              </button>
+            ))}
           </div>
         </Step>
       )}
@@ -161,8 +122,8 @@ export function PastQuestionPicker({ track }: { track: string | null }) {
           <SummaryChip
             step={2}
             label="Subject"
-            value={chosenSubject.name}
-            onEdit={() => setSubjectSlug(null)}
+            value={chosenSubject.displayName}
+            onEdit={() => setSubjectName(null)}
           />
         ) : (
           <Step
@@ -180,45 +141,22 @@ export function PastQuestionPicker({ track }: { track: string | null }) {
               ) : undefined
             }
           >
-            {loading ? (
+            {coverage.isPending ? (
               <Spinner label="Loading subjects..." />
-            ) : failed ? (
-              <EmptyState
-                tone="primary"
-                icon={<LuInbox className="h-6 w-6" />}
-                title="Couldn't load subjects"
-                description="Please try again."
-                action={
-                  <button
-                    type="button"
-                    onClick={() => void pastPapers.refetch()}
-                    className="text-sm font-semibold text-primary hover:underline"
-                  >
-                    Retry
-                  </button>
-                }
-              />
+            ) : coverage.isError ? (
+              <RetryState title="Couldn't load subjects" onRetry={() => void coverage.refetch()} />
             ) : visibleSubjects.length === 0 ? (
-              <p className="text-sm text-muted">
-                No {examLabel} subjects available yet.
-              </p>
+              <p className="text-sm text-muted">No {examLabel} subjects available yet.</p>
             ) : (
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {visibleSubjects.map((s) => (
                   <button
-                    key={s.slug}
+                    key={s.name}
                     type="button"
-                    onClick={() => setSubjectSlug(s.slug)}
+                    onClick={() => setSubjectName(s.name)}
                     className="card card-interactive p-4 text-left"
                   >
-                    <p className="text-sm font-semibold text-foreground">{s.name}</p>
-                    <p className="mt-1 text-xs text-muted">
-                      {s.years.length} {s.years.length === 1 ? "paper" : "papers"}{" "}
-                      &middot;{" "}
-                      {s.years[0] === s.years[s.years.length - 1]
-                        ? s.years[0]
-                        : `${s.years[s.years.length - 1]}–${s.years[0]}`}
-                    </p>
+                    <p className="text-sm font-semibold text-foreground">{s.displayName}</p>
                   </button>
                 ))}
               </div>
@@ -229,18 +167,27 @@ export function PastQuestionPicker({ track }: { track: string | null }) {
       {/* ③ Year */}
       {exam && chosenSubject && (
         <Step number={3} title="Choose a year">
-          {years.length === 0 ? (
-            <p className="text-sm text-muted">No years listed for this subject.</p>
+          {yearsQuery.isPending ? (
+            <Spinner label="Loading years..." />
+          ) : yearsQuery.isError ? (
+            <RetryState title="Couldn't load years" onRetry={() => void yearsQuery.refetch()} />
+          ) : years.length === 0 ? (
+            <p className="text-sm text-muted">
+              No {examLabel} {chosenSubject.displayName} papers available yet.
+            </p>
           ) : (
             <div className="grid grid-cols-3 gap-2 sm:grid-cols-5 lg:grid-cols-6">
               {years.map((y) => (
                 <button
-                  key={y}
+                  key={y.year}
                   type="button"
-                  onClick={() => setYear(y)}
-                  className="rounded-xl border border-border bg-card px-3 py-2.5 text-center text-sm font-bold text-foreground transition-all hover:border-primary/40 hover:text-primary"
+                  onClick={() => setYear(y.year)}
+                  className="group rounded-xl border border-border bg-card px-3 py-2.5 text-center transition-all hover:border-primary/40"
                 >
-                  {y}
+                  <span className="block text-sm font-bold text-foreground group-hover:text-primary">
+                    {y.year}
+                  </span>
+                  <span className="block text-xs text-muted">{y.questionCount} questions</span>
                 </button>
               ))}
             </div>
@@ -248,6 +195,26 @@ export function PastQuestionPicker({ track }: { track: string | null }) {
         </Step>
       )}
     </div>
+  );
+}
+
+function RetryState({ title, onRetry }: { title: string; onRetry: () => void }) {
+  return (
+    <EmptyState
+      tone="primary"
+      icon={<LuInbox className="h-6 w-6" />}
+      title={title}
+      description="Please try again."
+      action={
+        <button
+          type="button"
+          onClick={onRetry}
+          className="text-sm font-semibold text-primary hover:underline"
+        >
+          Retry
+        </button>
+      }
+    />
   );
 }
 

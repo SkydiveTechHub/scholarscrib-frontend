@@ -20,6 +20,9 @@ export const queryKeys = {
   questions: {
     all: ["questions"] as const,
     pastPapers: () => [...queryKeys.questions.all, "past-papers"] as const,
+    coverageSubjects: () => [...queryKeys.questions.all, "coverage", "subjects"] as const,
+    coverageSubjectYears: (subject: string) =>
+      [...queryKeys.questions.all, "coverage", "years", subject] as const,
   },
   assessments: {
     all: ["assessments"] as const,

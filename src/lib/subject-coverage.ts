@@ -3,7 +3,7 @@
 // own categories, not our SCIENCE / ARTS / COMMERCIAL tracks, so the mapping
 // between the two lives here.
 
-import type { CoverageSubjectOut } from "@/lib/api/types";
+import type { CoverageSubjectOut, CoverageYearOut } from "@/lib/api/types";
 import { TRACK_CATEGORIES, type TrackCategory } from "@/lib/subjects";
 
 /** The exams a student can pick, keyed as the coverage data spells them. */
@@ -60,4 +60,19 @@ export function coverageYears(subject: CoverageSubjectOut): number[] {
   const years: number[] = [];
   for (let y = max; y >= min; y--) years.push(y);
   return years;
+}
+
+/**
+ * The years the provider holds a paper for under one exam, newest first, with
+ * that exam's question count (falling back to the year's total).
+ */
+export function yearsForExam(
+  years: readonly CoverageYearOut[],
+  exam: string,
+): { year: number; questionCount: number }[] {
+  return years
+    .filter((y) => y.examTypes.includes(exam))
+    .map((y) => ({ year: y.year, questionCount: y.breakdown?.[exam] ?? y.questionCount }))
+    .filter((y) => y.questionCount > 0)
+    .sort((a, b) => b.year - a.year);
 }
