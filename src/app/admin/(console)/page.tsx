@@ -14,8 +14,8 @@ import {
 } from "@/components/admin/admin-table";
 import { cn } from "@/lib/utils";
 import type { StatRow } from "@/lib/admin-stats";
-import { hasTermCoverage } from "@/engines/planner/term-context";
-import { lagosDayKey } from "@/lib/streak";
+import { hasTermCoverage } from "@/lib/academic-terms";
+import { lagosDayKey } from "@/lib/day-keys";
 
 export const dynamic = "force-dynamic";
 

@@ -7,7 +7,6 @@
 import "server-only";
 
 import { cookies } from "next/headers";
-import { cache } from "react";
 import { API_URL, accessCookieFor } from "./config";
 import { ApiError } from "./errors";
 import type { ApiErrorBody } from "./types";
@@ -90,42 +89,3 @@ export async function api<T>(
   return parseBody<T>(res);
 }
 
-export type Api = typeof api;
-
-/** Form-parse helper for the multipart avatar route. */
-export async function apiForm<T>(
-  path: string,
-  form: FormData,
-  options: Omit<FetchOptions, "body"> = {},
-): Promise<T> {
-  const { anonymous = false, realm = "auto", ...init } = options;
-  const token = accessCookieFor(path) ? await resolveToken(path, path.startsWith("/admin") ? "admin" : "student") : null;
-  const headers = new Headers(init.headers);
-  headers.set("Accept", "application/json");
-  if (token && !anonymous) headers.set("Authorization", `Bearer ${token}`);
-
-  const res = await fetch(buildUrl(path, options.params), {
-    ...init,
-    method: "POST",
-    headers,
-    body: form,
-    cache: "no-store",
-  });
-
-  if (!res.ok) {
-    const errorBody = await parseBody<ApiErrorBody>(res);
-    throw new ApiError(res.status, errorBody ?? {});
-  }
-
-  return parseBody<T>(res);
-}
-
-/**
- * Per-request memoiser for server component data reads. A page calling
- * `getDashboard()` twice in one request gets one HTTP call.
- */
-export function memoized<TFn extends (...args: never[]) => Promise<unknown>>(
-  fn: TFn,
-): TFn {
-  return cache(fn);
-}

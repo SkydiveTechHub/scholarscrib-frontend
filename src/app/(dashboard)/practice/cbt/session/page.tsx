@@ -2,7 +2,7 @@
 
 import { Suspense, useCallback, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
-import { fetchApi } from "@/lib/api/client";
+import { useGenerateJambCbt } from "@/hooks/api/use-assessments";
 import {
   ExamSurface,
   type QuestionGroup,
@@ -26,25 +26,14 @@ function JambCbtSession() {
     [year, subjectIds],
   );
 
+  // mutateAsync is stable, so `generate` only changes with the paper.
+  const { mutateAsync: generateJambCbt } = useGenerateJambCbt();
   const generate = useCallback(async (): Promise<GeneratedExam> => {
-    const paper = await fetchApi<QuizOut>("/api/assessments/jamb-cbt/generate", {
-      method: "POST",
-      body: {
-        subjectIds: subjectIds.split(",").filter(Boolean),
-        examYear: Number(year),
-      },
+    return generateJambCbt({
+      subjectIds: subjectIds.split(",").filter(Boolean),
+      examYear: Number(year),
     });
-    // Shaped like every other paper: cleaned options, passages and group
-    // instructions attached, and each question kept under its subject.
-    return {
-      attemptId: paper.attemptId,
-      title: paper.title,
-      questions: paper.questions.map(toExamQuestion),
-      timeLimitMinutes: paper.timeLimitMinutes ?? null,
-      deadlineAt: paper.deadlineAt ?? undefined,
-      resumed: paper.resumed ?? undefined,
-    };
-  }, [subjectIds, year]);
+  }, [generateJambCbt, subjectIds, year]);
 
   const toResult = useCallback(
     (attemptId: string) => `/practice/results/${attemptId}`,

@@ -2,19 +2,18 @@
 
 import { useState, type ReactNode } from "react";
 import { LuX } from "react-icons/lu";
-import { fetchApi } from "@/lib/api/client";
+import { useDismissAnnouncement } from "@/hooks/api/use-announcements";
 
 /** Wraps the banner so dismissing hides it immediately, before the request lands. */
 export function DismissibleAnnouncement({ id, children }: { id: string; children: ReactNode }) {
   const [hidden, setHidden] = useState(false);
+  const dismissAnnouncement = useDismissAnnouncement();
   if (hidden) return null;
 
   function dismiss() {
     setHidden(true);
     // Fire and forget: if it fails, the banner simply returns on the next load.
-    fetchApi(`/api/announcements/${encodeURIComponent(id)}/dismiss`, {
-      method: "POST",
-    }).catch(() => undefined);
+    dismissAnnouncement.mutate(id);
   }
 
   return (

@@ -1,5 +1,5 @@
-// Who an announcement is for. Pure. The SQL twin lives in
-// push-audience-sql.ts and is built from the same clauses.
+// Who an announcement is for: the composer's filter shape and its label. The
+// backend resolves the filter to recipients.
 
 import { z } from "zod";
 
@@ -14,56 +14,6 @@ export const audienceFilterSchema = z
   .strict();
 
 export type AudienceFilter = z.infer<typeof audienceFilterSchema>;
-
-export type AudienceClause = {
-  field: "examTarget" | "classLevel" | "track" | "tier" | "userId";
-  values: string[];
-};
-
-/** Order is fixed; the SQL builder and its test rely on it. */
-export function audienceClauses(filter: AudienceFilter): AudienceClause[] {
-  const entries: [AudienceClause["field"], string[] | undefined][] = [
-    ["examTarget", filter.examTargets],
-    ["classLevel", filter.classLevels],
-    ["track", filter.tracks],
-    ["tier", filter.tiers],
-    ["userId", filter.userIds],
-  ];
-  return entries
-    .filter(([, values]) => values && values.length > 0)
-    .map(([field, values]) => ({ field, values: [...new Set(values)] }));
-}
-
-export type AudienceStudent = {
-  id: string;
-  role: string;
-  isActive: boolean;
-  classLevel: string | null;
-  track: string | null;
-  tier: string;
-  /** targetExam of each active StudyPlan. */
-  activeExamTargets: string[];
-};
-
-function clauseMatches(student: AudienceStudent, clause: AudienceClause): boolean {
-  switch (clause.field) {
-    case "examTarget":
-      return student.activeExamTargets.some((t) => clause.values.includes(t));
-    case "classLevel":
-      return student.classLevel !== null && clause.values.includes(student.classLevel);
-    case "track":
-      return student.track !== null && clause.values.includes(student.track);
-    case "tier":
-      return clause.values.includes(student.tier);
-    case "userId":
-      return clause.values.includes(student.id);
-  }
-}
-
-export function matchesAudience(student: AudienceStudent, filter: AudienceFilter): boolean {
-  if (student.role !== "STUDENT" || !student.isActive) return false;
-  return audienceClauses(filter).every((clause) => clauseMatches(student, clause));
-}
 
 export function parseStoredAudience(json: unknown): AudienceFilter | null {
   const parsed = audienceFilterSchema.safeParse(json);

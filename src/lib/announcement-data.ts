@@ -1,4 +1,5 @@
 import { api } from "@/lib/api/server";
+import { endpoints } from "@/lib/api/endpoints";
 import type { AnnouncementRow, AnnouncementsOut } from "@/lib/api/types";
 
 /**
@@ -28,7 +29,7 @@ export async function getBannerAnnouncement(): Promise<
   { id: string; title: string; body: string; url: string | null } | null
 > {
   try {
-    const { announcements } = await api<AnnouncementsOut>("/api/announcements");
+    const { announcements } = await api<AnnouncementsOut>(endpoints.announcements.list);
     return asBanner(announcements[0]);
   } catch (error) {
     // A banner is decoration, not a page requirement: if the announcement

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useMemo } from "react";
-import { fetchApi } from "@/lib/api/client";
+import { useGenerateQuiz } from "@/hooks/api/use-assessments";
 import { ExamSurface } from "./exam-surface";
 import { useExamSession, type GeneratedExam } from "./use-exam-session";
 
@@ -49,20 +49,19 @@ export function QuizEngine({
     [subjectSlug, topicSlug, examType, examYear, count],
   );
 
+  // mutateAsync is stable, so `generate` only changes with the quiz itself.
+  const { mutateAsync: generateQuiz } = useGenerateQuiz();
   const generate = useCallback(async (): Promise<GeneratedExam> => {
-    return fetchApi<GeneratedExam>("/api/assessments/generate", {
-      method: "POST",
-      body: {
-        subjectSlug,
-        ...(topicSlug ? { topicSlug } : {}),
-        ...(examType ? { examType } : {}),
-        ...(examYear !== undefined ? { examYear } : {}),
-        ...(titleOverride ? { title: titleOverride } : {}),
-        ...(untimed ? { untimed: true } : {}),
-        count,
-      },
+    return generateQuiz({
+      subjectSlug,
+      ...(topicSlug ? { topicSlug } : {}),
+      ...(examType ? { examType } : {}),
+      ...(examYear !== undefined ? { examYear } : {}),
+      ...(titleOverride ? { title: titleOverride } : {}),
+      ...(untimed ? { untimed: true } : {}),
+      count,
     });
-  }, [subjectSlug, topicSlug, examType, examYear, count, titleOverride, untimed]);
+  }, [generateQuiz, subjectSlug, topicSlug, examType, examYear, count, titleOverride, untimed]);
 
   const toResult = useCallback(
     (attemptId: string) =>

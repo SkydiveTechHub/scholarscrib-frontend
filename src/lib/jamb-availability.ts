@@ -1,5 +1,6 @@
 import { api } from "@/lib/api/server";
-import type { JambOptionsOut, JambSubjectOut } from "@/lib/api/types";
+import { endpoints } from "@/lib/api/endpoints";
+import type { JambOptionsOut, MockOptionSubject } from "@/lib/api/types";
 
 // Which JAMB sittings can be assembled. The backend reads the question
 // provider's catalogue: a subject is offered when the provider carries it for
@@ -36,21 +37,23 @@ function asOption(row: JambSubjectOut): JambSubjectOption {
 export async function getJambSubjectOptions(): Promise<{
   english: JambSubjectOption | null;
   subjects: JambSubjectOption[];
-} | null> {
-  try {
-    const opts = await api<JambOptionsOut>("/api/assessments/jamb-cbt/options");
-    const english = opts.english ? asOption(opts.english) : null;
-    return {
-      english,
-      subjects: (opts.subjects ?? [])
-        // English travels separately, so it can never be one of the three.
-        .filter((s) => !english || s.id !== english.id)
-        .map(asOption)
-        .sort((a, b) => a.name.localeCompare(b.name)),
-    };
-  } catch (error) {
-    console.error("Loading JAMB options failed:", error);
-    return null;
-  }
-}
+}> {
+  const opts = await api<JambOptionsOut>(endpoints.assessments.jambCbt.options);
+
+  const englishRaw = opts.english;
+  const english =
+    englishRaw && typeof englishRaw === "object"
+      ? {
+          id: String(englishRaw.id ?? englishRaw.code ?? ""),
+          code: String(englishRaw.code ?? ""),
+          name: String(englishRaw.name ?? ""),
+        }
+      : null;
+
+  const subjects = (opts.subjects ?? [])
+    // backend-ported: English travels separately (when offered at all), so a
+    // duplicate row must never surface as one of the three chosen subjects.
+    .filter((s) => !(english && s.id === english.id))
+    .map(asSubjectOption)
+    .sort((a, b) => a.name.localeCompare(b.name));
 

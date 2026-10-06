@@ -1,8 +1,7 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
-import { LuCheck, LuPencil, LuInbox } from "react-icons/lu";
-import type { CoverageSubjectOut, CoverageSubjectsOut } from "@/lib/api/types";
+import Link from "next/link";
+import { useMemo, useState } from "react";
 import {
   COVERAGE_EXAMS,
   coverageYears,
@@ -12,8 +11,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Spinner } from "@/components/ui/spinner";
-import { fetchApi } from "@/lib/api/client";
-import { PastPaperExam } from "@/components/practice/past-paper-exam";
+import { usePastPapers } from "@/hooks/api/use-assessments";
 
 const EXAM_BADGES: Record<string, "blue" | "green" | "purple" | "neutral"> = {
   jamb: "green",
@@ -21,33 +19,52 @@ const EXAM_BADGES: Record<string, "blue" | "green" | "purple" | "neutral"> = {
   neco: "purple",
 };
 
+// Stable empty list, so the memos below don't recompute every render.
+const NO_PAPERS: PastPaper[] = [];
+
 export function PastQuestionPicker({ track }: { track: string | null }) {
-  // Coverage is fetched once, on the first exam pick, and filtered in memory
-  // for every exam after that — one response lists every exam's subjects.
-  const [coverage, setCoverage] = useState<CoverageSubjectOut[] | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [failed, setFailed] = useState(false);
-  const requested = useRef(false);
+  // One fetch for the whole picker — the paper list is small (one row per
+  // exam/subject/year), so every step filters in memory instead of re-querying.
+  const pastPapers = usePastPapers<PastPaper>();
+  const papers = pastPapers.data?.papers ?? NO_PAPERS;
+  const loading = pastPapers.isPending;
+  const failed = pastPapers.isError;
 
   const [exam, setExam] = useState<string | null>(null);
   const [subjectName, setSubjectName] = useState<string | null>(null);
   const [showAllSubjects, setShowAllSubjects] = useState(false);
   const [year, setYear] = useState<number | null>(null);
 
-  function loadCoverage() {
-    if (requested.current) return;
-    requested.current = true;
-    setLoading(true);
-    setFailed(false);
-    fetchApi<CoverageSubjectsOut>("/api/questions/coverage/subjects")
-      .then((res) => setCoverage(res.data ?? []))
-      .catch(() => {
-        // Let the next click try again.
-        requested.current = false;
-        setFailed(true);
-      })
-      .finally(() => setLoading(false));
-  }
+  // ① Exams that actually have papers.
+  const exams = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const p of papers) {
+      counts.set(p.examType, (counts.get(p.examType) ?? 0) + (p.questionCount ?? 0));
+    }
+    return [...counts.entries()].sort((a, b) => a[0].localeCompare(b[0]));
+  }, [papers]);
+
+  // Which of those exams are open, decided from the papers themselves rather
+  // than a hard-coded list. The unit is papers per subject, not questions: a
+  // paper we have never pulled is fetched on the way into the quiz, so it
+  // counts as coverage the moment the provider lists it.
+  const boardStatus = useMemo(() => {
+    const perBoard = new Map<string, Map<string, number>>();
+    for (const p of papers) {
+      const subjects = perBoard.get(p.examType) ?? new Map<string, number>();
+      subjects.set(p.subjectId, (subjects.get(p.subjectId) ?? 0) + 1);
+      perBoard.set(p.examType, subjects);
+    }
+    return assessBoards(
+      "PAST_QUESTIONS",
+      Object.fromEntries(
+        [...perBoard.entries()].map(([board, subjects]) => [
+          board,
+          [...subjects.values()],
+        ]),
+      ),
+    );
+  }, [papers]);
 
   function chooseExam(key: string) {
     setExam(key);

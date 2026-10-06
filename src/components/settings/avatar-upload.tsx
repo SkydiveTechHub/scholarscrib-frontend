@@ -2,8 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
-import { fetchApi } from "@/lib/api/client";
-import type { AvatarOut } from "@/lib/api/types";
+import { useUploadAvatar } from "@/hooks/api/use-user";
 import { Avatar } from "@/components/ui/avatar";
 import { FormMessage, Section, submitClass } from "./section";
 
@@ -21,6 +20,7 @@ export function AvatarUpload({
   // Shows the chosen file immediately, before the upload round-trip finishes.
   const [preview, setPreview] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const uploadAvatar = useUploadAvatar();
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
@@ -34,10 +34,7 @@ export function AvatarUpload({
     setLoading(true);
 
     try {
-      const body = new FormData();
-      body.append("file", file);
-
-      await fetchApi<AvatarOut>("/api/user/avatar", { method: "POST", body });
+      await uploadAvatar.mutateAsync(file);
 
       setSuccess("Photo updated.");
       router.refresh();

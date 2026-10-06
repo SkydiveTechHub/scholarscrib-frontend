@@ -1,6 +1,9 @@
 import Link from "next/link";
 import { LuCompass, LuFlame, LuLockOpen, LuRotateCcw } from "react-icons/lu";
-import type { DashboardPick } from "@/lib/api/types";
+import {
+  CONTINUE_REASON,
+  type NextTopicRecommendation,
+} from "@/types/learning";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { evidenceLabel } from "@/lib/evidence-display";

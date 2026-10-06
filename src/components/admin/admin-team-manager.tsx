@@ -3,8 +3,7 @@
 import { useState } from "react";
 import { StatusBanner } from "@/components/admin/status-banner";
 import { HIDE_BELOW, SHOW_BELOW } from "@/components/admin/admin-table";
-import { fetchApi } from "@/lib/api/client";
-import type { AdminRowOut, OkOut } from "@/lib/api/types";
+import { useCreateAdmin, useSetAdminActive } from "@/hooks/api/use-admin-team";
 import { cn } from "@/lib/utils";
 
 export type TeamAdmin = {
@@ -37,6 +36,8 @@ export function AdminTeamManager({
     null,
   );
   const [busy, setBusy] = useState(false);
+  const createAdmin = useCreateAdmin();
+  const setAdminActive = useSetAdminActive();
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
@@ -45,11 +46,7 @@ export function AdminTeamManager({
     setCreated(null);
 
     try {
-      const { admin } = await fetchApi<{ admin: AdminRowOut }>("/admin/api/admins", {
-        method: "POST",
-        body: { identifier, password },
-        realm: "admin",
-      });
+      const { admin } = await createAdmin.mutateAsync({ identifier, password });
       const mapped: TeamAdmin = {
         id: admin.id,
         email: admin.email ?? null,
@@ -77,11 +74,7 @@ export function AdminTeamManager({
     setError("");
 
     try {
-      await fetchApi<OkOut>(`/admin/api/admins/${admin.id}/status`, {
-        method: "PATCH",
-        body: { isActive: !admin.isActive },
-        realm: "admin",
-      });
+      await setAdminActive.mutateAsync({ adminId: admin.id, isActive: !admin.isActive });
 
       setAdmins((prev) =>
         prev.map((a) =>

@@ -23,6 +23,8 @@ import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Spinner } from "@/components/ui/spinner";
 import { buttonClass } from "@/components/ui/button";
+import { useQueryClient } from "@tanstack/react-query";
+import { libraryResourcesQuery } from "@/hooks/api/use-library";
 import { cn } from "@/lib/utils";
 
 const PDFReader = dynamic(
@@ -163,6 +165,7 @@ function ResourceCard({
  * driven by what the student clicks.
  */
 export function LibraryView({ subjects }: { subjects: Subject[] }) {
+  const queryClient = useQueryClient();
   const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null);
   const [resources, setResources] = useState<SubjectResource[]>([]);
   const [resourcesLoading, setResourcesLoading] = useState(false);
@@ -174,12 +177,7 @@ export function LibraryView({ subjects }: { subjects: Subject[] }) {
     setResources([]);
     setResourcesLoading(true);
     try {
-      const { fetchApi } = await import("@/lib/api/client");
-      const data = await fetchApi<
-        | Record<string, unknown>[]
-        | { resources?: Record<string, unknown>[] }
-      >("/api/library", { params: { subjectId: subject.id } });
-      const rows = Array.isArray(data) ? data : (data.resources ?? []);
+      const rows = await queryClient.fetchQuery(libraryResourcesQuery(subject.id));
       setResources(rows as SubjectResource[]);
     } catch {
       setResources([]);
@@ -187,7 +185,7 @@ export function LibraryView({ subjects }: { subjects: Subject[] }) {
     } finally {
       setResourcesLoading(false);
     }
-  }, []);
+  }, [queryClient]);
 
   const handleRead = useCallback((resource: SubjectResource) => {
     setPdfViewer({ file: resource.url, title: resource.title });

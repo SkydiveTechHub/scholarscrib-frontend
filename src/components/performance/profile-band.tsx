@@ -1,5 +1,5 @@
 import { Progress } from "@/components/ui/progress";
-import type { Profile } from "@/engines/analytics/profile";
+import type { Profile } from "@/types/analytics";
 
 const BAND_LABEL: Record<string, string> = {
   BASIC: "Basic",

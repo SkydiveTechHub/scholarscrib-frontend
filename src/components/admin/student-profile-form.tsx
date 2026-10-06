@@ -5,8 +5,7 @@ import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { StatusBanner } from "@/components/admin/status-banner";
-import { fetchApi } from "@/lib/api/client";
-import type { StudentDetailOut } from "@/lib/api/types";
+import { useUpdateStudent } from "@/hooks/api/use-admin-students";
 import { CLASS_LEVELS } from "@/lib/curriculum-scope";
 import { TRACKS } from "@/lib/admin-student";
 import { NIGERIAN_STATES } from "@/lib/constants/exam-types";
@@ -37,6 +36,7 @@ export function StudentProfileForm({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+  const updateStudent = useUpdateStudent();
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -54,11 +54,7 @@ export function StudentProfileForm({
     }
 
     try {
-      await fetchApi<StudentDetailOut>(`/admin/api/students/${student.id}`, {
-        method: "PATCH",
-        body,
-        realm: "admin",
-      });
+      await updateStudent.mutateAsync({ studentId: student.id, body });
       setSaved(true);
       router.refresh();
     } catch (e) {

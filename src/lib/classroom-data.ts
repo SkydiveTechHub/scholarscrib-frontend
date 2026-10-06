@@ -1,4 +1,5 @@
 import { api } from "@/lib/api/server";
+import { endpoints } from "@/lib/api/endpoints";
 import { isApiError } from "@/lib/api/errors";
 import type {
   ClassroomSubjectsOut,
@@ -79,7 +80,7 @@ export async function getClassroomSubjects(
 
   // The backend already narrows the catalogue server-side to CORE + the
   // student's own track, so `showAll` is intentionally not forwarded.
-  const data = await api<ClassroomSubjectsOut>("/api/classroom/subjects");
+  const data = await api<ClassroomSubjectsOut>(endpoints.classroom.subjects);
 
   const byCategory: Record<string, ClassroomSubject[]> = {};
   for (const raw of data.subjects ?? []) {
@@ -138,16 +139,12 @@ export async function getSubjectPageData(
   subjectSlug: string,
   userClassLevel: string | null,
 ): Promise<SubjectPageData | null> {
-  const slug = encodeURIComponent(subjectSlug);
-  // The classroom payload carries progress but no class/term per topic; the
-  // curriculum route carries the scope. Fetched together and joined by topic
-  // id so the browser can split topics into SS1–SS3 × three terms.
-  const [subjectResult, curriculumResult] = await Promise.allSettled([
-    api<SubjectPageOut>(`/api/classroom/subjects/${slug}`),
-    api<SubjectCurriculumOut>(`/api/subjects/${slug}/curriculum`),
-  ]);
-  if (subjectResult.status === "rejected") {
-    const error = subjectResult.reason;
+  let data: SubjectPageOut;
+  try {
+    data = await api<SubjectPageOut>(
+      endpoints.classroom.subject(subjectSlug),
+    );
+  } catch (error) {
     if (isApiError(error) && error.status === 404) return null;
     throw error;
   }

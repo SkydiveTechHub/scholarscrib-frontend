@@ -4,6 +4,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 import { LuShield, LuLock, LuUser, LuEye, LuEyeOff } from "react-icons/lu";
 import { isAdminPath } from "@/lib/admin-route";
+import { useAdminLogin } from "@/hooks/api/use-auth";
 
 function AdminLoginForm() {
   const router = useRouter();
@@ -18,6 +19,7 @@ function AdminLoginForm() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const adminLogin = useAdminLogin();
   const [error, setError] = useState("");
 
   async function handleSubmit(e: React.FormEvent) {
@@ -26,12 +28,8 @@ function AdminLoginForm() {
     setError("");
 
     try {
-      const { fetchApi } = await import("@/lib/api/client");
       const { setAdminToken } = await import("@/lib/client-session");
-      const data = await fetchApi<{ accessToken: string }>(
-        "/admin/api/auth/login",
-        { body: { identifier, password }, anonymous: true, realm: "admin" },
-      );
+      const data = await adminLogin.mutateAsync({ identifier, password });
       setAdminToken(data.accessToken);
 
       // A push + refresh follows the round trip through the proxy: the cookie
@@ -128,7 +126,7 @@ function AdminLoginForm() {
   );
 }
 
-export default async function AdminLoginPage() {
+export default function AdminLoginPage() {
   return (
     <Suspense>
       <AdminLoginForm />

@@ -13,6 +13,12 @@ import {
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { JAMB_SPEC } from "@/lib/jamb-cbt";
+import { examYearRange } from "@/lib/exam-years";
+import {
+  useGenerateJambCbt,
+  usePrepareJambCbt,
+} from "@/hooks/api/use-assessments";
 import { Spinner } from "@/components/ui/spinner";
 import { JAMB_SPEC, sharedYears } from "@/lib/jamb-cbt";
 import { fetchApi } from "@/lib/api/client";
@@ -50,6 +56,8 @@ export function JambCbtPicker({
   track: string | null;
 }) {
   const router = useRouter();
+  const { mutateAsync: prepareJambCbt } = usePrepareJambCbt<Preparation>();
+  const { mutateAsync: generateJambCbt } = useGenerateJambCbt();
   const [chosen, setChosen] = useState<string[]>([]);
   const [showAll, setShowAll] = useState(false);
   const [year, setYear] = useState<number | null>(null);
@@ -97,8 +105,38 @@ export function JambCbtPicker({
     [complete, years.length, chosenSubjects],
   );
 
-  function resetYear() {
-    run.current++;
+  // Pull the four papers for the chosen year and report what the bank now
+  // holds. Runs on selection so the wait and any shortfall land here, in front
+  // of the year grid, rather than behind "Start exam".
+  const prepare = useCallback(async (chosenYear: number, subjectIds: string[]) => {
+    const run = ++prepRun.current;
+    setPreparing(true);
+    setPrep(null);
+    setError("");
+    try {
+      const data = await prepareJambCbt({ subjectIds, examYear: chosenYear });
+      if (run !== prepRun.current) return;
+      setPrep({
+        ready: data.ready,
+        message: data.message ?? null,
+        coverage: data.coverage ?? [],
+      });
+    } catch (error) {
+      if (run === prepRun.current) {
+        setError(
+          error instanceof Error
+            ? error.message
+            : "Network error. Please check your connection and try again.",
+        );
+      }
+    } finally {
+      if (run === prepRun.current) setPreparing(false);
+    }
+  }, [prepareJambCbt]);
+
+  /** Drops any selected year and the coverage report that went with it. */
+  function clearYear() {
+    prepRun.current++;
     setYear(null);
     setYearState({ status: "idle" });
     setStartError("");
@@ -139,12 +177,7 @@ export function JambCbtPicker({
     setStarting(true);
     setStartError("");
     try {
-      // Assembles (or resumes) the sitting now, so a problem shows here
-      // rather than on a blank exam screen.
-      await fetchApi("/api/assessments/jamb-cbt/generate", {
-        method: "POST",
-        body: { subjectIds: chosen, examYear: year },
-      });
+      await generateJambCbt({ subjectIds: chosen, examYear: year });
       const params = new URLSearchParams({
         year: String(year),
         subjects: chosen.join(","),

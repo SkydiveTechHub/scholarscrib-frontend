@@ -8,12 +8,9 @@
  * read). There is no local database to double-check.
  */
 
-import { NextResponse } from "next/server";
 import {
   can,
   isSubscriptionTier,
-  requiredTierFor,
-  TIER_DISPLAY_NAMES,
   type GatedFeature,
   type SubscriptionTier,
 } from "@/lib/subscription";
@@ -51,39 +48,3 @@ export function isEntitled(
   return can(cachedTier, feature);
 }
 
-/**
- * 403 rather than 402: the request is understood and the account is real, it
- * simply is not entitled. The body carries what the client needs to prompt an
- * upgrade without hardcoding the matrix on the client.
- */
-export function entitlementDenial(feature: GatedFeature): NextResponse {
-  const required = requiredTierFor(feature);
-  return NextResponse.json(
-    {
-      error: `This feature is part of ${TIER_DISPLAY_NAMES[required]}.`,
-      requiredTier: required,
-      feature,
-    },
-    { status: 403 },
-  );
-}
-
-/**
- * The gate for route handlers holding a session. Returns a response to send
- * back, or null when the caller is entitled and the handler should carry on.
- *
- *   const denied = await denyUnlessEntitled(session, "flashcards");
- *   if (denied) return denied;
- */
-export async function denyUnlessEntitled(
-  session: { user?: unknown } | null | undefined,
-  feature: GatedFeature,
-): Promise<NextResponse | null> {
-  const userId = (session?.user as { id?: string } | undefined)?.id;
-  if (!userId) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-  return isEntitled(userId, tierOfSession(session), feature)
-    ? null
-    : entitlementDenial(feature);
-}

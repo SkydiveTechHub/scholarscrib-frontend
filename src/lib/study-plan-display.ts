@@ -1,4 +1,4 @@
-import { addDays, mondayOf } from "@/engines/planner/days";
+import { addDays, mondayOf } from "@/lib/day-keys";
 
 // Pure helpers for the study plan page. No React, no database.
 

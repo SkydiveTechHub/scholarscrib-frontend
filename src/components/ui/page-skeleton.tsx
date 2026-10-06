@@ -1,7 +1,7 @@
 /**
- * Shared streaming placeholder. Server pages that query on every request stream
- * this immediately instead of holding a blank screen until the database answers
- * — which on a cold Supabase pooler could be seconds.
+ * Shared streaming placeholder. Server pages that call the backend on every
+ * request stream this immediately instead of holding a blank screen until it
+ * answers — which on a cold backend could be seconds.
  */
 export function PageSkeleton({ rows = 4 }: { rows?: number }) {
   return (

@@ -1,5 +1,5 @@
 /**
- * Narrowing the audit log. Pure — no Prisma — so the date and enum handling
+ * Narrowing the audit log. Pure, so the date and enum handling
  * can be tested without a database.
  */
 

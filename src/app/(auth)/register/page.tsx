@@ -16,6 +16,8 @@ import {
 import { NIGERIAN_STATES } from "@/lib/constants/exam-types";
 import { Logo } from "@/components/ui/logo";
 import { cn } from "@/lib/utils";
+import { isApiError } from "@/lib/api/errors";
+import { useRegister } from "@/hooks/api/use-auth";
 
 // Two steps, not three. State was a single optional dropdown on a step of its
 // own, which read as a hurdle rather than a question — it now sits with the
@@ -27,7 +29,9 @@ const LAST_STEP = STEPS.length;
 export default function RegisterPage() {
   const router = useRouter();
   const [step, setStep] = useState(1);
-  const [loading, setLoading] = useState(false);
+  const register = useRegister();
+  // Stays true through the redirect so the button can't be pressed twice.
+  const loading = register.isPending || register.isSuccess;
   const [error, setError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [form, setForm] = useState({
@@ -88,27 +92,17 @@ export default function RegisterPage() {
       return;
     }
 
-    setLoading(true);
     setError("");
-
-    const { fetchApi } = await import("@/lib/api/client");
-    const { isApiError } = await import("@/lib/api/errors");
-    try {
-      await fetchApi<{ ok: boolean; message: string }>("/api/auth/register", {
-        method: "POST",
-        body: form,
-        anonymous: true,
-      });
-      router.push("/login?registered=true");
-    } catch (err) {
-      if (isApiError(err)) {
-        setError(err.body?.error ?? err.message);
-      } else {
-        setError("Network error. Please check your connection and try again.");
-      }
-    } finally {
-      setLoading(false);
-    }
+    register.mutate(form, {
+      onSuccess: () => router.push("/login?registered=true"),
+      onError: (err) => {
+        if (isApiError(err)) {
+          setError(err.body?.error ?? err.message);
+        } else {
+          setError("Network error. Please check your connection and try again.");
+        }
+      },
+    });
   }
 
   const optionClass = (selected: boolean) =>

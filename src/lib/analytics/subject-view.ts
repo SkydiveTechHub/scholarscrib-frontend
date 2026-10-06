@@ -1,13 +1,14 @@
 import { api } from "@/lib/api/server";
+import { endpoints } from "@/lib/api/endpoints";
 import { getGrade } from "@/lib/performance";
-import type { PerformanceOut, PerformanceSubject } from "@/lib/api/types";
+import type { PerformanceOut } from "@/lib/api/types";
 import type {
   TopicGroups,
   TopicRow,
   TopicGroupKey,
-} from "@/engines/analytics/topic-groups";
-import type { Profile } from "@/engines/analytics/profile";
-import type { Insight } from "@/engines/analytics/insight";
+} from "@/types/analytics";
+import type { Profile } from "@/types/analytics";
+import type { Insight } from "@/types/analytics";
 
 // Assembles the subject lens. The analytics rules used to live in the engines;
 // the backend now owns that computation, so this file only maps the
@@ -148,7 +149,7 @@ function rowsFor(
  * itself advice, so the chip they most need is the one nearest the thumb.
  */
 export async function getSubjectChoices(userId: string): Promise<SubjectChoice[]> {
-  const perf = await api<PerformanceOut>("/api/performance", {
+  const perf = await api<PerformanceOut>(endpoints.performance, {
     params: { pageSize: 100 },
   });
 
@@ -178,7 +179,7 @@ export async function getSubjectPerformance(
   subjectSlug: string,
   now = new Date(),
 ): Promise<SubjectPerformance | null> {
-  const perf = await api<PerformanceOut>("/api/performance", {
+  const perf = await api<PerformanceOut>(endpoints.performance, {
     params: { subject: subjectSlug },
   });
 

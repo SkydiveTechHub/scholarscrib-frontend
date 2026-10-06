@@ -8,7 +8,12 @@ import { StatusBanner } from "@/components/admin/status-banner";
 import { BODY_MAX, TITLE_MAX } from "@/lib/push-payload";
 import { describeAudience, type AudienceFilter } from "@/lib/push-audience";
 import { CONFIRM_TYPED_THRESHOLD, needsTypedConfirm } from "@/lib/announcement";
-import { fetchApi } from "@/lib/api/client";
+import {
+  usePreviewAudience,
+  useSendAnnouncement,
+  useSendTestAnnouncement,
+  type AudiencePreview,
+} from "@/hooks/api/use-admin-announcements";
 
 const INPUT_CLS =
   "w-full min-w-0 px-3 py-2 rounded-lg border border-border bg-card text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/60";
@@ -27,7 +32,7 @@ const LABELS: Record<keyof typeof OPTIONS, string> = {
   tiers: "Plan",
 };
 
-type Preview = { students: number; subscribedStudents: number; devices: number };
+type Preview = AudiencePreview;
 type Group = keyof typeof OPTIONS;
 
 export function AnnouncementComposer({ pushConfigured }: { pushConfigured: boolean }) {
@@ -61,14 +66,15 @@ export function AnnouncementComposer({ pushConfigured }: { pushConfigured: boole
   }, [selected]);
 
   const audienceKey = JSON.stringify(audience);
+  // mutateAsync is stable across renders, so the preview effect can depend on it.
+  const { mutateAsync: previewAudience } = usePreviewAudience();
+  const sendTestAnnouncement = useSendTestAnnouncement();
+  const sendAnnouncement = useSendAnnouncement();
 
   useEffect(() => {
     const timer = setTimeout(async () => {
       try {
-        const counts = await fetchApi<Preview>(
-          "/admin/api/announcements/preview",
-          { body: { audience }, realm: "admin" },
-        );
+        const counts = await previewAudience(audience);
         // Only a response for the latest chosen audience wins; a stale one
         // carries the stale audience key and is ignored by currentPreview.
         setPreview({ key: audienceKey, counts });
@@ -79,7 +85,7 @@ export function AnnouncementComposer({ pushConfigured }: { pushConfigured: boole
       }
     }, 400);
     return () => clearTimeout(timer);
-  }, [audience, audienceKey]);
+  }, [audience, audienceKey, previewAudience]);
 
   function toggle(group: Group, value: string) {
     setSelected((prev) => ({
@@ -101,14 +107,7 @@ export function AnnouncementComposer({ pushConfigured }: { pushConfigured: boole
     setError(null);
     setSuccess(null);
     try {
-      const data = await fetchApi<{
-        student: string;
-        sent: number;
-        devices: number;
-      }>("/admin/api/announcements/test", {
-        body: { ...message, contact },
-        realm: "admin",
-      });
+      const data = await sendTestAnnouncement.mutateAsync({ ...message, contact });
       setSuccess(
         data.devices === 0
           ? `${data.student} has no devices with notifications turned on.`
@@ -128,10 +127,7 @@ export function AnnouncementComposer({ pushConfigured }: { pushConfigured: boole
     setError(null);
     setSuccess(null);
     try {
-      const data = await fetchApi<{ recipientCount: number }>(
-        "/admin/api/announcements",
-        { body: { ...message, audience, expiresInDays }, realm: "admin" },
-      );
+      const data = await sendAnnouncement.mutateAsync({ ...message, audience, expiresInDays });
       setConfirmOpen(false);
       setTyped("");
       setTitle("");

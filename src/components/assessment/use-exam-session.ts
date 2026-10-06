@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { fetchApi } from "@/lib/api/client";
+import { useSubmitAssessment } from "@/hooks/api/use-assessments";
 import {
   STORAGE_VERSION,
   buildSubmission,
@@ -137,6 +137,7 @@ export function useExamSession({
   secondsPerExtraQuestion?: number;
 }) {
   const router = useRouter();
+  const { mutateAsync: submitAssessment } = useSubmitAssessment();
 
   const [data, setData] = useState<SessionData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -448,22 +449,11 @@ export function useExamSession({
     recordTimeOnQuestion();
 
     try {
-      const submission = buildSubmission(questions, answersRef.current);
-      if (submit) {
-        await submit(submission, awayCountRef.current);
-        clearStored(sessionKey);
-        setShowConfirmSubmit(false);
-        return;
-      }
-
-      await fetchApi("/api/assessments/submit", {
-        method: "POST",
-        body: {
-          attemptId,
-          answers: submission,
-          awayEvents: awayCountRef.current,
-          ...(practiceExit ? { practiceExit } : {}),
-        },
+      await submitAssessment({
+        attemptId,
+        answers: buildSubmission(questions, answersRef.current),
+        awayEvents: awayCountRef.current,
+        ...(practiceExit ? { practiceExit } : {}),
       });
 
       clearStored(sessionKey);
@@ -490,7 +480,7 @@ export function useExamSession({
     resultHref,
     router,
     sessionKey,
-    submit,
+    submitAssessment,
   ]);
 
   // The results route's loading screen is only instant once prefetched, and

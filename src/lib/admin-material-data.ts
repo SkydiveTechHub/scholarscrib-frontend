@@ -1,4 +1,5 @@
 import { api } from "@/lib/api/server";
+import { endpoints } from "@/lib/api/endpoints";
 import type { MaterialType } from "@/lib/materials";
 
 /**
@@ -46,7 +47,7 @@ export async function listMaterialSubjects(): Promise<
   }>
 > {
   const payload = rowAs(
-    await api<unknown>("/admin/api/materials/subjects", { realm: "admin" }),
+    await api<unknown>(endpoints.admin.materials.subjects, { realm: "admin" }),
   );
   const subjects = Array.isArray(payload.subjects)
     ? (payload.subjects as unknown[])
@@ -87,7 +88,7 @@ export interface MaterialRow {
  * url, author?, isFree, orderIndex }` ordered by `orderIndex` then title.
  */
 export async function listMaterials(subjectId: string): Promise<MaterialRow[]> {
-  const out = await api<unknown>(`/admin/api/materials`, {
+  const out = await api<unknown>(endpoints.admin.materials.list, {
     realm: "admin",
     params: { subjectId },
   });

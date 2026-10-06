@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 import type { DeckSummary } from "@/types/flashcards";
+import { useEnrollDeck } from "@/hooks/api/use-flashcards";
 
 type DeckListProps = {
   decks: DeckSummary[];
@@ -30,20 +31,15 @@ export function DeckList({ decks }: DeckListProps) {
 
 function DeckCard({ deck }: { deck: DeckSummary }) {
   const [enrolled, setEnrolled] = useState(deck.enrolled);
-  const [busy, setBusy] = useState(false);
+  const enroll = useEnrollDeck();
+  const busy = enroll.isPending;
 
-  async function toggle() {
-    setBusy(true);
-    try {
-      const res = await fetch(`/api/flashcards/decks/${deck.id}/enroll`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ enrolled: !enrolled }),
-      });
-      if (res.ok) setEnrolled((prev) => !prev);
-    } finally {
-      setBusy(false);
-    }
+  // Only flips once the backend has accepted it; a failure leaves it as it was.
+  function toggle() {
+    enroll.mutate(
+      { deckId: deck.id, enrolled: !enrolled },
+      { onSuccess: () => setEnrolled((prev) => !prev) },
+    );
   }
 
   const progress =

@@ -1,4 +1,5 @@
 import { api } from "@/lib/api/server";
+import { endpoints } from "@/lib/api/endpoints";
 import { isApiError } from "@/lib/api/errors";
 import type {
   DecksOut,
@@ -130,8 +131,8 @@ export async function getFlashcardsPageData(
   _userId: string,
 ): Promise<FlashcardsPageData> {
   const [index, recs] = await Promise.all([
-    api<FlashcardsIndexOut>("/api/flashcards"),
-    api<RecommendationsOut>("/api/flashcards/recommendations"),
+    api<FlashcardsIndexOut>(endpoints.flashcards.list),
+    api<RecommendationsOut>(endpoints.flashcards.recommendations),
   ]);
 
   const decks = (Array.isArray(index.decks) ? index.decks : []).map(
@@ -222,7 +223,7 @@ export async function getDeckPageData(
 ): Promise<DeckPageData | null> {
   let payload: DeckPageOut;
   try {
-    payload = await api<DeckPageOut>(`/api/flashcards/decks/${deckId}`);
+    payload = await api<DeckPageOut>(endpoints.flashcards.deck(deckId));
   } catch (error) {
     // The route does not distinguish "missing" from "not yours": both 404.
     if (isApiError(error) && error.status === 404) return null;
@@ -258,7 +259,7 @@ export async function getDeckPageData(
 export async function getFlashcardStatsFor(
   _userId: string,
 ): Promise<FlashcardStats> {
-  const data = await api<FlashcardStatsOut>("/api/flashcards/stats");
+  const data = await api<FlashcardStatsOut>(endpoints.flashcards.stats);
   const raw = (data.stats ?? {}) as Partial<FlashcardStats>;
   return {
     reviewsToday: num(raw.reviewsToday) ?? 0,

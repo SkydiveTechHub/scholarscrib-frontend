@@ -1,4 +1,5 @@
 import { api } from "@/lib/api/server";
+import { endpoints } from "@/lib/api/endpoints";
 import { getGrade } from "@/lib/utils";
 import type { AttemptResultOut } from "@/lib/api/types";
 
@@ -149,7 +150,7 @@ export async function buildAttemptResult(
   _studentId: string,
 ) {
   const data = await api<AttemptPayload>(
-    `/api/assessments/attempts/${attemptId}`,
+    endpoints.assessments.attempt(attemptId),
   );
 
   const results = (data.results ?? []).map((row) => ({

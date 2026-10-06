@@ -1,4 +1,5 @@
 import { api } from "@/lib/api/server";
+import { endpoints } from "@/lib/api/endpoints";
 import type {
   NotificationPreferences,
   PushSubscriptionInput,
@@ -18,7 +19,7 @@ const DEFAULT_PREFERENCES: NotificationPreferences = {
  * student — the backend applies its own scoping.
  */
 export async function getPreferences(userId: string): Promise<NotificationPreferences> {
-  const row = (await api("/api/user/notification-preferences").catch(() => null)) as
+  const row = (await api(endpoints.user.notificationPreferences).catch(() => null)) as
     | Partial<NotificationPreferences>
     | null;
   return {

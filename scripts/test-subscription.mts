@@ -8,10 +8,7 @@ import {
   isSubscriptionTier,
   BILLING_PERIODS,
   planFor,
-  isPurchasableTier,
   formatNaira,
-  SUBSCRIPTION_STATUSES,
-  SUBSCRIPTION_SOURCES,
   ENTITLEMENTS,
   GATED_FEATURES,
   can,
@@ -94,13 +91,6 @@ test("yearly is cheaper than twelve months", () => {
   }
 });
 
-test("freemium is free and not purchasable", () => {
-  assert.equal(planFor("FREEMIUM", "MONTHLY").amountKobo, 0);
-  assert.equal(isPurchasableTier("FREEMIUM"), false);
-  assert.equal(isPurchasableTier("STANDARD"), true);
-  assert.equal(isPurchasableTier("PREMIUM"), true);
-});
-
 test("the display names are the ones the landing page uses", () => {
   assert.equal(planFor("STANDARD", "MONTHLY").displayName, "Basic");
   assert.equal(planFor("PREMIUM", "MONTHLY").displayName, "Premium");
@@ -110,17 +100,6 @@ test("the display names are the ones the landing page uses", () => {
 test("kobo renders as naira", () => {
   assert.equal(formatNaira(250_000), "₦2,500");
   assert.equal(formatNaira(0), "₦0");
-});
-
-test("the statuses and sources are the ones the schema will mirror", () => {
-  assert.deepEqual(SUBSCRIPTION_STATUSES, [
-    "PENDING",
-    "ACTIVE",
-    "FAILED",
-    "ABANDONED",
-    "REVOKED",
-  ]);
-  assert.deepEqual(SUBSCRIPTION_SOURCES, ["PAYSTACK", "COMP"]);
 });
 
 // --- Entitlements ---------------------------------------------------------

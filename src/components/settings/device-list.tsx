@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { fetchApi } from "@/lib/api/client";
+import { useSignOutDevices, type DeviceSignOutInput } from "@/hooks/api/use-user";
 import { buttonClass } from "@/components/ui/button";
 import { FormMessage } from "./section";
 
@@ -17,12 +17,13 @@ export function DeviceList({ devices }: { devices: DeviceRow[] }) {
   const router = useRouter();
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState("");
+  const signOutDevices = useSignOutDevices();
 
-  async function signOut(body: { deviceId: string } | { allOthers: true }, key: string) {
+  async function signOut(body: DeviceSignOutInput, key: string) {
     setBusy(key);
     setError("");
     try {
-      await fetchApi("/api/user/devices", { method: "POST", body });
+      await signOutDevices.mutateAsync(body);
       router.refresh();
     } catch (error) {
       setError(

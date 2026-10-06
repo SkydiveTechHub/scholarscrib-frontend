@@ -6,10 +6,6 @@
  * objects the pages already read; do not invent fields).
  */
 
-// ─── System ───────────────────────────────────────────────────────────────
-
-export type StatusCheck = { status: boolean; detail: string };
-
 // ─── Student / Auth ────────────────────────────────────────────────────────
 
 export type SessionUserOut = {
@@ -28,20 +24,6 @@ export type SessionUserOut = {
 };
 
 export type SessionOut = { user: SessionUserOut };
-
-export type TokenOut = { accessToken: string; user: SessionUserOut };
-
-export type RegisterOut = {
-  message: string;
-  user: {
-    id: string;
-    email?: string | null;
-    firstName?: string | null;
-    lastName?: string | null;
-    classLevel?: string | null;
-    track?: string | null;
-  };
-};
 
 export type OkOut = { ok?: boolean };
 
@@ -77,14 +59,6 @@ export type SettingsProfileOut = {
   notificationPreferences: NotificationPreferences;
 };
 
-export type ProfileUpdateOut = {
-  message: string;
-  user: Record<string, unknown>;
-};
-
-export type CompleteProfileOut = { message: string };
-export type MessageOut = { message: string };
-export type RevokedOut = { revoked: number };
 export type AvatarOut = { message: string; image: string };
 
 // ─── Subjects ──────────────────────────────────────────────────────────────
@@ -105,129 +79,7 @@ export type SubjectOut = {
 
 export type SubjectsOut = { subjects: SubjectOut[] };
 
-export type TopicSummaryOut = {
-  subjectId: string;
-  subjectName: string;
-  topicId: string;
-  topicTitle: string;
-  questionCount: number;
-};
-
-// ─── Questions ─────────────────────────────────────────────────────────────
-
-/** Public question payload. The contract deliberately omits the answer. */
-export type QuestionOut = {
-  id: string;
-  subjectId?: string | null;
-  topicId?: string | null;
-  examType?: string | null;
-  examYear?: number | null;
-  questionNumber?: number | null;
-  questionText: string;
-  questionType?: string | null;
-  options?: Record<string, unknown> | unknown[] | null;
-  difficulty?: string | null;
-  marks?: number | null;
-  questionImageUrl?: string | null;
-  /** Comprehension questions: the passage the question is about. */
-  hasPassage?: boolean | null;
-  passage?: string | null;
-  passageGroup?: string | null;
-  /** The instruction shared by a group of questions, when there is no passage. */
-  instruction?: string | null;
-  /** JAMB sittings: the paper (subject) the question belongs to. */
-  subjectName?: string | null;
-  subjectCode?: string | null;
-};
-
-export type QuestionPageOut = {
-  questions: QuestionOut[];
-  pagination: { page: number; limit: number; total?: number; totalPages?: number };
-};
-
-/**
- * A row from `GET /api/questions`. Unlike quiz generation, this list carries
- * the answer key, which is what lets a past paper be graded in the browser.
- */
-export type BankQuestionOut = QuestionOut & {
-  questionImageUrl?: string | null;
-  correctAnswer?: string | null;
-  explanation?: string | null;
-  explanationImageUrl?: string | null;
-};
-
-export type BankQuestionPageOut = {
-  questions: BankQuestionOut[];
-  /**
-   * The endpoint caps `limit` at 15, so a full paper spans several pages,
-   * walked by passing `nextCursor` back as `cursor`. Read through
-   * `nextPageCursor`, which accepts either casing of the cursor fields.
-   */
-  pagination: QuestionPageOut["pagination"] & {
-    hasMore?: boolean | null;
-    has_more?: boolean | null;
-    nextCursor?: string | null;
-    next_cursor?: string | null;
-  };
-};
-
-export type PaperOut = Record<string, unknown> & {
-  id: string;
-  examType?: string | null;
-  examYear?: number | null;
-  subjectId?: string | null;
-  questionCount?: number;
-};
-
-export type PapersOut = { papers: PaperOut[] };
-
-/** One subject in the provider's past-question coverage. */
-export type CoverageSubjectOut = {
-  name: string;
-  displayName: string;
-  code: string;
-  /** Provider category: sciences, arts, commercial, social-sciences, languages, general. */
-  category: string;
-  aliases: string[];
-  questionCount: number;
-  features: {
-    hasPassages: boolean;
-    hasEquations: boolean;
-    hasDiagrams: boolean;
-  };
-  /** Lower-case exam keys: jamb, waec, neco, post_utme (the app offers the first three). */
-  examTypes: string[];
-  yearRange: { min: number; max: number };
-};
-
-export type CoverageSubjectsOut = {
-  provider: string;
-  data: CoverageSubjectOut[];
-};
-
 // ─── Assessments ───────────────────────────────────────────────────────────
-
-export type QuizOut = {
-  assessmentId: string;
-  attemptId: string;
-  title: string;
-  source: string;
-  totalQuestions: number;
-  timeLimitMinutes?: number | null;
-  questions: QuestionOut[];
-  resumed?: boolean | null;
-  deadlineAt?: string | null;
-  /** Past papers only: hand back to `/past-paper/{attemptId}/more` for the next page. */
-  nextCursor?: string | null;
-};
-
-/** One further page of a recorded past paper. */
-export type PastPaperPageOut = {
-  questions: QuestionOut[];
-  nextCursor: string | null;
-  timeLimitMinutes?: number | null;
-  deadlineAt?: string | null;
-};
 
 export type AttemptResultOut = {
   attemptId: string;
@@ -246,22 +98,7 @@ export type AttemptResultOut = {
   topicBreakdown?: Record<string, unknown>[];
 };
 
-export type BoardAvailableOut = Record<string, unknown> & {
-  board: string;
-  ready: boolean;
-  qualifying: number;
-  required: number;
-  reason?: string | null;
-};
-
-export type BoardsOut = { boards: Record<string, BoardAvailableOut> };
-
 export type MockOptionSubject = Record<string, unknown> & { id: string; name: string; slug?: string };
-
-export type MockOptionsOut = {
-  examType: string;
-  subjects: MockOptionSubject[];
-};
 
 export type JambSpecOut = {
   englishQuestions: number;
@@ -300,53 +137,17 @@ export type JambCoverageOut = {
   available: number;
 };
 
-export type JambPrepareOut = {
-  outcome: string;
-  examYear: number;
-  ready: boolean;
-  message: string;
-  coverage: JambCoverageOut[];
-};
-
 // ─── Flashcards ────────────────────────────────────────────────────────────
-
-export type DeckRefOut = { id: string; title: string; source?: string | null };
 
 export type DeckRow = Record<string, unknown> & { id: string };
 
 export type DecksOut = { decks: DeckRow[] };
 
-export type StudyQueueOut = {
-  deck: DeckRefOut;
-  queue: Record<string, unknown>[];
-  dueCount: number;
-  newCount: number;
-};
-
 export type FlashcardStatsOut = { stats: Record<string, unknown> };
 
 export type RecommendationsOut = { recommendations: Record<string, unknown>[] };
 
-export type PreviewCard = Record<string, unknown> & { id?: string };
-
-export type PreviewOut = {
-  lessonId: string;
-  title: string;
-  cards: PreviewCard[];
-  cardCount: number;
-};
-
-export type GeneratedDeckOut = {
-  deck: DeckRefOut;
-  counts: Record<string, unknown>;
-  cardCount: number;
-};
-
-export type ReviewOut = { outcome: string; review: Record<string, unknown>; topicId?: string | null };
-
-export type EnrollOut = { deckId: string; enrolled: boolean };
-
-export type DeletedDeckOut = { deckId: string }; // admin-less variant for the client
+ // admin-less variant for the client
 
 // ─── Study plan ────────────────────────────────────────────────────────────
 
@@ -363,44 +164,11 @@ export type PlanPageOut = {
   plan?: Record<string, unknown> | null;
 };
 
-export type PlanCreatedOut = { planId: string };
-
-export type ItemStatusOut = { status: string };
-
-export type ItemRow = Record<string, unknown> & { id: string };
-
-export type ItemStatusPayload = { status: string; item?: ItemRow };
-
-// ─── Lessons ───────────────────────────────────────────────────────────────
-
-export type ProgressOut = { progress: Record<string, unknown> };
-
-// ─── Library ───────────────────────────────────────────────────────────────
-
-export type LibraryOut = { resources: Record<string, unknown>[] };
-
 // ─── Achievements ──────────────────────────────────────────────────────────
 
 export type AchievementsOut = {
   achievements: Record<string, unknown>[];
   earned: number;
-};
-
-export type AwardOut = { checked: boolean; newlyEarned: string[]; count: number };
-
-// ─── Learning path ─────────────────────────────────────────────────────────
-
-export type PretestOut = {
-  passed?: boolean | null;
-  alreadyPassed?: boolean | null;
-  percentage?: number | null;
-  correctCount?: number | null;
-  totalQuestions?: number | null;
-  threshold?: number | null;
-  assessmentId?: string | null;
-  attemptId?: string | null;
-  title?: string | null;
-  questions?: QuestionOut[] | null;
 };
 
 // ─── Announcements ─────────────────────────────────────────────────────────
@@ -580,8 +348,6 @@ export type PracticeResultOut = { result?: Record<string, unknown> | null };
 
 export type CheckoutOut = { authorizationUrl: string };
 
-// ─── Push ──────────────────────────────────────────────────────────────────
-
 // ─── Admin / Auth ──────────────────────────────────────────────────────────
 
 export type AdminRowOut = {
@@ -593,7 +359,6 @@ export type AdminRowOut = {
   lastLoginAt?: string | null;
 };
 
-export type AdminTokenOut = { accessToken: string; admin: AdminRowOut };
 export type AdminSessionOut = { admin: AdminRowOut };
 export type AdminsOut = { admins: AdminRowOut[] };
 
@@ -651,37 +416,12 @@ export type MaterialOut = {
   url?: string | null;
 };
 
-export type SignUploadOut = {
-  timestamp: number;
-  signature: string;
-  folder: string;
-  cloudName?: string | null;
-  apiKey?: string | null;
-  allowedFormats?: string | unknown[] | null;
-};
-
 // ─── Admin / Academic terms ────────────────────────────────────────────────
 
 export type TermOut = { id: string; session: string; term: string; startsOn: string; endsOn: string };
 
-// ─── Admin / Announcements ─────────────────────────────────────────────────
-
-export type AnnouncementOut = {
-  id: string;
-  title: string;
-  body: string;
-  url?: string | null;
-  audience?: Record<string, unknown> | null;
-  status?: string | null;
-};
-
-export type AnnouncementCreatedOut = { id: string; recipientCount: number };
-export type AudiencePreviewOut = { students: number; subscribedStudents: number; devices: number };
-export type AnnouncementTestOut = { devices: number; sent: number; student?: string | null };
-
 // ─── Admin / Lessons ───────────────────────────────────────────────────────
 
-export type LessonTreeOut = { subjects: Record<string, unknown>[] };
 export type LessonTopicOut = { topicTitle: string; lesson?: Record<string, unknown> | null };
 export type LessonImportOut = {
   message: string;
@@ -689,23 +429,6 @@ export type LessonImportOut = {
   blockCount: number;
   warnings: unknown[];
 };
-
-// ─── Admin / Audit + Stats ─────────────────────────────────────────────────
-
-export type AuditOut = {
-  entries: Record<string, unknown>[];
-  pagination?: Record<string, unknown> | null;
-};
-
-export type StatsOut = { students: number; questions: number; attempts: number };
-
-export type BackfillOut = {
-  ledger: Record<string, unknown>;
-  wasReset: boolean;
-  blockCleared: boolean;
-};
-
-// ─── Provider ──────────────────────────────────────────────────────────────
 
 // ─── Errors ────────────────────────────────────────────────────────────────
 

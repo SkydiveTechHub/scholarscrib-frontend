@@ -1,15 +1,14 @@
 import { api } from "@/lib/api/server";
+import { endpoints } from "@/lib/api/endpoints";
 import type { PlanPageOut, PlanSubjectRow } from "@/lib/api/types";
 import type { ClassLevel } from "@/lib/curriculum-scope";
-import type { DayKey } from "@/engines/planner/days";
-import {
-  DEFAULT_MINUTES,
-  resolvePlanMode,
-  type PlanMode,
-} from "@/engines/planner/mode";
-import type { Overload } from "@/engines/planner/layout";
-import type { OutlineWeek } from "@/engines/planner/outline";
-import type { TermSource } from "@/engines/planner/term-context";
+import type {
+  DayKey,
+  OutlineWeek,
+  Overload,
+  PlanMode,
+  TermSource,
+} from "@/types/study-plan";
 import type {
   PositionOption,
   StudyPlanData,
@@ -140,22 +139,40 @@ function asNullableStringMap(value: unknown): Record<string, string | null> {
   return out;
 }
 
+type MinuteBudget = { weekdayMinutes: number; weekendMinutes: number };
+
+/** Only used if the backend ever omits `defaults`. */
+const FALLBACK_MINUTES: MinuteBudget = { weekdayMinutes: 30, weekendMinutes: 60 };
+
+/**
+ * The backend sends `mode`; if it is missing, label the plan the way the
+ * backend would have: only SS3 with a future exam date leaves term mode.
+ */
+function fallbackMode(
+  classLevel: ClassLevel | null,
+  targetDate: DayKey | null,
+  forceExamMode: boolean,
+  today: DayKey,
+): PlanMode {
+  if (classLevel !== "SS3" || !targetDate || targetDate < today) return "TERM";
+  return forceExamMode ? "EXAM" : "BLENDED";
+}
+
 function asPlan(
   value: Record<string, unknown>,
   today: DayKey,
   classLevel: ClassLevel | null,
+  defaults: MinuteBudget,
 ): StudyPlanData {
   const targetDate = asDayKey(value.targetDate);
   const forceExamMode = asBoolean(value.forceExamMode);
   const subjectIds = asStringList(value.subjectIds);
-  const weekdayMinutes =
-    num(value.weekdayMinutes) ?? DEFAULT_MINUTES[classLevel ?? "SS1"].weekdayMinutes;
-  const weekendMinutes =
-    num(value.weekendMinutes) ?? DEFAULT_MINUTES[classLevel ?? "SS1"].weekendMinutes;
+  const weekdayMinutes = num(value.weekdayMinutes) ?? defaults.weekdayMinutes;
+  const weekendMinutes = num(value.weekendMinutes) ?? defaults.weekendMinutes;
   const mode: PlanMode =
     value.mode === "TERM" || value.mode === "BLENDED" || value.mode === "EXAM"
       ? value.mode
-      : resolvePlanMode({ classLevel, targetDate, forceExamMode, today });
+      : fallbackMode(classLevel, targetDate, forceExamMode, today);
 
   return {
     id: String(value.id ?? ""),
@@ -191,15 +208,18 @@ function asPlan(
  * current window. `plan` is null when the student has never created one.
  */
 export async function getStudyPlanPageData(): Promise<StudyPlanPageData> {
-  const data = await api<PlanPageOut>("/api/study-plan");
+  const data = await api<PlanPageOut>(endpoints.studyPlan.root);
 
   const today = String(data.today ?? "");
   const classLevel = asClassLevel(data.classLevel);
-  const fallbackDefaults = DEFAULT_MINUTES[classLevel ?? "SS1"];
   const rawDefaults =
     data.defaults && typeof data.defaults === "object"
       ? (data.defaults as Record<string, unknown>)
       : {};
+  const defaults: MinuteBudget = {
+    weekdayMinutes: num(rawDefaults.weekdayMinutes) ?? FALLBACK_MINUTES.weekdayMinutes,
+    weekendMinutes: num(rawDefaults.weekendMinutes) ?? FALLBACK_MINUTES.weekendMinutes,
+  };
 
   return {
     today,
@@ -207,16 +227,13 @@ export async function getStudyPlanPageData(): Promise<StudyPlanPageData> {
     termLabel: typeof data.termLabel === "string" ? data.termLabel : "",
     termSource: asTermSource(data.termSource),
     daysToExam: num(data.daysToExam),
-    defaults: {
-      weekdayMinutes: num(rawDefaults.weekdayMinutes) ?? fallbackDefaults.weekdayMinutes,
-      weekendMinutes: num(rawDefaults.weekendMinutes) ?? fallbackDefaults.weekendMinutes,
-    },
+    defaults,
     subjects: (Array.isArray(data.subjects) ? data.subjects : [])
       .filter((row): row is PlanSubjectRow => typeof row === "object" && row !== null)
       .map(asSubject),
     plan:
       data.plan && typeof data.plan === "object"
-        ? asPlan(data.plan as Record<string, unknown>, today, classLevel)
+        ? asPlan(data.plan as Record<string, unknown>, today, classLevel, defaults)
         : null,
   };
 }

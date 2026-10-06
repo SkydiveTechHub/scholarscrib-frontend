@@ -1,7 +1,7 @@
 import { CLASS_LEVELS, TERMS, type ClassLevel, type Term } from "@/lib/curriculum-scope";
 import { TRACK_CATEGORIES, TRACK_LABELS, type TrackCategory } from "@/lib/subjects";
 
-// Narrowing the admin lesson list to one subject's topics. Pure — no Prisma, no
+// Narrowing the admin lesson list to one subject's topics. Pure — no
 // React — so the filtering rules can be tested without a database or a browser.
 //
 // See docs/superpowers/specs/2026-08-06-admin-lessons-browse-design.md
@@ -28,7 +28,7 @@ function memberOf<T extends string>(
 }
 
 /**
- * Coerce raw query strings into a filter that is safe to hand to Prisma.
+ * Coerce raw query strings into a filter that is safe to send to the backend.
  *
  * A hand-edited URL can carry anything, so an unrecognised track, class level
  * or term is dropped rather than passed through as a `where` clause on an enum

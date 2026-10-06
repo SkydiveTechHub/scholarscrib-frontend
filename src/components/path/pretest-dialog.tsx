@@ -16,6 +16,8 @@ import {
 import { cn } from "@/lib/utils";
 import { RichText } from "@/components/ui/rich-text";
 import { Button } from "@/components/ui/button";
+import { isApiError } from "@/lib/api/errors";
+import { usePretest } from "@/hooks/api/use-learning-path";
 
 type PretestQuestion = {
   id: string;
@@ -50,6 +52,11 @@ export function PretestDialog({
   onPassed,
 }: PretestDialogProps) {
   const router = useRouter();
+  const { mutateAsync: startPretest } = usePretest<{
+    attemptId: string;
+    questions: PretestQuestion[];
+  }>();
+  const { mutateAsync: gradePretest } = usePretest<PretestResult>();
   const [open, setOpen] = useState(false);
   const [phase, setPhase] = useState<Phase>("intro");
   const [loading, setLoading] = useState(false);
@@ -85,22 +92,16 @@ export function PretestDialog({
     setLoading(true);
     setError("");
     try {
-      const res = await fetch(`/api/learning-path/topics/${topicId}/pretest`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({}),
-      });
-      if (!res.ok) {
-        const data = await res.json();
-        setError(data.error || "Failed to start the pretest.");
-        return;
-      }
-      const data = await res.json();
+      const data = await startPretest({ topicId, body: {} });
       setAttemptId(data.attemptId);
       setQuestions(data.questions);
       setPhase("quiz");
-    } catch {
-      setError("Network error. Please try again.");
+    } catch (err) {
+      setError(
+        isApiError(err)
+          ? err.body?.error || "Failed to start the pretest."
+          : "Network error. Please try again.",
+      );
     } finally {
       setLoading(false);
     }
@@ -123,17 +124,10 @@ export function PretestDialog({
         selectedAnswer: answers[q.id] || null,
         timeSpentSeconds: 0,
       }));
-      const res = await fetch(`/api/learning-path/topics/${topicId}/pretest`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ attemptId, answers: payload }),
+      const data = await gradePretest({
+        topicId,
+        body: { attemptId, answers: payload },
       });
-      if (!res.ok) {
-        const data = await res.json();
-        setError(data.error || "Failed to submit the pretest.");
-        return;
-      }
-      const data = await res.json();
       setResult({
         passed: data.passed,
         percentage: data.percentage,
@@ -146,8 +140,12 @@ export function PretestDialog({
         router.refresh();
         if (onPassed) onPassed();
       }
-    } catch {
-      setError("Network error. Please try again.");
+    } catch (err) {
+      setError(
+        isApiError(err)
+          ? err.body?.error || "Failed to submit the pretest."
+          : "Network error. Please try again.",
+      );
     } finally {
       setSubmitting(false);
     }

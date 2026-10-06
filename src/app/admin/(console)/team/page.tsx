@@ -1,4 +1,5 @@
 import { api } from "@/lib/api/server";
+import { endpoints } from "@/lib/api/endpoints";
 import type { AdminsOut } from "@/lib/api/types";
 import { requireOwnerPage } from "@/lib/admin-session";
 import { PageHeader } from "@/components/ui/page-header";
@@ -9,7 +10,7 @@ export const dynamic = "force-dynamic";
 export default async function AdminTeamPage() {
   const owner = await requireOwnerPage();
 
-  const { admins } = await api<AdminsOut>("/admin/api/admins", { realm: "admin" });
+  const { admins } = await api<AdminsOut>(endpoints.admin.admins, { realm: "admin" });
   // // backend-ported: `AdminsOut` (`AdminRowOut`) has no createdAt. Standing in
   // for the old `createdAt.toISOString()` sort key with the epoch keeps the
   // manager's row rendering stable; the backend is expected to already order

@@ -1,10 +1,6 @@
 /**
  * The four kinds of library material, shared by the admin console and the
- * student shelf.
- *
- * Declared as a TypeScript union rather than imported from `@prisma/client` so
- * the pure rules built on it stay testable without a generated client. The
- * members match the `MaterialType` enum in `prisma/schema.prisma` by name.
+ * student shelf. The members match the backend's `MaterialType` enum by name.
  */
 export const MATERIAL_TYPES = ["PDF", "IMAGE", "VIDEO", "LINK"] as const;
 
@@ -21,6 +17,3 @@ export const MATERIAL_LABELS: Record<MaterialType, string> = {
   LINK: "Link",
 };
 
-export function isMaterialType(value: string): value is MaterialType {
-  return (MATERIAL_TYPES as readonly string[]).includes(value);
-}

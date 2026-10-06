@@ -1,4 +1,5 @@
 import { api } from "@/lib/api/server";
+import { endpoints } from "@/lib/api/endpoints";
 import type { AchievementsOut } from "@/lib/api/types";
 
 export type StudentAchievement = {
@@ -37,7 +38,7 @@ function asStudentAchievement(
  * `GET /api/achievements` answers both halves in one round trip.
  */
 export async function getStudentAchievements(): Promise<StudentAchievement[]> {
-  const { achievements } = await api<AchievementsOut>("/api/achievements");
+  const { achievements } = await api<AchievementsOut>(endpoints.achievements);
   return (achievements ?? []).map(asStudentAchievement);
 }
 
