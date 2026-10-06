@@ -1,6 +1,7 @@
 import { cache } from "react";
 import { api } from "@/lib/api/server";
 import { endpoints } from "@/lib/api/endpoints";
+import { PAST_PAPER_LIMIT, nextPageCursor } from "@/lib/past-question-exam";
 import { PAPER_SAMPLE_COUNT, isPaperPageEligible } from "./eligibility";
 import { examSegmentFor, type PublicExamType } from "./exam-segment";
 import { loadEligibleTopicIds, type PublicSampleQuestion } from "./learn-data";
@@ -152,7 +153,8 @@ async function fetchPaperQuestions(
   params: Record<string, string | number>,
 ): Promise<PublicQuestionRow[]> {
   const rows: PublicQuestionRow[] = [];
-  for (let page = 1; page <= 8; page += 1) {
+  let cursor: string | null = null;
+  for (let page = 1; page <= MAX_PAPER_PAGES; page += 1) {
     const payload = (await api(endpoints.questions.list, {
       anonymous: true,
       params: { ...params, limit: PAST_PAPER_LIMIT, cursor },
