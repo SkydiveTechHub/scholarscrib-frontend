@@ -1,8 +1,9 @@
 /**
  * Browser transport: reads the access-token cookie with plain JS, attaches
  * `Authorization: Bearer`, and calls the backend's public origin directly.
- * Used by client components and forms. On a 401/403 it clears the token and
- * sends the visitor to the right sign-in page.
+ * Used by client components and forms. On a 401 it clears the token and
+ * sends the visitor to the right sign-in page; a 403 (not allowed, e.g. a
+ * plan entitlement) is thrown to the caller and never signs anyone out.
  */
 import { ACCESS_COOKIE, ADMIN_ACCESS_COOKIE, API_URL } from "./config";
 import { ApiError } from "./errors";
@@ -107,6 +108,9 @@ export async function fetchApi<T>(
 
   const res = await fetch(url.toString(), {
     ...init,
+    // fetch rejects a body on GET; a call that sends one without naming a
+    // method means POST.
+    method: init.method ?? (body === undefined ? "GET" : "POST"),
     headers,
     body:
       body === undefined

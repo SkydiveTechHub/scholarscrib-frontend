@@ -1,3 +1,4 @@
+import { questionPlainText } from "@/lib/question-markup";
 import { absoluteUrl, siteDescription, siteName } from "./site";
 
 /**
@@ -192,15 +193,15 @@ export function quizJsonLd({
     return [{
       "@type": "Question",
       eduQuestionType: "Multiple choice",
-      text: question.questionText,
+      text: questionPlainText(question.questionText),
       acceptedAnswer: {
         "@type": "Answer",
-        text: accepted,
-        comment: { "@type": "Comment", text: question.explanation },
+        text: questionPlainText(accepted),
+        comment: { "@type": "Comment", text: questionPlainText(question.explanation) },
       },
       suggestedAnswer: Object.entries(question.options)
         .filter(([letter]) => letter !== question.correctAnswer)
-        .map(([, text]) => ({ "@type": "Answer", text })),
+        .map(([, text]) => ({ "@type": "Answer", text: questionPlainText(text) })),
     }];
   });
 

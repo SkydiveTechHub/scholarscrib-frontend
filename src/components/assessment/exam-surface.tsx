@@ -19,6 +19,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { QuestionImage } from "@/components/ui/question-image";
+import { RichText } from "@/components/ui/rich-text";
 import { formatExamTime, type ExamSession } from "./use-exam-session";
 import { Modal } from "@/components/ui/modal";
 import { useNavigationGuard } from "./use-navigation-guard";
@@ -35,6 +36,11 @@ type ExamSurfaceProps = {
   /** Shown under the title, e.g. "JAMB" or the current subject. */
   eyebrow?: string;
   backHref?: string;
+  /**
+   * Leaves a failed exam without navigating. For an exam rendered in place of
+   * the page that started it, where `backHref` is the page already on screen.
+   */
+  onExit?: () => void;
   /** Splits the navigator and adds jump tabs. Omit for a single-subject quiz. */
   groups?: QuestionGroup[];
   showShortcutHint?: boolean;
@@ -47,6 +53,7 @@ export function ExamSurface({
   session,
   eyebrow,
   backHref,
+  onExit,
   groups,
   showShortcutHint = true,
   confirmTitle = "Submit Quiz?",
@@ -70,6 +77,9 @@ export function ExamSurface({
     showConfirmSubmit,
     focusMode,
     hideTimer,
+    hasMore,
+    loadingMore,
+    loadMoreError,
     indexById,
     answeredCount,
     flaggedCount,
@@ -82,10 +92,13 @@ export function ExamSurface({
     selectAnswer,
     toggleFlag,
     goToQuestion,
+    goNext,
     handleSubmit,
     isAnswered,
   } = session;
   const untimed = deadlineAt == null;
+  // On a paged paper the last question loaded is not the last question.
+  const onLastQuestion = currentIndex === questions.length - 1 && !hasMore;
 
   // `armed` covers the whole life of the attempt, including the submit
   // request itself — the history sentinel must stay in place until the
@@ -101,7 +114,7 @@ export function ExamSurface({
 
   // ── Keyboard shortcuts ───────────────────────────────────
   useEffect(() => {
-    if (loading || error || showConfirmSubmit) return;
+    if (loading || error || showConfirmSubmit || submitting) return;
 
     function onKeyDown(event: KeyboardEvent) {
       const target = event.target as HTMLElement | null;
@@ -135,8 +148,8 @@ export function ExamSurface({
         case "arrowright":
         case " ":
           event.preventDefault();
-          if (currentIndex < questions.length - 1) goToQuestion(currentIndex + 1);
-          else setShowConfirmSubmit(true);
+          if (onLastQuestion) setShowConfirmSubmit(true);
+          else void goNext();
           break;
         case "f":
           event.preventDefault();
@@ -153,7 +166,7 @@ export function ExamSurface({
           break;
         case "enter":
           event.preventDefault();
-          if (currentIndex === questions.length - 1) setShowConfirmSubmit(true);
+          if (onLastQuestion) setShowConfirmSubmit(true);
           break;
       }
     }
@@ -164,11 +177,14 @@ export function ExamSurface({
     loading,
     error,
     showConfirmSubmit,
+    submitting,
     questions,
     currentIndex,
     selectAnswer,
     toggleFlag,
     goToQuestion,
+    goNext,
+    onLastQuestion,
     setShowConfirmSubmit,
     setFocusMode,
     setHideTimer,
@@ -198,7 +214,11 @@ export function ExamSurface({
         <p className="mt-1 text-sm text-muted">{error}</p>
         <Button
           className="mt-5"
-          onClick={() => (backHref ? router.push(backHref) : router.back())}
+          onClick={() => {
+            if (onExit) onExit();
+            else if (backHref) router.push(backHref);
+            else router.back();
+          }}
         >
           Go Back
         </Button>
@@ -223,6 +243,7 @@ export function ExamSurface({
             <p className="text-xs text-muted">
               {eyebrow && `${eyebrow} · `}Question {currentIndex + 1} of{" "}
               {questions.length}
+              {hasMore && "+"}
             </p>
           </div>
 
@@ -365,6 +386,29 @@ export function ExamSurface({
           {currentQuestion && (
             <div key={currentQuestion.id} className="animate-slide-up">
               <div className="mb-5">
+                {currentQuestion.passage && (
+                  // Comprehension: the passage comes first, scrolling on its
+                  // own so a long text never pushes the options off screen.
+                  <section
+                    aria-label="Passage"
+                    className="mb-5 rounded-xl border border-border bg-secondary/40 p-4"
+                  >
+                    <p className="mb-2 text-xs font-bold uppercase tracking-wide text-muted">
+                      Read the passage
+                    </p>
+                    <div
+                      tabIndex={0}
+                      className="max-h-72 overflow-y-auto whitespace-pre-line text-sm leading-relaxed text-foreground"
+                    >
+                      <RichText text={currentQuestion.passage} />
+                    </div>
+                  </section>
+                )}
+                {currentQuestion.instruction && (
+                  <p className="mb-3 text-sm font-medium italic text-muted">
+                    <RichText text={currentQuestion.instruction} />
+                  </p>
+                )}
                 <div className="flex items-start justify-between gap-4">
                   <h2
                     className={cn(
@@ -375,7 +419,7 @@ export function ExamSurface({
                     <span className="mr-2 inline-flex h-7 w-7 items-center justify-center rounded-lg bg-primary-soft text-sm font-bold text-primary">
                       {currentIndex + 1}
                     </span>
-                    {currentQuestion.questionText}
+                    <RichText text={currentQuestion.questionText} />
                   </h2>
                   <button
                     type="button"
@@ -446,7 +490,7 @@ export function ExamSurface({
                               : "text-foreground",
                           )}
                         >
-                          {value}
+                          <RichText text={value} />
                         </span>
                         {selected && (
                           <LuCheck className="h-5 w-5 flex-shrink-0 text-primary" />
@@ -467,7 +511,7 @@ export function ExamSurface({
                   Previous
                 </Button>
 
-                {currentIndex === questions.length - 1 ? (
+                {onLastQuestion ? (
                   <Button
                     variant="success"
                     onClick={() => setShowConfirmSubmit(true)}
@@ -478,13 +522,20 @@ export function ExamSurface({
                 ) : (
                   <Button
                     variant="primary"
-                    onClick={() => goToQuestion(currentIndex + 1)}
+                    onClick={() => void goNext()}
+                    disabled={loadingMore}
                   >
-                    Next
+                    {loadingMore ? "Loading…" : "Next"}
                     <LuChevronRight className="h-4 w-4" />
                   </Button>
                 )}
               </div>
+
+              {loadMoreError && (
+                <p role="alert" className="mt-3 text-right text-xs text-danger">
+                  {loadMoreError} Press Next to try again.
+                </p>
+              )}
 
               {showShortcutHint && !focusMode && (
                 <p className="mt-5 flex items-center justify-center gap-1.5 text-center text-[11px] text-muted">
@@ -603,14 +654,15 @@ export function ExamSurface({
 
           <div className="text-center text-xs font-semibold text-muted">
             {answeredCount}/{questions.length}
+            {hasMore && "+"}
           </div>
 
           <Button
             variant="outline"
             size="icon"
-            onClick={() => goToQuestion(currentIndex + 1)}
-            disabled={currentIndex >= questions.length - 1}
-            aria-label="Next question"
+            onClick={() => void goNext()}
+            disabled={onLastQuestion || loadingMore}
+            aria-label={loadingMore ? "Loading more questions" : "Next question"}
           >
             <LuChevronRight className="h-5 w-5" />
           </Button>
@@ -625,7 +677,12 @@ export function ExamSurface({
         </div>
       </div>
 
-      {showConfirmSubmit && (
+      {/* Covers the paper from the moment it is submitted (button or timer)
+          until the results page replaces this one. A failed submit lifts it,
+          and the confirmation reappears with the error for a retry. */}
+      {submitting && <MarkingOverlay />}
+
+      {showConfirmSubmit && !submitting && (
         <ConfirmSubmitDialog
           title={confirmTitle}
           answeredCount={answeredCount}
@@ -645,6 +702,26 @@ export function ExamSurface({
         onStay={cancelLeave}
         onLeave={confirmLeave}
       />
+    </div>
+  );
+}
+
+/**
+ * Blocks the paper while it is graded and the results page loads, so nothing
+ * can be changed after submission. Announced politely for screen readers.
+ */
+function MarkingOverlay() {
+  return (
+    <div
+      role="status"
+      aria-live="polite"
+      className="fixed inset-0 z-[60] flex flex-col items-center justify-center bg-background/85 p-6 text-center backdrop-blur-sm animate-fade-in"
+    >
+      <div className="h-12 w-12 animate-spin rounded-full border-[3px] border-primary/25 border-t-primary" />
+      <p className="mt-5 text-base font-bold text-foreground">Marking your paper…</p>
+      <p className="mt-1 max-w-xs text-sm text-muted">
+        Your answers are in. Your result will open in a moment.
+      </p>
     </div>
   );
 }

@@ -16,10 +16,12 @@ import {
   storageKeyFor,
   withAccumulatedTime,
   withSelectedAnswer,
+  withAppendedPage,
   withToggledFlag,
   type AnswerMap,
   type ExamQuestion,
   type SessionData,
+  type SubmissionAnswer,
 } from "./exam-state";
 import { nextAwayCount } from "./exam-focus";
 
@@ -40,6 +42,14 @@ export type GeneratedExam = {
   deadlineAt?: string;
   /** True when the server handed back an unfinished attempt rather than a new one. */
   resumed?: boolean;
+  /** Set when `questions` is only the first page; handed back to `loadMore`. */
+  nextCursor?: string | null;
+};
+
+/** One further page of a paged paper, as returned by `loadMore`. */
+export type ExamPage = {
+  questions: ExamQuestion[];
+  nextCursor: string | null;
 };
 
 /** What we hand back to the caller to drive the UI. */
@@ -96,6 +106,9 @@ export function useExamSession({
   resultHref,
   defaultTimeLimitMinutes = 60,
   practiceExit,
+  submit,
+  loadMore,
+  secondsPerExtraQuestion = 0,
 }: {
   /** Stable per exam configuration. Distinct configs must not share a session. */
   sessionKey: string;
@@ -108,6 +121,20 @@ export function useExamSession({
    * doing it as a side effect of rendering.
    */
   practiceExit?: { subjectSlug: string; topicSlug: string };
+  /**
+   * Replaces the server submit and the redirect to `resultHref`. For papers
+   * drawn straight from the question bank, which have no server attempt to
+   * grade; the caller scores the answers and shows the result itself.
+   */
+  submit?: (answers: SubmissionAnswer[], awayEvents: number) => Promise<void>;
+  /**
+   * Fetches the page after `cursor`, for papers served a page at a time.
+   * Called when the student moves past the last question loaded so far, with
+   * the attempt the page belongs to.
+   */
+  loadMore?: (cursor: string, attemptId: string) => Promise<ExamPage>;
+  /** Time added to a timed paper's deadline for each question `loadMore` adds. */
+  secondsPerExtraQuestion?: number;
 }) {
   const router = useRouter();
 
@@ -119,6 +146,8 @@ export function useExamSession({
   const [submitting, setSubmitting] = useState(false);
   const [showConfirmSubmit, setShowConfirmSubmit] = useState(false);
   const [resumed, setResumed] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [loadMoreError, setLoadMoreError] = useState("");
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<AnswerMap>({});
@@ -190,6 +219,7 @@ export function useExamSession({
           questions: stored.questions,
           deadlineAt: stored.deadlineAt,
           startedAt: stored.startedAt,
+          nextCursor: stored.nextCursor ?? null,
         });
         setAnswers(stored.answers);
         setCurrentIndex(clampIndex(stored.currentIndex, stored.questions.length));
@@ -226,6 +256,7 @@ export function useExamSession({
           questions: exam.questions,
           deadlineAt: deadline,
           startedAt: Date.now(),
+          nextCursor: exam.nextCursor ?? null,
         };
         answersRef.current = emptyAnswers(exam.questions);
         awayCountRef.current = 0;
@@ -315,8 +346,12 @@ export function useExamSession({
     setAnswers(next);
   }, [questions, currentIndex]);
 
+  // Once Submit is pressed the paper is frozen: nothing changed now could
+  // reach the server, so the UI must not pretend otherwise. A failed submit
+  // clears submittedRef and unfreezes it for the retry.
   const selectAnswer = useCallback(
     (questionId: string, choice: string) => {
+      if (submittedRef.current) return;
       answersRef.current = withSelectedAnswer(answersRef.current, questionId, choice);
       setAnswers(answersRef.current);
       persist(currentIndex);
@@ -326,6 +361,7 @@ export function useExamSession({
 
   const toggleFlag = useCallback(
     (questionId: string) => {
+      if (submittedRef.current) return;
       answersRef.current = withToggledFlag(answersRef.current, questionId);
       setAnswers(answersRef.current);
       persist(currentIndex);
@@ -335,13 +371,73 @@ export function useExamSession({
 
   const goToQuestion = useCallback(
     (index: number) => {
-      if (!questions[index]) return;
+      if (submittedRef.current || !questions[index]) return;
       recordTimeOnQuestion();
       setCurrentIndex(index);
       persist(index);
     },
     [questions, recordTimeOnQuestion, persist],
   );
+
+  const nextCursor = loadMore ? (data?.nextCursor ?? null) : null;
+  const hasMore = nextCursor !== null;
+  const loadingMoreRef = useRef(false);
+
+  /**
+   * Moves forward one question, fetching the next page first when the student
+   * is on the last question loaded so far. A failed fetch leaves them where
+   * they are with `loadMoreError` set, so pressing Next again retries.
+   */
+  const goNext = useCallback(async () => {
+    if (submittedRef.current) return;
+    if (currentIndex < questions.length - 1) {
+      goToQuestion(currentIndex + 1);
+      return;
+    }
+    if (!data || !loadMore || nextCursor === null) return;
+    if (loadingMoreRef.current || submittedRef.current) return;
+
+    loadingMoreRef.current = true;
+    setLoadingMore(true);
+    setLoadMoreError("");
+    try {
+      const page = await loadMore(nextCursor, data.attemptId);
+      if (submittedRef.current) return;
+      const grown = withAppendedPage(
+        data,
+        page.questions,
+        page.nextCursor,
+        secondsPerExtraQuestion,
+      );
+      const added = grown.questions.slice(data.questions.length);
+      answersRef.current = { ...emptyAnswers(added), ...answersRef.current };
+      recordTimeOnQuestion();
+      const index = added.length > 0 ? data.questions.length : currentIndex;
+      writeStored(sessionKey, grown, answersRef.current, index, awayCountRef.current);
+      setData(grown);
+      setAnswers(answersRef.current);
+      setCurrentIndex(index);
+    } catch (err) {
+      setLoadMoreError(
+        err instanceof Error
+          ? err.message
+          : "Couldn't load the next questions. Try again.",
+      );
+    } finally {
+      loadingMoreRef.current = false;
+      setLoadingMore(false);
+    }
+  }, [
+    currentIndex,
+    questions.length,
+    goToQuestion,
+    data,
+    loadMore,
+    nextCursor,
+    secondsPerExtraQuestion,
+    recordTimeOnQuestion,
+    sessionKey,
+  ]);
 
   // ── Submit ───────────────────────────────────────────────
   const handleSubmit = useCallback(async () => {
@@ -352,18 +448,28 @@ export function useExamSession({
     recordTimeOnQuestion();
 
     try {
+      const submission = buildSubmission(questions, answersRef.current);
+      if (submit) {
+        await submit(submission, awayCountRef.current);
+        clearStored(sessionKey);
+        setShowConfirmSubmit(false);
+        return;
+      }
+
       await fetchApi("/api/assessments/submit", {
         method: "POST",
         body: {
           attemptId,
-          answers: buildSubmission(questions, answersRef.current),
+          answers: submission,
           awayEvents: awayCountRef.current,
           ...(practiceExit ? { practiceExit } : {}),
         },
       });
 
       clearStored(sessionKey);
-      setShowConfirmSubmit(false);
+      // `submitting` stays true from here until the results page replaces
+      // this one, so the "marking" overlay covers the navigation too and the
+      // student never lands back on an editable paper.
       router.push(resultHref(attemptId));
     } catch (error) {
       // Keep the session mounted and the answers intact so the student can
@@ -384,7 +490,16 @@ export function useExamSession({
     resultHref,
     router,
     sessionKey,
+    submit,
   ]);
+
+  // The results route's loading screen is only instant once prefetched, and
+  // the attempt id is known from the start: fetch it now, not at submit time.
+  // Keyed on the URL, not the function: callers may pass an inline resultHref.
+  const resultPath = attemptId && !submit ? resultHref(attemptId) : null;
+  useEffect(() => {
+    if (resultPath) router.prefetch(resultPath);
+  }, [resultPath, router]);
 
   // Kept in a ref so the timer can reach the newest closure without restarting.
   const submitRef = useRef(handleSubmit);
@@ -444,6 +559,9 @@ export function useExamSession({
     showConfirmSubmit,
     focusMode,
     hideTimer,
+    hasMore,
+    loadingMore,
+    loadMoreError,
     // derived
     indexById,
     answeredCount,
@@ -458,6 +576,7 @@ export function useExamSession({
     selectAnswer,
     toggleFlag,
     goToQuestion,
+    goNext,
     handleSubmit,
     isAnswered,
   };

@@ -1,9 +1,6 @@
 import Link from "next/link";
 import { LuCompass, LuFlame, LuLockOpen, LuRotateCcw } from "react-icons/lu";
-import {
-  CONTINUE_REASON,
-  type NextTopicRecommendation,
-} from "@/engines/learning/recommend";
+import type { DashboardPick } from "@/lib/api/types";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { evidenceLabel } from "@/lib/evidence-display";
@@ -13,6 +10,9 @@ export interface SubjectMeta {
   name: string;
   code: string;
 }
+
+/** The backend's reason on the pick that resumes an unfinished lesson. */
+const CONTINUE_REASON = "Continue where you left off";
 
 function reasonVariant(
   reason: string,
@@ -39,7 +39,7 @@ export function NextTopics({
   items,
   subjects,
 }: {
-  items: NextTopicRecommendation[];
+  items: DashboardPick[];
   subjects: Record<string, SubjectMeta>;
 }) {
   if (items.length === 0) return null;
@@ -86,7 +86,12 @@ export function NextTopics({
         return (
           <li key={item.topicId}>
             <Link
-              href={`/classroom/${subject.slug}/${item.slug}`}
+              href={
+                // An unfinished lesson resumes straight in the player.
+                item.lessonId
+                  ? `/classroom/${subject.slug}/${item.slug}/study`
+                  : `/classroom/${subject.slug}/${item.slug}`
+              }
               className={cn(
                 "card card-interactive group block p-4 transition-opacity",
                 "hover:opacity-90",

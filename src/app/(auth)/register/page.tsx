@@ -95,6 +95,7 @@ export default function RegisterPage() {
     const { isApiError } = await import("@/lib/api/errors");
     try {
       await fetchApi<{ ok: boolean; message: string }>("/api/auth/register", {
+        method: "POST",
         body: form,
         anonymous: true,
       });

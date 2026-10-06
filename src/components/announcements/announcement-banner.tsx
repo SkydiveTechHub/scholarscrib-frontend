@@ -4,15 +4,9 @@ import { isInternalPath } from "@/lib/push-payload";
 import { buttonClass } from "@/components/ui/button";
 import { DismissibleAnnouncement } from "./dismiss-announcement-button";
 
-export async function AnnouncementBanner({ userId }: { userId: string }) {
-  let announcement;
-  try {
-    announcement = await getBannerAnnouncement(userId);
-  } catch (error) {
-    // A banner is never worth a broken page (e.g. before the migration).
-    console.error("Loading announcement banner failed:", error);
-    return null;
-  }
+export async function AnnouncementBanner() {
+  // Never throws: a failed read renders no banner rather than a broken page.
+  const announcement = await getBannerAnnouncement();
   if (!announcement) return null;
 
   return (

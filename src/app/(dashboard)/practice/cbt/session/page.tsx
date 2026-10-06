@@ -12,6 +12,8 @@ import {
   type GeneratedExam,
 } from "@/components/assessment/use-exam-session";
 import { JAMB_SPEC } from "@/lib/jamb-cbt";
+import type { QuizOut } from "@/lib/api/types";
+import { toExamQuestion } from "@/lib/past-question-exam";
 
 function JambCbtSession() {
   const searchParams = useSearchParams();
@@ -25,13 +27,23 @@ function JambCbtSession() {
   );
 
   const generate = useCallback(async (): Promise<GeneratedExam> => {
-    return fetchApi<GeneratedExam>("/api/assessments/jamb-cbt/generate", {
+    const paper = await fetchApi<QuizOut>("/api/assessments/jamb-cbt/generate", {
       method: "POST",
       body: {
         subjectIds: subjectIds.split(",").filter(Boolean),
         examYear: Number(year),
       },
     });
+    // Shaped like every other paper: cleaned options, passages and group
+    // instructions attached, and each question kept under its subject.
+    return {
+      attemptId: paper.attemptId,
+      title: paper.title,
+      questions: paper.questions.map(toExamQuestion),
+      timeLimitMinutes: paper.timeLimitMinutes ?? null,
+      deadlineAt: paper.deadlineAt ?? undefined,
+      resumed: paper.resumed ?? undefined,
+    };
   }, [subjectIds, year]);
 
   const toResult = useCallback(

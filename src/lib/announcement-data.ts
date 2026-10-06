@@ -24,9 +24,9 @@ function asBanner(
  * `GET /api/announcements` returns undismissed, unexpired announcements
  * filtered to the caller's audience (the token identifies the student).
  */
-export async function getBannerAnnouncement(
-  _userId: string,
-): Promise<{ id: string; title: string; body: string; url: string | null } | null> {
+export async function getBannerAnnouncement(): Promise<
+  { id: string; title: string; body: string; url: string | null } | null
+> {
   try {
     const { announcements } = await api<AnnouncementsOut>("/api/announcements");
     return asBanner(announcements[0]);
@@ -35,21 +35,6 @@ export async function getBannerAnnouncement(
     // read fails, the dashboard renders without one rather than failing.
     console.error("Loading banner announcement failed:", error);
     return null;
-  }
-}
-
-/** Marks the announcement dismissed; the backend records it for this student. */
-export async function dismissAnnouncement(
-  _userId: string,
-  announcementId: string,
-): Promise<boolean> {
-  try {
-    await api<{ ok?: boolean }>(`/api/announcements/${announcementId}/dismiss`, {
-      body: {},
-    });
-    return true;
-  } catch {
-    return false;
   }
 }
 

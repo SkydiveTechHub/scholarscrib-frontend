@@ -18,6 +18,10 @@ export type ExamQuestion = {
   marks: number;
   examType: string;
   examYear: number | null;
+  /** Comprehension questions carry the passage they are about. */
+  passage?: string | null;
+  /** The instruction a group of questions shares ("Choose the option that ..."). */
+  instruction?: string | null;
   /** Present on mock exams, which span several subjects. */
   subjectName?: string;
   subjectCode?: string;
@@ -31,7 +35,10 @@ export type AnswerState = {
 
 export type AnswerMap = Record<string, AnswerState>;
 
-/** The immutable half of a session: settled once, at start or resume. */
+/**
+ * The slow-moving half of a session: settled at start or resume, and only
+ * grown afterwards when a paged paper fetches its next page.
+ */
 export type SessionData = {
   attemptId: string;
   title: string;
@@ -49,6 +56,12 @@ export type SessionData = {
    * disagree about whether an abandoned attempt is still resumable.
    */
   startedAt: number;
+  /**
+   * Where the next page of questions starts, for papers fetched a page at a
+   * time. Absent or null once every question is loaded. Optional for the same
+   * reason as `awayEvents`: a version bump would drop in-progress exams.
+   */
+  nextCursor?: string | null;
 };
 
 export type StoredSession = SessionData & {
@@ -82,6 +95,37 @@ export function emptyAnswers(questions: readonly ExamQuestion[]): AnswerMap {
   const initial: AnswerMap = {};
   for (const q of questions) initial[q.id] = { ...BLANK };
   return initial;
+}
+
+/**
+ * Appends a freshly fetched page to the paper. Questions already on it are
+ * skipped, so a page boundary that shifts between requests cannot list one
+ * question twice, and a cursor that comes back with nothing new ends the paper
+ * rather than looping on it.
+ */
+export function withAppendedPage(
+  session: SessionData,
+  page: readonly ExamQuestion[],
+  nextCursor: string | null,
+  /** Added to a timed paper's deadline for each new question, so it keeps pace. */
+  secondsPerQuestion = 0,
+): SessionData {
+  const seen = new Set(session.questions.map((q) => q.id));
+  const fresh = page.filter((q) => {
+    if (seen.has(q.id)) return false;
+    seen.add(q.id);
+    return true;
+  });
+  const deadlineAt =
+    session.deadlineAt != null && secondsPerQuestion > 0
+      ? session.deadlineAt + fresh.length * secondsPerQuestion * 1000
+      : session.deadlineAt;
+  return {
+    ...session,
+    questions: [...session.questions, ...fresh],
+    deadlineAt,
+    nextCursor: fresh.length > 0 ? nextCursor : null,
+  };
 }
 
 /**

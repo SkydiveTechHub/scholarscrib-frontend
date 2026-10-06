@@ -139,7 +139,9 @@ export async function getTopicPageData(
   subjectSlug: string,
   topicSlug: string,
 ): Promise<TopicPageData | null> {
-  const payload = await fetchTopicPage(subjectSlug, topicSlug);
+  // The overview view only carries `canonicalLessonId`; the study view is the
+  // one that includes the lesson's blocks, which the notes need.
+  const payload = await fetchTopicPage(subjectSlug, topicSlug, "study");
   if (!payload) return null;
   return mapTopicPageData(payload);
 }

@@ -59,7 +59,7 @@ export default async function DashboardLayout({
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8">
           {/* Streams in: a slow pooler connection must not hold up the page. */}
           <Suspense fallback={null}>
-            <AnnouncementBanner userId={user.id} />
+            <AnnouncementBanner />
           </Suspense>
           {children}
         </div>

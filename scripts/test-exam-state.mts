@@ -13,6 +13,7 @@ import {
   progressPercent,
   secondsRemaining,
   withAccumulatedTime,
+  withAppendedPage,
   withSelectedAnswer,
   withToggledFlag,
   type AnswerMap,
@@ -428,4 +429,54 @@ test("a session survives persist and restore with answers intact", () => {
     ),
     ["C", null],
   );
+});
+
+function pageQuestion(id: string): ExamQuestion {
+  return {
+    id,
+    questionNumber: 1,
+    questionText: id,
+    questionImageUrl: null,
+    questionType: "MCQ",
+    options: { A: "a", B: "b" },
+    difficulty: "MEDIUM",
+    marks: 1,
+    examType: "jamb",
+    examYear: 2010,
+  };
+}
+
+const pagedSession = {
+  attemptId: "local:x",
+  title: "Paper",
+  questions: [pageQuestion("q1"), pageQuestion("q2")],
+  deadlineAt: 1_000_000,
+  startedAt: 0,
+  nextCursor: "c2",
+};
+
+test("withAppendedPage appends the page, moves the cursor and extends the deadline", () => {
+  const grown = withAppendedPage(pagedSession, [pageQuestion("q3"), pageQuestion("q4")], "c3", 60);
+  assert.deepEqual(grown.questions.map((q) => q.id), ["q1", "q2", "q3", "q4"]);
+  assert.equal(grown.nextCursor, "c3");
+  assert.equal(grown.deadlineAt, 1_000_000 + 2 * 60 * 1000);
+});
+
+test("withAppendedPage skips questions already on the paper", () => {
+  const grown = withAppendedPage(pagedSession, [pageQuestion("q2"), pageQuestion("q3")], null, 60);
+  assert.deepEqual(grown.questions.map((q) => q.id), ["q1", "q2", "q3"]);
+  assert.equal(grown.deadlineAt, 1_000_000 + 60 * 1000);
+  assert.equal(grown.nextCursor, null);
+});
+
+test("withAppendedPage ends the paper when a page adds nothing new", () => {
+  const grown = withAppendedPage(pagedSession, [pageQuestion("q1")], "c3", 60);
+  assert.equal(grown.questions.length, 2);
+  assert.equal(grown.nextCursor, null);
+  assert.equal(grown.deadlineAt, 1_000_000);
+});
+
+test("withAppendedPage leaves an untimed paper untimed", () => {
+  const grown = withAppendedPage({ ...pagedSession, deadlineAt: null }, [pageQuestion("q3")], null, 60);
+  assert.equal(grown.deadlineAt, null);
 });

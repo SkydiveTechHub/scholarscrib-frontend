@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { LuMonitor, LuTimer, LuTarget, LuCheck } from "react-icons/lu";
+import { LuMonitor, LuTimer, LuTarget, LuCheck, LuTriangleAlert } from "react-icons/lu";
 import { getSessionUser } from "@/lib/session";
 import { PageHeader } from "@/components/ui/page-header";
 import { getJambSubjectOptions } from "@/lib/jamb-availability";
@@ -29,7 +29,7 @@ export default async function CBTPracticePage() {
   const session = await getSessionUser();
   if (!session?.id) redirect("/login");
 
-  const { english, englishYears, subjects } = await getJambSubjectOptions();
+  const options = await getJambSubjectOptions();
 
   return (
     <div className="animate-fade-in">
@@ -48,8 +48,8 @@ export default async function CBTPracticePage() {
               Official UTME format
             </h2>
             <p className="mt-1 text-sm leading-relaxed text-muted">
-              Questions come from the real past paper for the year you pick, so
-              every subject is sat exactly as it was.
+              Every subject is the real past paper for the year you pick, in the
+              order it was set, so the sitting is the exam as it was.
             </p>
           </div>
         </div>
@@ -72,11 +72,27 @@ export default async function CBTPracticePage() {
         </div>
       </section>
 
-      <JambCbtPicker
-        english={english}
-        englishYears={englishYears}
-        subjects={subjects}
-      />
+      {options ? (
+        <JambCbtPicker
+          english={options.english}
+          subjects={options.subjects}
+          track={session.track ?? null}
+        />
+      ) : (
+        <div
+          role="alert"
+          className="flex items-start gap-2.5 rounded-xl border border-warning/25 bg-warning-soft px-4 py-3 text-sm text-warning"
+        >
+          <LuTriangleAlert className="mt-0.5 h-4 w-4 flex-shrink-0" />
+          <div>
+            <p className="font-semibold">JAMB papers are unavailable right now.</p>
+            <p className="mt-0.5 leading-relaxed">
+              The question bank couldn&apos;t be reached. Refresh the page in a
+              minute to try again.
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

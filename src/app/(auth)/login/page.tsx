@@ -44,7 +44,7 @@ function LoginForm() {
     try {
       const data = await fetchApi<{ accessToken: string }>(
         "/api/auth/login",
-        { body: { email, password }, anonymous: true },
+        { method: "POST", body: { email, password }, anonymous: true },
       );
       setStudentToken(data.accessToken);
 

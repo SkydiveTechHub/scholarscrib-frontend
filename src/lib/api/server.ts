@@ -72,6 +72,9 @@ export async function api<T>(
 
   const res = await fetch(buildUrl(path, params), {
     ...init,
+    // fetch rejects a body on GET; a call that sends one without naming a
+    // method means POST.
+    method: init.method ?? (body === undefined ? "GET" : "POST"),
     headers,
     body: body !== undefined ? JSON.stringify(body) : undefined,
     // The API is a separate origin; Next's data cache must not treat its

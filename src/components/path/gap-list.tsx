@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { LuFlame, LuLink2, LuCircleSlash, LuTriangleAlert } from "react-icons/lu";
-import type { TopicGap } from "@/engines/learning/gaps";
+import type { DashboardGap as TopicGap } from "@/lib/api/types";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { evidenceLabel } from "@/lib/evidence-display";

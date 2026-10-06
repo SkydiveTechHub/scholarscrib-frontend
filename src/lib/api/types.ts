@@ -128,11 +128,47 @@ export type QuestionOut = {
   options?: Record<string, unknown> | unknown[] | null;
   difficulty?: string | null;
   marks?: number | null;
+  questionImageUrl?: string | null;
+  /** Comprehension questions: the passage the question is about. */
+  hasPassage?: boolean | null;
+  passage?: string | null;
+  passageGroup?: string | null;
+  /** The instruction shared by a group of questions, when there is no passage. */
+  instruction?: string | null;
+  /** JAMB sittings: the paper (subject) the question belongs to. */
+  subjectName?: string | null;
+  subjectCode?: string | null;
 };
 
 export type QuestionPageOut = {
   questions: QuestionOut[];
   pagination: { page: number; limit: number; total?: number; totalPages?: number };
+};
+
+/**
+ * A row from `GET /api/questions`. Unlike quiz generation, this list carries
+ * the answer key, which is what lets a past paper be graded in the browser.
+ */
+export type BankQuestionOut = QuestionOut & {
+  questionImageUrl?: string | null;
+  correctAnswer?: string | null;
+  explanation?: string | null;
+  explanationImageUrl?: string | null;
+};
+
+export type BankQuestionPageOut = {
+  questions: BankQuestionOut[];
+  /**
+   * The endpoint caps `limit` at 15, so a full paper spans several pages,
+   * walked by passing `nextCursor` back as `cursor`. Read through
+   * `nextPageCursor`, which accepts either casing of the cursor fields.
+   */
+  pagination: QuestionPageOut["pagination"] & {
+    hasMore?: boolean | null;
+    has_more?: boolean | null;
+    nextCursor?: string | null;
+    next_cursor?: string | null;
+  };
 };
 
 export type PaperOut = Record<string, unknown> & {
@@ -145,6 +181,30 @@ export type PaperOut = Record<string, unknown> & {
 
 export type PapersOut = { papers: PaperOut[] };
 
+/** One subject in the provider's past-question coverage. */
+export type CoverageSubjectOut = {
+  name: string;
+  displayName: string;
+  code: string;
+  /** Provider category: sciences, arts, commercial, social-sciences, languages, general. */
+  category: string;
+  aliases: string[];
+  questionCount: number;
+  features: {
+    hasPassages: boolean;
+    hasEquations: boolean;
+    hasDiagrams: boolean;
+  };
+  /** Lower-case exam keys: jamb, waec, neco, post_utme (the app offers the first three). */
+  examTypes: string[];
+  yearRange: { min: number; max: number };
+};
+
+export type CoverageSubjectsOut = {
+  provider: string;
+  data: CoverageSubjectOut[];
+};
+
 // ─── Assessments ───────────────────────────────────────────────────────────
 
 export type QuizOut = {
@@ -156,6 +216,16 @@ export type QuizOut = {
   timeLimitMinutes?: number | null;
   questions: QuestionOut[];
   resumed?: boolean | null;
+  deadlineAt?: string | null;
+  /** Past papers only: hand back to `/past-paper/{attemptId}/more` for the next page. */
+  nextCursor?: string | null;
+};
+
+/** One further page of a recorded past paper. */
+export type PastPaperPageOut = {
+  questions: QuestionOut[];
+  nextCursor: string | null;
+  timeLimitMinutes?: number | null;
   deadlineAt?: string | null;
 };
 
@@ -201,11 +271,33 @@ export type JambSpecOut = {
   totalMarks: number;
 };
 
+/** A subject the question provider carries for JAMB. */
+export type JambSubjectOut = {
+  id: string;
+  name: string;
+  slug: string;
+  code?: string | null;
+  /** The provider's key and category (sciences, arts, commercial, ...). */
+  providerKey: string;
+  category?: string | null;
+  /** Questions it contributes to a sitting: 60 for English, 40 otherwise. */
+  questions: number;
+  /** Years the provider holds a full paper for, newest first. */
+  years: number[];
+};
+
 export type JambOptionsOut = {
   spec: JambSpecOut;
-  english?: Record<string, unknown> | null;
-  englishYears: number[];
-  subjects: MockOptionSubject[];
+  english?: JambSubjectOut | null;
+  subjects: JambSubjectOut[];
+};
+
+export type JambCoverageOut = {
+  subjectId: string;
+  subjectName: string;
+  code?: string | null;
+  required: number;
+  available: number;
 };
 
 export type JambPrepareOut = {
@@ -213,6 +305,7 @@ export type JambPrepareOut = {
   examYear: number;
   ready: boolean;
   message: string;
+  coverage: JambCoverageOut[];
 };
 
 // ─── Flashcards ────────────────────────────────────────────────────────────
@@ -320,22 +413,98 @@ export type AnnouncementsOut = { announcements: AnnouncementRow[] };
 
 export type DashboardAttempt = {
   id: string;
+  attemptId?: string;
   title?: string | null;
+  subjectId?: string | null;
+  assessmentType?: string | null;
   percentage?: number | null;
+  letter?: string | null;
   completedAt?: string | null;
   subjectName?: string | null;
   score?: number | null;
   totalMarks?: number | null;
 };
 
+/** How much evidence backs a topic's mastery figure (see lib/evidence-display). */
+export type DashboardEvidence = {
+  confidence: number;
+  accObservations: number;
+  lessonObservations: number;
+  srsObservations: number;
+  lastStudy: string | null;
+};
+
+export type DashboardPick = DashboardEvidence & {
+  topicId: string;
+  subjectId: string;
+  title: string;
+  slug: string;
+  mastery: number;
+  score: number;
+  reason: string;
+  unlocks: number;
+  /** Set when the pick is the lesson the student left unfinished. */
+  lessonId: string | null;
+};
+
+export type DashboardGap = DashboardEvidence & {
+  topicId: string;
+  subjectId: string;
+  title: string;
+  slug: string;
+  category: "WEAK" | "DECAYED" | "BOTTLENECK" | "ABANDONED" | "UNTOUCHED";
+  mastery: number;
+  retention: number | null;
+  bottleneckScore: number;
+  blockedCount: number;
+  abandonedCount: number;
+};
+
+export type DashboardRevisionItem = DashboardEvidence & {
+  topicId: string;
+  subjectId: string;
+  title: string;
+  slug: string;
+  mastery: number;
+  retention: number | null;
+  priority: number;
+  reason: string;
+  blockedCount: number;
+  dueSrsCards: number;
+  cadenceDue: boolean;
+};
+
+export type DashboardTodayItem = {
+  id: string;
+  subjectId: string | null;
+  topicId: string | null;
+  activityType: string;
+  durationMinutes: number;
+  status: string;
+};
+
 export type DashboardOut = {
   firstName?: string | null;
-  streak?: number;
-  tier?: string;
+  streak: number;
+  tier: string;
   keepLearning?: Record<string, unknown> | null;
-  gaps?: Record<string, unknown>[];
-  todayItems: Record<string, unknown>[];
+  learningPicks: DashboardPick[];
+  gaps: DashboardGap[];
+  revision: DashboardRevisionItem[];
+  revisionTotal: number;
+  /** Subjects referenced by the rails, keyed by subject id. */
+  subjects: Record<string, { slug: string; name: string; code: string }>;
+  todayItems: DashboardTodayItem[];
+  hasStudyPlan: boolean;
+  hasActivity: boolean;
   recentAttempts: DashboardAttempt[];
+  attemptTotal: number;
+  bestScore: number | null;
+  lastWeekActivity: number;
+  totalResponses: number;
+  correctResponses: number;
+  accuracy: number | null;
+  topicCount: number;
   achievements?: Record<string, unknown> | null;
 };
 

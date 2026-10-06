@@ -211,3 +211,19 @@ export function jambBand(score: number): {
   }
   return { label: "Needs work", remark: "Below the usual benchmark. Focus on your weakest subject." };
 }
+
+// ─── Year choice ───────────────────────────────────────────
+
+/**
+ * Years every one of `subjects` has a full paper for, newest first. A
+ * sitting is one year across all four papers, so only these can be offered.
+ */
+export function sharedYears(
+  subjects: readonly { years: readonly number[] }[],
+): number[] {
+  if (subjects.length === 0) return [];
+  const [first, ...rest] = subjects;
+  return first.years
+    .filter((y) => rest.every((s) => s.years.includes(y)))
+    .sort((a, b) => b - a);
+}

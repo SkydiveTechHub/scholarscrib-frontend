@@ -13,7 +13,7 @@ export default async function PastQuestionsPage() {
     <div className="animate-fade-in">
       <PageHeader
         title="Past Questions"
-        description="Pick an exam, a subject, then a year. Three quick steps to your next practice session."
+        description="Pick an exam, a subject in your track, then a year. Three quick steps to your next practice session."
       />
 
       <PastQuestionPicker track={track} />

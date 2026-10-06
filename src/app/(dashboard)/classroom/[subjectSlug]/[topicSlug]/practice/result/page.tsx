@@ -14,6 +14,7 @@ import { getSessionUser } from "@/lib/session";
 import { getTopicPracticeResult } from "@/lib/classroom-topic";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { RichText } from "@/components/ui/rich-text";
 import { PracticeResultActions } from "@/components/lesson/practice-result-actions";
 
 const MASTERY_BADGE: Record<string, "green" | "blue" | "amber" | "red"> = {
@@ -188,7 +189,7 @@ export default async function TopicPracticeResultPage({
                     </span>
                     <p className="flex-1 text-sm leading-relaxed text-foreground">
                       <span className="mr-1 font-bold text-muted">Q{i + 1}.</span>
-                      {q.questionText}
+                      <RichText text={q.questionText} />
                     </p>
                   </div>
                   <div className="border-t border-border/50 p-4">
@@ -215,7 +216,7 @@ export default async function TopicPracticeResultPage({
                               {key}
                             </span>
                             <span className="flex-1 text-foreground">
-                              {value as string}
+                              <RichText text={value as string} />
                             </span>
                             {key === q.correctAnswer && (
                               <LuCheck className="h-4 w-4 flex-shrink-0 text-success" />
@@ -225,7 +226,7 @@ export default async function TopicPracticeResultPage({
                       </div>
                     )}
                     <p className="mt-3 text-sm leading-relaxed text-foreground/90">
-                      {q.explanation}
+                      <RichText text={q.explanation} />
                     </p>
                   </div>
                 </div>

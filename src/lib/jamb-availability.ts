@@ -1,69 +1,56 @@
 import { api } from "@/lib/api/server";
-import type { JambOptionsOut, MockOptionSubject } from "@/lib/api/types";
+import type { JambOptionsOut, JambSubjectOut } from "@/lib/api/types";
 
-// Which JAMB papers the backend can assemble. The FastAPI backend owns the
-// question bank and the coverage math, so this module only maps its options
-// payload onto the picker's shape.
+// Which JAMB sittings can be assembled. The backend reads the question
+// provider's catalogue: a subject is offered when the provider carries it for
+// JAMB, and `years` lists the years it holds a full paper for (60 questions
+// for English, 40 for every other subject).
 
 export type JambSubjectOption = {
   id: string;
   code: string;
   name: string;
-  /** Years where this subject alone has enough questions. */
-  eligibleYears: number[];
+  /** The provider's subject key, used for track grouping. */
+  providerKey: string;
+  /** The provider's category: sciences, arts, commercial, ... */
+  category: string;
+  /** Years with a full paper, newest first. */
+  years: number[];
 };
 
-function asNumberArray(value: unknown): number[] {
-  if (!Array.isArray(value)) return [];
-  return value.filter(
-    (v): v is number => typeof v === "number" && Number.isFinite(v),
-  );
-}
-
-function asSubjectOption(row: MockOptionSubject): JambSubjectOption {
+function asOption(row: JambSubjectOut): JambSubjectOption {
   return {
-    id: String(row.id ?? ""),
-    code: String(row.code ?? row.slug ?? ""),
-    name: String(row.name ?? ""),
-    // backend-ported: the options payload does not always report per-subject
-    // eligibility (the picker treats an empty list as "load on demand").
-    eligibleYears: asNumberArray(row.eligibleYears ?? []),
+    id: row.id,
+    code: row.code ?? row.slug,
+    name: row.name,
+    providerKey: row.providerKey,
+    category: row.category ?? "",
+    years: (row.years ?? []).filter((y) => Number.isInteger(y)),
   };
 }
 
 /**
- * The subjects offerable in the picker, each with the years it can cover.
- *
- * English is excluded — it is added by the system, not chosen — but its own
- * coverage is what usually decides whether any year is sittable at all.
+ * English (compulsory, never chosen) and the subjects offerable beside it.
+ * `null` when the provider's catalogue could not be read.
  */
 export async function getJambSubjectOptions(): Promise<{
-  english: { id: string; code: string; name: string } | null;
-  englishYears: number[];
+  english: JambSubjectOption | null;
   subjects: JambSubjectOption[];
-}> {
-  const opts = await api<JambOptionsOut>("/api/assessments/jamb-cbt/options");
-
-  const englishRaw = opts.english;
-  const english =
-    englishRaw && typeof englishRaw === "object"
-      ? {
-          id: String(englishRaw.id ?? englishRaw.code ?? ""),
-          code: String(englishRaw.code ?? ""),
-          name: String(englishRaw.name ?? ""),
-        }
-      : null;
-
-  const subjects = (opts.subjects ?? [])
-    // backend-ported: English travels separately (when offered at all), so a
-    // duplicate row must never surface as one of the three chosen subjects.
-    .filter((s) => !(english && s.id === english.id))
-    .map(asSubjectOption)
-    .sort((a, b) => a.name.localeCompare(b.name));
-
-  return {
-    english,
-    englishYears: asNumberArray(opts.englishYears),
-    subjects,
-  };
+} | null> {
+  try {
+    const opts = await api<JambOptionsOut>("/api/assessments/jamb-cbt/options");
+    const english = opts.english ? asOption(opts.english) : null;
+    return {
+      english,
+      subjects: (opts.subjects ?? [])
+        // English travels separately, so it can never be one of the three.
+        .filter((s) => !english || s.id !== english.id)
+        .map(asOption)
+        .sort((a, b) => a.name.localeCompare(b.name)),
+    };
+  } catch (error) {
+    console.error("Loading JAMB options failed:", error);
+    return null;
+  }
 }
+

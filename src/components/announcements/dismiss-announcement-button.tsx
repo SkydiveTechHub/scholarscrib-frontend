@@ -2,6 +2,7 @@
 
 import { useState, type ReactNode } from "react";
 import { LuX } from "react-icons/lu";
+import { fetchApi } from "@/lib/api/client";
 
 /** Wraps the banner so dismissing hides it immediately, before the request lands. */
 export function DismissibleAnnouncement({ id, children }: { id: string; children: ReactNode }) {
@@ -11,7 +12,9 @@ export function DismissibleAnnouncement({ id, children }: { id: string; children
   function dismiss() {
     setHidden(true);
     // Fire and forget: if it fails, the banner simply returns on the next load.
-    fetch(`/api/announcements/${id}/dismiss`, { method: "POST" }).catch(() => undefined);
+    fetchApi(`/api/announcements/${encodeURIComponent(id)}/dismiss`, {
+      method: "POST",
+    }).catch(() => undefined);
   }
 
   return (

@@ -15,6 +15,29 @@ export function ServiceWorkerRegistrar() {
   useEffect(() => {
     if (!("serviceWorker" in navigator)) return;
 
+    // Never in development. The worker serves /_next/static/ cache-first,
+    // which is only safe because production chunk names are content-hashed;
+    // `next dev` reuses one chunk name across edits, so a worker left running
+    // keeps serving code from before the change. One already installed is
+    // removed along with its caches, so the next reload is fresh.
+    if (process.env.NODE_ENV !== "production") {
+      navigator.serviceWorker
+        .getRegistrations()
+        .then((regs) => Promise.all(regs.map((reg) => reg.unregister())))
+        .then(() => caches.keys())
+        .then((keys) =>
+          Promise.all(
+            keys
+              .filter((key) => key.startsWith("scholarscrib-"))
+              .map((key) => caches.delete(key)),
+          ),
+        )
+        .catch(() => {
+          // Nothing registered, or storage is blocked. Either way, nothing to undo.
+        });
+      return;
+    }
+
     let registration: ServiceWorkerRegistration | undefined;
 
     // updateViaCache: "none" so the browser's HTTP cache can never hand the
