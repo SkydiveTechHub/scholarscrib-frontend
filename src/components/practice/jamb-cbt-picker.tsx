@@ -13,18 +13,26 @@ import {
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { JAMB_SPEC } from "@/lib/jamb-cbt";
-import { examYearRange } from "@/lib/exam-years";
 import {
   useGenerateJambCbt,
   usePrepareJambCbt,
 } from "@/hooks/api/use-assessments";
 import { Spinner } from "@/components/ui/spinner";
 import { JAMB_SPEC, sharedYears } from "@/lib/jamb-cbt";
-import { fetchApi } from "@/lib/api/client";
-import type { JambPrepareOut } from "@/lib/api/types";
 import { isTrackSubject } from "@/lib/subject-coverage";
 import type { JambSubjectOption } from "@/lib/jamb-availability";
+
+/** What the bank holds for a year's four papers after syncing them. */
+type JambPrepareOut = {
+  ready: boolean;
+  message?: string | null;
+  coverage: {
+    subjectId: string;
+    subjectName: string;
+    available: number;
+    required: number;
+  }[];
+};
 
 /** What picking a year did: still syncing, synced, or failed outright. */
 type YearState =
@@ -56,7 +64,7 @@ export function JambCbtPicker({
   track: string | null;
 }) {
   const router = useRouter();
-  const { mutateAsync: prepareJambCbt } = usePrepareJambCbt<Preparation>();
+  const { mutateAsync: prepareJambCbt } = usePrepareJambCbt<JambPrepareOut>();
   const { mutateAsync: generateJambCbt } = useGenerateJambCbt();
   const [chosen, setChosen] = useState<string[]>([]);
   const [showAll, setShowAll] = useState(false);
@@ -102,41 +110,12 @@ export function JambCbtPicker({
       complete && years.length === 0
         ? [...chosenSubjects].sort((a, b) => a.years.length - b.years.length)[0]
         : null,
-    [complete, years.length, chosenSubjects],
+    [complete, years, chosenSubjects],
   );
-
-  // Pull the four papers for the chosen year and report what the bank now
-  // holds. Runs on selection so the wait and any shortfall land here, in front
-  // of the year grid, rather than behind "Start exam".
-  const prepare = useCallback(async (chosenYear: number, subjectIds: string[]) => {
-    const run = ++prepRun.current;
-    setPreparing(true);
-    setPrep(null);
-    setError("");
-    try {
-      const data = await prepareJambCbt({ subjectIds, examYear: chosenYear });
-      if (run !== prepRun.current) return;
-      setPrep({
-        ready: data.ready,
-        message: data.message ?? null,
-        coverage: data.coverage ?? [],
-      });
-    } catch (error) {
-      if (run === prepRun.current) {
-        setError(
-          error instanceof Error
-            ? error.message
-            : "Network error. Please check your connection and try again.",
-        );
-      }
-    } finally {
-      if (run === prepRun.current) setPreparing(false);
-    }
-  }, [prepareJambCbt]);
 
   /** Drops any selected year and the coverage report that went with it. */
   function clearYear() {
-    prepRun.current++;
+    run.current++;
     setYear(null);
     setYearState({ status: "idle" });
     setStartError("");
@@ -149,7 +128,7 @@ export function JambCbtPicker({
       return [...prev, id];
     });
     // The year was matched to the old combination.
-    resetYear();
+    clearYear();
   }
 
   async function sync(chosenYear: number) {
@@ -158,10 +137,10 @@ export function JambCbtPicker({
     setYearState({ status: "syncing" });
     setStartError("");
     try {
-      const report = await fetchApi<JambPrepareOut>(
-        "/api/assessments/jamb-cbt/prepare",
-        { method: "POST", body: { subjectIds: chosen, examYear: chosenYear } },
-      );
+      const report = await prepareJambCbt({
+        subjectIds: chosen,
+        examYear: chosenYear,
+      });
       if (mine === run.current) setYearState({ status: "done", report });
     } catch (error) {
       if (mine === run.current) {

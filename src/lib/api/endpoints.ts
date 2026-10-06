@@ -75,6 +75,7 @@ export const endpoints = {
   classroom: {
     subjects: "/api/classroom/subjects",
     subject: (slug: string) => `/api/classroom/subjects/${seg(slug)}`,
+    curriculum: (slug: string) => `/api/subjects/${seg(slug)}/curriculum`,
     topic: (slug: string, topicSlug: string, suffix = "") =>
       `/api/classroom/subjects/${seg(slug)}/topics/${seg(topicSlug)}${suffix}`,
   },

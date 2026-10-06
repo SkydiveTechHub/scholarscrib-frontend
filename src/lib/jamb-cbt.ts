@@ -21,3 +21,12 @@ export const JAMB_SPEC = {
   marksPerSubject: 100,
   totalMarks: 400,
 } as const;
+
+/** Years in which every given subject holds a full paper, newest first. */
+export function sharedYears(subjects: { years: number[] }[]): number[] {
+  if (subjects.length === 0) return [];
+  const [first, ...rest] = subjects;
+  return first.years
+    .filter((y) => rest.every((s) => s.years.includes(y)))
+    .sort((a, b) => b - a);
+}

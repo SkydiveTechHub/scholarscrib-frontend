@@ -7,6 +7,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { evidenceLabel } from "@/lib/evidence-display";
+import { DashboardPick } from "@/lib/api/types";
 
 export interface SubjectMeta {
   slug: string;
@@ -14,8 +15,6 @@ export interface SubjectMeta {
   code: string;
 }
 
-/** The backend's reason on the pick that resumes an unfinished lesson. */
-const CONTINUE_REASON = "Continue where you left off";
 
 function reasonVariant(
   reason: string,

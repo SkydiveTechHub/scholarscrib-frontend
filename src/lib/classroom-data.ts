@@ -139,12 +139,12 @@ export async function getSubjectPageData(
   subjectSlug: string,
   userClassLevel: string | null,
 ): Promise<SubjectPageData | null> {
-  let data: SubjectPageOut;
-  try {
-    data = await api<SubjectPageOut>(
-      endpoints.classroom.subject(subjectSlug),
-    );
-  } catch (error) {
+  const [subjectResult, curriculumResult] = await Promise.allSettled([
+    api<SubjectPageOut>(endpoints.classroom.subject(subjectSlug)),
+    api<SubjectCurriculumOut>(endpoints.classroom.curriculum(subjectSlug)),
+  ]);
+  if (subjectResult.status === "rejected") {
+    const error = subjectResult.reason;
     if (isApiError(error) && error.status === 404) return null;
     throw error;
   }
