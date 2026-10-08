@@ -155,3 +155,15 @@ export function can(tier: SubscriptionTier, feature: GatedFeature): boolean {
 export function requiredTierFor(feature: GatedFeature): SubscriptionTier {
   return ENTITLEMENTS[feature];
 }
+
+export const SUBSCRIPTION_STATUSES = [
+  "PENDING",
+  "ACTIVE",
+  "FAILED",
+  "ABANDONED",
+  "REVOKED",
+] as const;
+export type SubscriptionStatus = (typeof SUBSCRIPTION_STATUSES)[number];
+
+export const SUBSCRIPTION_SOURCES = ["PAYSTACK", "COMP"] as const;
+export type SubscriptionSource = (typeof SUBSCRIPTION_SOURCES)[number];

@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { LuCheck, LuInbox, LuPencil } from "react-icons/lu";
+import { LuCheck, LuInbox, LuPencil, LuTrendingDown, LuTrendingUp } from "react-icons/lu";
 import {
   COVERAGE_EXAMS,
   isTrackSubject,
@@ -12,8 +12,14 @@ import type { CoverageSubjectOut } from "@/lib/api/types";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Spinner } from "@/components/ui/spinner";
-import { useCoverageSubjects, useCoverageSubjectYears } from "@/hooks/api/use-assessments";
+import {
+  useCoverageSubjects,
+  useCoverageSubjectYears,
+  usePastPaperHistory,
+} from "@/hooks/api/use-assessments";
+import { formatScore, summariseHistory } from "@/lib/past-paper-history";
 import { PastPaperExam } from "./past-paper-exam";
+import { PastPaperHistoryModal } from "./past-paper-history-modal";
 
 const EXAM_BADGES: Record<string, "blue" | "green" | "purple" | "neutral"> = {
   jamb: "green",
@@ -40,13 +46,19 @@ export function PastQuestionPicker({ track }: { track: string | null }) {
   const [showAllSubjects, setShowAllSubjects] = useState(false);
   const [year, setYear] = useState<number | null>(null);
 
+  // A year whose earlier sittings are being reviewed in the modal.
+  const [reviewYear, setReviewYear] = useState<number | null>(null);
+
   const yearsQuery = useCoverageSubjectYears(subjectName);
+  const historyQuery = usePastPaperHistory(exam, subjectName);
+  const history = useMemo(() => summariseHistory(historyQuery.data), [historyQuery.data]);
 
   function chooseExam(key: string | null) {
     setExam(key);
     setSubjectName(null);
     setShowAllSubjects(false);
     setYear(null);
+    setReviewYear(null);
   }
 
   // ② Subjects the provider holds under the chosen exam.
@@ -89,10 +101,15 @@ export function PastQuestionPicker({ track }: { track: string | null }) {
           years: years.map((y) => y.year),
         }}
         year={year}
-        onExit={() => setYear(null)}
+        onExit={() => {
+          setYear(null);
+          void historyQuery.refetch();
+        }}
       />
     );
   }
+
+  const reviewSummary = reviewYear !== null ? history.get(reviewYear) : undefined;
 
   return (
     <div className="space-y-4">
@@ -177,22 +194,44 @@ export function PastQuestionPicker({ track }: { track: string | null }) {
             </p>
           ) : (
             <div className="grid grid-cols-3 gap-2 sm:grid-cols-5 lg:grid-cols-6">
-              {years.map((y) => (
-                <button
-                  key={y.year}
-                  type="button"
-                  onClick={() => setYear(y.year)}
-                  className="group rounded-xl border border-border bg-card px-3 py-2.5 text-center transition-all hover:border-primary/40"
-                >
-                  <span className="block text-sm font-bold text-foreground group-hover:text-primary">
-                    {y.year}
-                  </span>
-                  <span className="block text-xs text-muted">{y.questionCount} questions</span>
-                </button>
-              ))}
+              {years.map((y) => {
+                const past = history.get(y.year);
+                return (
+                  <button
+                    key={y.year}
+                    type="button"
+                    onClick={() => (past ? setReviewYear(y.year) : setYear(y.year))}
+                    className="group rounded-xl border border-border bg-card px-3 py-2.5 text-center transition-all hover:border-primary/40"
+                  >
+                    <span className="block text-sm font-bold text-foreground group-hover:text-primary">
+                      {y.year}
+                    </span>
+                    <span className="block text-xs text-muted">{y.questionCount} questions</span>
+                    {past && (
+                      <Badge variant="primary" className="mt-1.5 px-2 py-0.5 text-[11px]">
+                        {past.count}× · best {formatScore(past, past.best ?? 0)}
+                        {past.trend === "up" && <LuTrendingUp className="h-3 w-3 text-success" />}
+                        {past.trend === "down" && <LuTrendingDown className="h-3 w-3 text-danger" />}
+                      </Badge>
+                    )}
+                  </button>
+                );
+              })}
             </div>
           )}
         </Step>
+      )}
+
+      {reviewYear !== null && reviewSummary && (
+        <PastPaperHistoryModal
+          title={`${examLabel} ${chosenSubject?.displayName ?? ""} ${reviewYear}`}
+          summary={reviewSummary}
+          onClose={() => setReviewYear(null)}
+          onStart={() => {
+            setYear(reviewYear);
+            setReviewYear(null);
+          }}
+        />
       )}
     </div>
   );

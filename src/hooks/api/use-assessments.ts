@@ -9,6 +9,7 @@ import type {
   CoverageSubjectsOut,
   CoverageYearsOut,
   ExplanationOut,
+  PastPaperHistoryOut,
 } from "@/lib/api/types";
 import type { BoardStatus } from "@/lib/board-availability";
 import type { ScopePoint } from "@/lib/curriculum-scope";
@@ -66,6 +67,27 @@ export function useGenerateJambCbt() {
         url: endpoints.assessments.jambCbt.generate,
         data: input,
       }),
+  });
+}
+
+/**
+ * Completed sittings of this exact UTME paper (English plus the three chosen
+ * subjects), per year. Only asked once all three subjects are chosen.
+ */
+export function useJambCbtHistory(subjectIds: string[]) {
+  const key = [...subjectIds].sort().join(",");
+  return useQuery({
+    queryKey: queryKeys.assessments.jambHistory(key),
+    queryFn: () =>
+      request<PastPaperHistoryOut>({
+        method: "GET",
+        url: endpoints.assessments.jambCbt.history,
+        params: { subjectIds: key },
+      }),
+    enabled: subjectIds.length === 3,
+    // A sitting just finished must show up the moment the picker is back.
+    staleTime: 0,
+    refetchOnMount: "always",
   });
 }
 
@@ -172,6 +194,23 @@ export function useCoverageSubjectYears(subject: string | null) {
       }),
     enabled: Boolean(subject),
     staleTime: 60 * 60 * 1000,
+  });
+}
+
+/** The student's completed sittings of one subject's past papers, per year. */
+export function usePastPaperHistory(exam: string | null, subject: string | null) {
+  return useQuery({
+    queryKey: queryKeys.assessments.pastPaperHistory(exam ?? "", subject ?? ""),
+    queryFn: () =>
+      request<PastPaperHistoryOut>({
+        method: "GET",
+        url: endpoints.assessments.pastPaperHistory,
+        params: { examType: exam, subject },
+      }),
+    enabled: Boolean(exam && subject),
+    // A sitting just finished must show up the moment the picker is back.
+    staleTime: 0,
+    refetchOnMount: "always",
   });
 }
 

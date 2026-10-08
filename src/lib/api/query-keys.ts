@@ -28,6 +28,10 @@ export const queryKeys = {
   assessments: {
     all: ["assessments"] as const,
     mockExamBoards: () => [...queryKeys.assessments.all, "mock-exam", "boards"] as const,
+    pastPaperHistory: (exam: string, subject: string) =>
+      [...queryKeys.assessments.all, "past-paper", "history", exam, subject] as const,
+    jambHistory: (subjectIds: string) =>
+      [...queryKeys.assessments.all, "jamb-cbt", "history", subjectIds] as const,
     mockExamOptions: (examType: string) =>
       [...queryKeys.assessments.all, "mock-exam", "options", examType] as const,
   },

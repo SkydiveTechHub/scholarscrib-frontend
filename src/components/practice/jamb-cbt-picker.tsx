@@ -9,16 +9,21 @@ import {
   LuArrowRight,
   LuInfo,
   LuRotateCcw,
+  LuTrendingDown,
+  LuTrendingUp,
 } from "react-icons/lu";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   useGenerateJambCbt,
+  useJambCbtHistory,
   usePrepareJambCbt,
 } from "@/hooks/api/use-assessments";
 import { Spinner } from "@/components/ui/spinner";
 import { JAMB_SPEC, sharedYears } from "@/lib/jamb-cbt";
+import { formatScore, summariseHistory } from "@/lib/past-paper-history";
+import { PastPaperHistoryModal } from "./past-paper-history-modal";
 import { isTrackSubject } from "@/lib/subject-coverage";
 import type { JambSubjectOption } from "@/lib/jamb-availability";
 
@@ -98,6 +103,16 @@ export function JambCbtPicker({
   );
   const complete = chosen.length === JAMB_SPEC.otherSubjectCount;
 
+  // Earlier sittings of exactly this paper: same four subjects, per year.
+  const historyQuery = useJambCbtHistory(complete ? chosen : []);
+  const history = useMemo(
+    () => summariseHistory(historyQuery.data, "marks"),
+    [historyQuery.data],
+  );
+  // A year whose earlier sittings are being reviewed in the modal.
+  const [reviewYear, setReviewYear] = useState<number | null>(null);
+  const reviewSummary = reviewYear !== null ? history.get(reviewYear) : undefined;
+
   // A sitting is one year across all four papers.
   const years = useMemo(
     () => (english && complete ? sharedYears([english, ...chosenSubjects]) : []),
@@ -117,6 +132,7 @@ export function JambCbtPicker({
   function clearYear() {
     run.current++;
     setYear(null);
+    setReviewYear(null);
     setYearState({ status: "idle" });
     setStartError("");
   }
@@ -304,22 +320,32 @@ export function JambCbtPicker({
             </div>
           ) : (
             <div className="grid grid-cols-3 gap-2 sm:grid-cols-5 lg:grid-cols-6">
-              {years.map((y) => (
-                <button
-                  key={y}
-                  type="button"
-                  onClick={() => sync(y)}
-                  aria-pressed={year === y}
-                  className={cn(
-                    "rounded-xl border px-3 py-2.5 text-sm font-bold transition-colors",
-                    year === y
-                      ? "border-primary bg-primary text-primary-foreground"
-                      : "border-border bg-card text-foreground hover:border-primary/40",
-                  )}
-                >
-                  {y}
-                </button>
-              ))}
+              {years.map((y) => {
+                const past = history.get(y);
+                return (
+                  <button
+                    key={y}
+                    type="button"
+                    onClick={() => (past ? setReviewYear(y) : sync(y))}
+                    aria-pressed={year === y}
+                    className={cn(
+                      "rounded-xl border px-3 py-2.5 text-sm font-bold transition-colors",
+                      year === y
+                        ? "border-primary bg-primary text-primary-foreground"
+                        : "border-border bg-card text-foreground hover:border-primary/40",
+                    )}
+                  >
+                    {y}
+                    {past && (
+                      <Badge variant="primary" className="mt-1.5 flex px-2 py-0.5 text-[11px]">
+                        {past.count}× · best {formatScore(past, past.best ?? 0)}
+                        {past.trend === "up" && <LuTrendingUp className="h-3 w-3 text-success" />}
+                        {past.trend === "down" && <LuTrendingDown className="h-3 w-3 text-danger" />}
+                      </Badge>
+                    )}
+                  </button>
+                );
+              })}
             </div>
           )}
 
@@ -399,6 +425,18 @@ export function JambCbtPicker({
             )}
           </div>
         </section>
+      )}
+
+      {reviewYear !== null && reviewSummary && (
+        <PastPaperHistoryModal
+          title={`JAMB UTME ${reviewYear}`}
+          summary={reviewSummary}
+          onClose={() => setReviewYear(null)}
+          onStart={() => {
+            setReviewYear(null);
+            void sync(reviewYear);
+          }}
+        />
       )}
 
       {startError && (

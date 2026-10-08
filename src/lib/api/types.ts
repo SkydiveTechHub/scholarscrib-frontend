@@ -218,6 +218,20 @@ export type CoverageYearOut = {
 
 export type CoverageYearsOut = { provider: string; data: CoverageYearOut[] };
 
+/** One completed sitting of a past paper. */
+export type PastPaperAttemptOut = {
+  attemptId: string;
+  completedAt: string;
+  percentage: number | null;
+  score?: number | null;
+  totalMarks?: number | null;
+};
+
+/** `GET /api/assessments/past-paper/history`: sittings per year, oldest first. */
+export type PastPaperHistoryOut = {
+  years: { year: number; attempts: PastPaperAttemptOut[] }[];
+};
+
 /** One row of `GET /api/questions/past-papers`: a paper on offer. */
 export type PastPaper = {
   examType: string;

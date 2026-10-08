@@ -43,10 +43,12 @@ export const endpoints = {
       scoped: "/api/assessments/mock-exam/scoped",
     },
     pastPaper: "/api/assessments/past-paper",
+    pastPaperHistory: "/api/assessments/past-paper/history",
     pastPaperMore: (attemptId: string) =>
       `/api/assessments/past-paper/${seg(attemptId)}/more`,
     jambCbt: {
       options: "/api/assessments/jamb-cbt/options",
+      history: "/api/assessments/jamb-cbt/history",
       prepare: "/api/assessments/jamb-cbt/prepare",
       generate: "/api/assessments/jamb-cbt/generate",
     },
@@ -100,6 +102,7 @@ export const endpoints = {
       session: "/admin/api/auth/session",
     },
     overview: "/admin/api/overview",
+    analytics: "/admin/api/analytics",
     audit: "/admin/api/audit",
     auditActors: "/admin/api/audit/actors",
     admins: "/admin/api/admins",
