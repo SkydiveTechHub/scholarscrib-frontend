@@ -44,11 +44,7 @@ export default async function DashboardLayout({
     <div className="min-h-full">
       <SessionGuard realm="student" />
       <PushSync />
-      <Sidebar
-        user={user as ProfileUser}
-        examLabel={examTarget.label}
-        daysToExam={daysToExam}
-      />
+      <Sidebar user={user as ProfileUser} />
       <MobileHeader
         user={user as ProfileUser}
         examLabel={examTarget.label}

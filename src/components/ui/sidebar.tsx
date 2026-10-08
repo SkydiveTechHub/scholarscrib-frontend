@@ -6,20 +6,9 @@ import { cn } from "@/lib/utils";
 import { UserMenu, type ProfileUser } from "./user-menu";
 import { NAV_GROUPS, SETTINGS_ITEM } from "@/lib/navigation";
 import { Logo } from "@/components/ui/logo";
-import { LuCalendarDays } from "react-icons/lu";
 import { useExamActive } from "@/stores/exam-store";
 
-export function Sidebar({
-  user,
-  examLabel,
-  daysToExam,
-}: {
-  user: ProfileUser;
-  /** The student's own next sitting, resolved on the server. */
-  examLabel: string;
-  /** Computed on the server so SSR and hydration agree. */
-  daysToExam: number;
-}) {
+export function Sidebar({ user }: { user: ProfileUser }) {
   const pathname = usePathname();
 
   function isActive(href: string) {
@@ -100,32 +89,9 @@ export function Sidebar({
         </Link>
       </nav>
 
-      {/* Account + countdown */}
-      <div className="border-t border-border px-2 pt-2">
+      {/* Account */}
+      <div className="border-t border-border px-2 py-2">
         <UserMenu user={user} showDetails />
-      </div>
-      <div className="px-4 py-4">
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-hero-from to-hero-to p-4 shadow-lift">
-          <div className="absolute -right-4 -top-6 h-20 w-20 rounded-full bg-white/10" />
-          <div className="absolute -bottom-8 -left-4 h-20 w-20 rounded-full bg-white/10" />
-          <div className="relative">
-            <div className="flex items-center gap-1.5">
-              <LuCalendarDays className="h-3.5 w-3.5 text-white/80" />
-              <p className="text-[11px] font-bold uppercase tracking-wider text-white/80">
-                {examLabel}
-              </p>
-            </div>
-            <p className="mt-1 text-2xl font-bold text-white">
-              {daysToExam}
-              <span className="ml-1 text-sm font-semibold text-white/80">
-                days
-              </span>
-            </p>
-            <p className="text-xs text-white/80">
-              Every question today counts. Keep going!
-            </p>
-          </div>
-        </div>
       </div>
     </aside>
   );
