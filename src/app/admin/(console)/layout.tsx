@@ -1,5 +1,6 @@
 import { LuShield } from "react-icons/lu";
 import { requireAdminPage } from "@/lib/admin-session";
+import { SessionGuard } from "@/components/auth/session-guard";
 import { AdminNav } from "@/components/admin/admin-nav";
 import { AdminSignOut } from "@/components/admin/admin-sign-out";
 import { NOINDEX } from "@/lib/seo/metadata";
@@ -20,6 +21,7 @@ export default async function ConsoleLayout({
 
   return (
     <div className="min-h-full">
+      <SessionGuard realm="admin" />
       <a
         href="#admin-main"
         className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-card focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-foreground focus:outline-none focus:ring-2 focus:ring-primary"

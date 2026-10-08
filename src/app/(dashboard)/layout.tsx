@@ -4,6 +4,7 @@ import { getSessionUser } from "@/lib/session";
 import { Sidebar } from "@/components/ui/sidebar";
 import { MobileNav } from "@/components/ui/mobile-nav";
 import { MobileHeader } from "@/components/ui/mobile-header";
+import { SessionGuard } from "@/components/auth/session-guard";
 import { PushSync } from "@/components/push/push-sync";
 import { AnnouncementBanner } from "@/components/announcements/announcement-banner";
 import type { ProfileUser } from "@/components/ui/user-menu";
@@ -41,6 +42,7 @@ export default async function DashboardLayout({
 
   return (
     <div className="min-h-full">
+      <SessionGuard realm="student" />
       <PushSync />
       <Sidebar
         user={user as ProfileUser}

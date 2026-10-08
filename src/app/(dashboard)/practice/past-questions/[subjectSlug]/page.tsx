@@ -4,6 +4,8 @@ import { Suspense } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 import { QuizEngine } from "@/components/assessment/quiz-engine";
 import { Spinner } from "@/components/ui/spinner";
+import { PageHeader } from "@/components/ui/page-header";
+import { PastQuestionPicker } from "@/components/practice/past-question-picker";
 
 function PastQuestionQuiz() {
   const params = useParams();
@@ -14,6 +16,24 @@ function PastQuestionQuiz() {
   // "2022 JAMB Chemistry" generated from every JAMB Chemistry year we hold.
   const yearParam = Number(searchParams.get("year"));
   const examYear = Number.isInteger(yearParam) && yearParam > 0 ? yearParam : undefined;
+
+  // Exam given but no year (e.g. from the classroom): land on the picker at
+  // the year step, with exam and subject already chosen.
+  if (examType && examYear === undefined) {
+    return (
+      <div className="animate-fade-in">
+        <PageHeader
+          title="Past Questions"
+          description="Pick a year to start practising."
+        />
+        <PastQuestionPicker
+          track={null}
+          initialExam={examType}
+          initialSubject={subjectSlug}
+        />
+      </div>
+    );
+  }
 
   return (
     <QuizEngine

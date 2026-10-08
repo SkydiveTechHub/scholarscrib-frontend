@@ -72,6 +72,11 @@ const nextConfig: NextConfig = {
   // fetches it. These two files must always be revalidated.
   async headers() {
     return [
+      // The admin console is never worth restoring from a cache after sign-out.
+      {
+        source: "/admin/:path*",
+        headers: [{ key: "Cache-Control", value: "no-store" }],
+      },
       {
         source: "/:file(sw.js|sw-policy.js)",
         headers: [

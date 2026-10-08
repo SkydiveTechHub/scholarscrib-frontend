@@ -9,6 +9,7 @@
  */
 "use client";
 
+import { getAccessToken } from "@/lib/api/client";
 import { ACCESS_COOKIE, ADMIN_ACCESS_COOKIE } from "@/lib/api/config";
 import { endpoints } from "@/lib/api/endpoints";
 import { request } from "@/lib/api/http";
@@ -41,9 +42,17 @@ export function clearAdminToken(): void {
   clearCookie(ADMIN_ACCESS_COOKIE);
 }
 
-async function postLogout(path: string): Promise<void> {
+async function postLogout(path: string, realm: "student" | "admin"): Promise<void> {
   try {
-    await request({ method: "POST", url: path, anonymous: true });
+    // `anonymous` keeps a 401 from bouncing to the session-expired redirect, so
+    // the bearer is attached by hand: the backend needs it to revoke the token.
+    const token = getAccessToken(undefined, realm);
+    await request({
+      method: "POST",
+      url: path,
+      anonymous: true,
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+    });
   } catch {
     // The token is cleared regardless: a logout that cannot reach the backend
     // must still look signed out locally.
@@ -56,9 +65,10 @@ async function postLogout(path: string): Promise<void> {
  * profile step.
  */
 export async function studentLogout(callbackUrl = "/login"): Promise<void> {
-  await postLogout(endpoints.auth.logout);
+  await postLogout(endpoints.auth.logout, "student");
   clearStudentToken();
-  window.location.assign(callbackUrl);
+  // replace, not assign: Back must not land on the signed-in page.
+  window.location.replace(callbackUrl);
 }
 
 /**
@@ -66,7 +76,7 @@ export async function studentLogout(callbackUrl = "/login"): Promise<void> {
  * the visitor on the admin login page. The student token is untouched.
  */
 export async function adminLogout(callbackUrl = "/admin/login"): Promise<void> {
-  await postLogout(endpoints.admin.auth.logout);
+  await postLogout(endpoints.admin.auth.logout, "admin");
   clearAdminToken();
-  window.location.assign(callbackUrl);
+  window.location.replace(callbackUrl);
 }
