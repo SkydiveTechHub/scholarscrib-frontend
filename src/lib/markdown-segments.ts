@@ -37,8 +37,21 @@ const DELIMITER_RE = /^\s*\|[\s:|-]+\|\s*$/;
 const INLINE_SPAN_RE =
   /(\*\*[^*]+\*\*|\*(?!\s)[^*]+(?<!\s)\*|\$\$(?!\s)[^$\n]+(?<!\s)\$\$|\$(?!\s)[^$\n]+(?<!\s)\$)/g;
 
-/** A whole block that is nothing but a display formula, `$$ … $$`. */
-const DISPLAY_MATH_RE = /^\$\$([\s\S]+?)\$\$$/;
+/** One display formula, `$$ … $$`; it may span lines. */
+const DISPLAY_FORMULA_RE = /\$\$([\s\S]+?)\$\$/g;
+
+/**
+ * The formulas in a block that is nothing but display maths, or null when the
+ * block has any other text. A block may hold several (`$$A$$ $$B$$`): read as
+ * one formula, the `$$` between them is a KaTeX error, so each is split out.
+ */
+function displayFormulas(block: string): string[] | null {
+  const text = block.trim();
+  const found = [...text.matchAll(DISPLAY_FORMULA_RE)];
+  if (found.length === 0) return null;
+  if (text.replace(DISPLAY_FORMULA_RE, "").trim()) return null;
+  return found.map((match) => match[1].trim()).filter(Boolean);
+}
 
 /** True for a part returned by `splitInline` that is a maths span. */
 export function isMathSpan(part: string): boolean {
@@ -113,10 +126,9 @@ export function segmentMarkdown(content: string): Segment[] {
     // separate paragraphs. A formula sharing a line with a label -- the far
     // commoner "**Efficiency:** $$…$$" -- is prose, and its maths is picked up
     // inline by splitInline instead.
-    const display = DISPLAY_MATH_RE.exec(block.trim());
+    const display = displayFormulas(block);
     if (display) {
-      const tex = display[1].trim();
-      if (tex) segments.push({ kind: "math", tex });
+      for (const tex of display) segments.push({ kind: "math", tex });
       continue;
     }
 

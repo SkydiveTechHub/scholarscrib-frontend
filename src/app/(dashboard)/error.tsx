@@ -12,10 +12,10 @@ import { Button } from "@/components/ui/button";
  */
 export default function DashboardError({
   error,
-  reset,
+  unstable_retry,
 }: {
   error: Error & { digest?: string };
-  reset: () => void;
+  unstable_retry: () => void;
 }) {
   useEffect(() => {
     console.error("Dashboard error:", error);
@@ -39,7 +39,7 @@ export default function DashboardError({
         </p>
       )}
       <div className="mt-6 flex justify-center gap-3">
-        <Button onClick={reset}>
+        <Button onClick={() => unstable_retry()}>
           <LuRotateCcw className="h-4 w-4" />
           Try again
         </Button>

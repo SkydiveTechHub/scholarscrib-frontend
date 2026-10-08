@@ -1,19 +1,10 @@
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
-import {
-  LuArrowLeft,
-  LuBookOpen,
-  LuChevronRight,
-  LuPlay,
-} from "react-icons/lu";
+import { LuArrowLeft, LuBookOpen } from "react-icons/lu";
 import { getSessionUser } from "@/lib/session";
 import { getSubjectPageData } from "@/lib/classroom-data";
-import { Badge } from "@/components/ui/badge";
-import { buttonClass } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { cn } from "@/lib/utils";
-import { GraphView } from "@/components/path/graph-view";
-import { CurriculumViewToggle } from "@/components/path/view-toggle";
 import { ClassTermBrowser } from "@/components/classroom/class-term-browser";
 
 export default async function SubjectDetailPage({
@@ -34,17 +25,9 @@ export default async function SubjectDetailPage({
     subject,
     examLabels,
     hasTopics,
-    graphNodes,
-    graphEdges,
-    masteredCount,
-    readyCount,
-    dueCount,
     classes,
     initialClassLevel,
   } = data;
-
-  const examBadge = (exam: string) =>
-    exam === "WAEC" ? "blue" : exam === "JAMB" ? "green" : "purple";
 
   return (
     <div>
@@ -72,74 +55,31 @@ export default async function SubjectDetailPage({
                 <p className="text-sm text-muted">{subject.description}</p>
               </div>
             </div>
-            <div className="mt-3 flex flex-wrap items-center gap-2">
-              {examLabels.map((exam) => (
-                <Badge key={exam} variant={examBadge(exam)}>
-                  {exam}
-                </Badge>
-              ))}
-            </div>
           </div>
 
-          <Link
-            href={`/practice/past-questions/${subjectSlug}`}
-            className={buttonClass("primary", "lg", "flex-shrink-0")}
-          >
-            <LuPlay className="h-4 w-4" />
-            Take Quiz
-          </Link>
-        </div>
-
-        <div className="mt-6 grid grid-cols-3 gap-4 border-t border-border pt-6">
-          <div className="text-center">
-            <p className="text-2xl font-bold tracking-tight text-foreground">{subject.questionCount}</p>
-            <p className="text-xs text-muted">Questions</p>
-          </div>
-          <div className="text-center">
+          <div className="flex-shrink-0 text-center">
             <p className="text-2xl font-bold tracking-tight text-foreground">{subject.topicCount}</p>
             <p className="text-xs text-muted">Topics</p>
-          </div>
-          <div className="text-center">
-            <Link
-              href={`/practice/past-questions?subject=${subject.slug}`}
-              className="inline-flex items-center gap-1.5 text-sm font-bold text-primary hover:underline"
-            >
-              Practice <LuChevronRight className="h-3.5 w-3.5" />
-            </Link>
           </div>
         </div>
       </div>
 
-      {/* Curriculum — list/graph toggle (Learning Path Engine, spec Stage 0) */}
+      {/* Curriculum — graph view is hidden from users for now; GraphView/CurriculumViewToggle are kept for re-enabling */}
       <div className="mt-8">
-        <CurriculumViewToggle
-          graph={
-            <GraphView
-              nodes={graphNodes}
-              edges={graphEdges}
-              subjectSlug={subject.slug}
-              mastered={masteredCount}
-              ready={readyCount}
-              due={dueCount}
-              total={subject.topicCount}
-            />
-          }
-        >
-          {hasTopics ? (
-            <ClassTermBrowser
-              subjectSlug={subjectSlug}
-              subjectId={subject.id}
-              classes={classes}
-              initialClassLevel={initialClassLevel}
-            />
-          ) : (
-            <EmptyState
-              icon={<LuBookOpen className="h-6 w-6" />}
-              title="No topics yet"
-              description="Topics for this subject are being prepared. Check back soon."
-            />
-          )}
-        </CurriculumViewToggle>
+        {hasTopics ? (
+          <ClassTermBrowser
+            subjectSlug={subjectSlug}
+            subjectId={subject.id}
+            classes={classes}
+            initialClassLevel={initialClassLevel}
+          />
+        ) : (
+          <EmptyState
+            icon={<LuBookOpen className="h-6 w-6" />}
+            title="No topics yet"
+            description="Topics for this subject are being prepared. Check back soon."
+          />
+        )}
       </div>
 
       {/* Quick practice */}

@@ -34,7 +34,7 @@ export type TopicPageData = {
     estimatedMinutes: number;
     waecWeight: number;
     jambWeight: number;
-    questionCount: number;
+    attemptedCount: number;
     classLevel: ClassLevel;
     term: Term;
   };
@@ -198,7 +198,7 @@ function mapTopicPageData(payload: TopicPageOut): TopicPageData {
       estimatedMinutes: num(lessonRow?.estimatedMinutes) ?? 0,
       waecWeight: num(topicRow.waecWeight) ?? 0,
       jambWeight: num(topicRow.jambWeight) ?? 0,
-      questionCount: num(payload.questionCount) ?? 0,
+      attemptedCount: num(payload.attemptedCount) ?? 0,
       classLevel: asClassLevel(scopeRow, "SS1"),
       term: asTerm(scopeRow, "FIRST"),
     },

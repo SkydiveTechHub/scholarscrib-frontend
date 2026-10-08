@@ -17,6 +17,7 @@ export function Modal({
   title,
   description,
   busy,
+  dismissible = true,
   onClose,
   children,
   footer,
@@ -27,6 +28,8 @@ export function Modal({
   description?: string;
   /** Blocks Escape, the backdrop and the close button while an action runs. */
   busy?: boolean;
+  /** False removes the close button and ignores Escape and the backdrop: only the footer buttons can end it. */
+  dismissible?: boolean;
   onClose: () => void;
   children: React.ReactNode;
   footer?: React.ReactNode;
@@ -40,10 +43,10 @@ export function Modal({
   // The effect below depends only on `open`; the latest callback and busy flag
   // are read through refs so re-renders don't tear down the key handler.
   const onCloseRef = useRef(onClose);
-  const busyRef = useRef(busy);
+  const busyRef = useRef(busy || !dismissible);
   useEffect(() => {
     onCloseRef.current = onClose;
-    busyRef.current = busy;
+    busyRef.current = busy || !dismissible;
   });
 
   useEffect(() => {
@@ -101,7 +104,7 @@ export function Modal({
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm"
       onMouseDown={(e) => {
-        if (e.target === e.currentTarget && !busy) onClose();
+        if (e.target === e.currentTarget && !busy && dismissible) onClose();
       }}
     >
       <div
@@ -132,6 +135,7 @@ export function Modal({
               </p>
             )}
           </div>
+          {dismissible && (
           <button
             type="button"
             onClick={onClose}
@@ -141,6 +145,7 @@ export function Modal({
           >
             <LuX className="h-4 w-4" />
           </button>
+          )}
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto p-5">{children}</div>

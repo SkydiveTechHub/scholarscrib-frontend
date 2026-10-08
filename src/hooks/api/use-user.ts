@@ -86,22 +86,6 @@ export function useChangePassword() {
   });
 }
 
-export type DeviceSignOutInput = { deviceId: string } | { allOthers: true };
-
-export function useSignOutDevices() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (input: DeviceSignOutInput) =>
-      request<unknown>({
-        method: "POST",
-        url: endpoints.user.devices,
-        data: input,
-      }),
-    onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: queryKeys.user.devices() }),
-  });
-}
-
 export function useUpdateNotificationPreferences() {
   return useMutation({
     mutationFn: (input: Partial<NotificationPreferences>) =>

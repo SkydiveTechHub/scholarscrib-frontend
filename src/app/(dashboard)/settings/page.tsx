@@ -7,7 +7,6 @@ import { AvatarUpload } from "@/components/settings/avatar-upload";
 import { ProfileForm } from "@/components/settings/profile-form";
 import { AcademicForm } from "@/components/settings/academic-form";
 import { PasswordForm } from "@/components/settings/password-form";
-import { DevicesSection } from "@/components/settings/devices-section";
 import { NotificationsSection } from "@/components/settings/notifications-section";
 import { PageHeader } from "@/components/ui/page-header";
 
@@ -33,11 +32,6 @@ export default async function SettingsPage() {
 
       <div className="space-y-5 max-w-2xl">
         <SubscriptionSection userId={session.id} />
-
-        <DevicesSection
-          userId={session.id}
-          currentDeviceId={session.deviceId ?? undefined}
-        />
 
         <NotificationsSection userId={session.id} />
 

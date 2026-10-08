@@ -47,8 +47,7 @@ const SECTIONS: { heading: string; body: React.ReactNode }[] = [
     body: (
       <p>
         A paid plan can be signed in on up to two devices at a time. Signing
-        in on another device signs out the one used least recently. You can
-        see and sign out your devices in Settings.
+        in on another device signs out the one that signed in earliest.
       </p>
     ),
   },

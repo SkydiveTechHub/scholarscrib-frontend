@@ -168,7 +168,13 @@ function parseBlock(raw: unknown): LessonBlock | null {
         type: "example",
         id,
         title: typeof raw.title === "string" ? raw.title : undefined,
-        problem: typeof raw.problem === "string" ? raw.problem : "",
+        // The note parser writes the question as `text`; hand-authored blocks use `problem`.
+        problem:
+          typeof raw.problem === "string"
+            ? raw.problem
+            : typeof raw.text === "string"
+              ? raw.text
+              : "",
         steps,
         answer: typeof raw.answer === "string" ? raw.answer : "",
         mode:
@@ -204,20 +210,29 @@ function parseBlock(raw: unknown): LessonBlock | null {
         phrase: typeof raw.phrase === "string" ? raw.phrase : "",
         encoded: isStringArray(raw.encoded) ? raw.encoded : [],
       };
-    case "check":
-      if (typeof raw.question !== "string" || !isOptions(raw.options)) {
+    case "check": {
+      // The note parser writes the prompt as `text`; hand-authored blocks use
+      // `question`. Reading only `question` dropped every parsed check.
+      const question =
+        typeof raw.question === "string"
+          ? raw.question
+          : typeof raw.text === "string"
+            ? raw.text
+            : null;
+      if (question === null || !isOptions(raw.options)) {
         return null;
       }
       return {
         type: "check",
         id,
-        question: raw.question,
+        question,
         options: raw.options,
         answer: typeof raw.answer === "string" ? raw.answer : "",
         explanation:
           typeof raw.explanation === "string" ? raw.explanation : "",
         afterCard: typeof raw.afterCard === "string" ? raw.afterCard : "",
       };
+    }
     default:
       return null;
   }

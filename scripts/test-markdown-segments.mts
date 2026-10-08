@@ -128,3 +128,19 @@ test("currency is not mistaken for maths", () => {
     assert.equal(parts[0], text);
   }
 });
+
+test("two display formulas in one block become two math segments", () => {
+  const segments = segmentMarkdown(
+    "$$P \propto \frac{1}{V} \quad (constant\ T)$$ $$P_1V_1 = P_2V_2$$",
+  );
+  assert.deepEqual(segments, [
+    { kind: "math", tex: "P \propto \frac{1}{V} \quad (constant\ T)" },
+    { kind: "math", tex: "P_1V_1 = P_2V_2" },
+  ]);
+});
+
+test("a formula beside a label is still prose, not display maths", () => {
+  const segments = segmentMarkdown("**Boyle:** $$PV = k$$");
+  assert.equal(segments.length, 1);
+  assert.equal(segments[0].kind, "p");
+});

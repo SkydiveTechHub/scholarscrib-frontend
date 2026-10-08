@@ -11,8 +11,8 @@ import {
   LuTarget,
 } from "react-icons/lu";
 import { getSessionUser } from "@/lib/session";
-import { formatDuration } from "@/lib/utils";
 import { getTopicPageData } from "@/lib/classroom-topic";
+import type { CheckBlock } from "@/lib/lesson-engine";
 import { PretestDialog } from "@/components/path/pretest-dialog";
 import { LessonNotes } from "@/components/classroom/lesson-notes";
 import { TopicActionBar } from "@/components/classroom/topic-action-bar";
@@ -34,6 +34,25 @@ const MASTERY_VARIANT: Record<string, "green" | "amber" | "neutral"> = {
   DEVELOPING: "amber",
   WEAK: "neutral",
 };
+
+// Mirrors MASTERY_MIN_QUESTIONS / TARGET in the backend's learning/evidence.py.
+const MASTERY_MIN_QUESTIONS = 7;
+const MASTERY_TARGET = 70;
+
+function answeredCount(state: {
+  accObservations: number;
+  lessonObservations: number;
+}): number {
+  return state.accObservations + state.lessonObservations;
+}
+
+function hasEvidence(state: {
+  accObservations: number;
+  lessonObservations: number;
+  srsObservations: number;
+}): boolean {
+  return state.accObservations + state.lessonObservations + state.srsObservations > 0;
+}
 
 const CLASS_COLORS: Record<string, string> = {
   SS1: "bg-tone-blue-soft text-tone-blue-ink border-tone-blue-line",
@@ -113,23 +132,31 @@ export default async function TopicDetailPage({
               <span className={cn("chip border font-bold", classColor)}>
                 {classLevel} · {TERM_LABELS[term] ?? term}
               </span>
-              <Badge variant="blue">
-                <LuClock className="h-3 w-3" />
-                {formatDuration(topic.estimatedMinutes)}
-              </Badge>
-              <Badge variant="green">
-                <LuTarget className="h-3 w-3" />
-                {topic.questionCount} questions
-              </Badge>
+              {topic.attemptedCount > 0 && (
+                <Badge variant="green">
+                  <LuTarget className="h-3 w-3" />
+                  {topic.attemptedCount}{" "}
+                  {topic.attemptedCount === 1 ? "question" : "questions"} attempted
+                </Badge>
+              )}
               {topic.waecWeight > 0 && <Badge variant="blue">WAEC weight {topic.waecWeight}</Badge>}
               {topic.jambWeight > 0 && <Badge variant="green">JAMB weight {topic.jambWeight}</Badge>}
-              {topicState && (
+              {/* Without any evidence the mastery is just the 45% prior, not a result. */}
+              {topicState && hasEvidence(topicState) && (
                 <>
                   <Badge variant={MASTERY_VARIANT[topicState.level] ?? "neutral"}>
                     <LuTarget className="h-3 w-3" />
                     {topicState.mastery}% mastery ·{" "}
                     {LEVEL_LABELS[topicState.level] ?? topicState.level}
                   </Badge>
+                  {topicState.mastery >= MASTERY_TARGET &&
+                    answeredCount(topicState) < MASTERY_MIN_QUESTIONS && (
+                      <Badge variant="amber">
+                        <LuTarget className="h-3 w-3" />
+                        Needs more practice · {answeredCount(topicState)}/
+                        {MASTERY_MIN_QUESTIONS} questions
+                      </Badge>
+                    )}
                   {topicState.retention != null && (
                     <Badge
                       variant={topicState.retention < 0.8 ? "amber" : "blue"}
@@ -210,16 +237,6 @@ export default async function TopicDetailPage({
         </div>
       )}
 
-      {lesson && (
-        <TopicActionBar
-          subjectSlug={subjectSlug}
-          topicSlug={topicSlug}
-          lessonId={lesson.id}
-          hasDeck={Boolean(deckId)}
-          deckId={deckId}
-        />
-      )}
-
       <div className="mt-6">
         {lesson ? (
           <LessonNotes
@@ -232,6 +249,20 @@ export default async function TopicDetailPage({
           </div>
         )}
       </div>
+
+      {/* After the note, so the actions appear once the student reaches its end. */}
+      {lesson && (
+        <TopicActionBar
+          subjectSlug={subjectSlug}
+          topicSlug={topicSlug}
+          lessonId={lesson.id}
+          hasDeck={Boolean(deckId)}
+          deckId={deckId}
+          checks={lesson.blocks.filter(
+            (block): block is CheckBlock => block.type === "check",
+          )}
+        />
+      )}
 
       <TopicResources
         lessonResources={lessonResources}

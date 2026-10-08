@@ -3,21 +3,20 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import {
-  LuClipboardCheck,
-  LuLayers,
-  LuLoader,
-  LuNotebookPen,
-  LuTarget,
-} from "react-icons/lu";
+import { LuClipboardCheck, LuLayers, LuLoader, LuTarget } from "react-icons/lu";
 import { buttonClass } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { isApiError } from "@/lib/api/errors";
+import { UpgradeModal } from "@/components/billing/upgrade-modal";
+import { isSubscriptionTier, type SubscriptionTier } from "@/lib/subscription";
 import { useGenerateDeck } from "@/hooks/api/use-flashcards";
+import { useRecordTopicAnswers } from "@/hooks/api/use-topic-answers";
+import type { CheckBlock } from "@/lib/lesson-engine";
+import { QuickQuizModal, type QuickQuizResult } from "./quick-quiz-modal";
 
-// The topic page's single call-to-action row. Sticky once the note scrolls
-// past it, so a student is never more than a tap away from the four things
-// they can do with this topic: study the cards, quiz themselves, drill
-// flashcards, or take the timed practice test.
+// The topic page's call-to-action row, rendered after the lesson note so it
+// appears once the student has read to the end: take the note's quick quiz,
+// drill flashcards, or practise with exam questions.
 
 export function TopicActionBar({
   subjectSlug,
@@ -25,20 +24,25 @@ export function TopicActionBar({
   lessonId,
   hasDeck,
   deckId,
+  checks,
 }: {
   subjectSlug: string;
   topicSlug: string;
   lessonId: string | null;
   hasDeck: boolean;
   deckId: string | null;
+  /** The lesson note's own questions; the quick quiz is hidden when it has none. */
+  checks: CheckBlock[];
 }) {
   const router = useRouter();
   const generateDeck = useGenerateDeck<{ deck: { id: string } }>();
+  const { mutate: recordAnswers } = useRecordTopicAnswers();
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [upgradeTier, setUpgradeTier] = useState<SubscriptionTier | null>(null);
+  const [quizOpen, setQuizOpen] = useState(false);
+  const [quizResult, setQuizResult] = useState<QuickQuizResult | null>(null);
 
-  const studyHref = `/classroom/${subjectSlug}/${topicSlug}/study`;
-  const quizHref = `/classroom/${subjectSlug}/${topicSlug}/quiz`;
   const practiceHref = `/classroom/${subjectSlug}/${topicSlug}/practice`;
 
   async function handleFlashcards() {
@@ -52,23 +56,44 @@ export function TopicActionBar({
     try {
       const data = await generateDeck.mutateAsync({ lessonId });
       router.push(`/flashcards/${data.deck.id}`);
-    } catch {
-      setError("Couldn't build the flashcard deck. Try again.");
+    } catch (err) {
+      // A plan gate is an offer, not an error: say what unlocks it in a modal.
+      if (
+        isApiError(err) &&
+        err.isForbidden &&
+        isSubscriptionTier(err.requiredTier)
+      ) {
+        setUpgradeTier(err.requiredTier);
+        setGenerating(false);
+        return;
+      }
+      // The backend's sentence says why (lesson has no cards, ...); only an
+      // unreachable server or a 5xx gets the generic line.
+      setError(
+        isApiError(err) && err.status < 500 && err.message
+          ? err.message
+          : "Couldn't build the flashcard deck. Try again.",
+      );
       setGenerating(false);
     }
   }
 
   return (
-    <div className="sticky top-14 z-10 sticky-chrome -mx-4 px-4 py-3 sm:-mx-6 sm:px-6">
+    <div className="mt-8 rounded-2xl border border-border bg-card p-4">
+      <p className="mb-3 text-sm font-semibold text-foreground">
+        Finished reading? Check what you&apos;ve learned.
+      </p>
       <div className="flex flex-wrap items-center gap-2">
-        <Link href={studyHref} className={buttonClass("primary", "md")}>
-          <LuNotebookPen className="h-4 w-4" />
-          Study step by step
-        </Link>
-        <Link href={quizHref} className={buttonClass("outline", "md")}>
-          <LuTarget className="h-4 w-4" />
-          Quick quiz
-        </Link>
+        {checks.length > 0 && (
+          <button
+            type="button"
+            onClick={() => setQuizOpen(true)}
+            className={buttonClass("primary", "md")}
+          >
+            <LuTarget className="h-4 w-4" />
+            Quick quiz
+          </button>
+        )}
         <button
           type="button"
           onClick={handleFlashcards}
@@ -82,16 +107,40 @@ export function TopicActionBar({
           )}
           {hasDeck ? "Flashcards" : "Build flashcards"}
         </button>
-        {/* Practice is not gated. The old gate unlocked after a single card
-            while the UI claimed "Study the lesson first", so it promised a
-            prerequisite it never enforced. A student who already knows the
-            topic can go straight to the questions. */}
+        {/* Practice is not gated: a student who already knows the topic can go
+            straight to the questions. */}
         <Link href={practiceHref} className={buttonClass("outline", "md")}>
           <LuClipboardCheck className="h-4 w-4" />
           Practice
         </Link>
       </div>
+      {quizResult && (
+        <p className="mt-3 text-sm font-medium text-foreground" role="status">
+          Quick quiz: {quizResult.correct} of {quizResult.total} correct.
+        </p>
+      )}
       {error && <p className="mt-2 text-xs font-medium text-danger">{error}</p>}
+      <QuickQuizModal
+        open={quizOpen}
+        checks={checks}
+        onCancel={() => setQuizOpen(false)}
+        onSubmit={(result) => {
+          setQuizResult(result);
+          setQuizOpen(false);
+          // Counts towards mastery. A failed save stays silent: the score is
+          // already on screen and the quiz is a self-check.
+          recordAnswers({ subjectSlug, topicSlug, answers: result.answers });
+        }}
+      />
+      {upgradeTier && (
+        <UpgradeModal
+          open
+          onClose={() => setUpgradeTier(null)}
+          feature="Flashcards"
+          requiredTier={upgradeTier}
+          description="Turn any lesson into spaced-repetition flashcards you can review daily."
+        />
+      )}
     </div>
   );
 }

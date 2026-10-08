@@ -17,7 +17,6 @@ export const endpoints = {
     profile: "/api/user/profile",
     completeProfile: "/api/user/complete-profile",
     password: "/api/user/password",
-    devices: "/api/user/devices",
     notificationPreferences: "/api/user/notification-preferences",
     avatar: "/api/user/avatar",
   },
@@ -28,6 +27,7 @@ export const endpoints = {
     list: "/api/questions",
     pastPapers: "/api/questions/past-papers",
     topicQuiz: "/api/questions/topic-quiz",
+    topicAnswers: "/api/questions/topic-answers",
     explanation: (questionId: string) => `/api/questions/${seg(questionId)}/explanation`,
     coverageSubjects: "/api/questions/coverage/subjects",
     coverageSubjectYears: (subject: string) =>

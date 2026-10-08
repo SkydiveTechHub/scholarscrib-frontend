@@ -35,13 +35,6 @@ export type NotificationPreferences = {
   announcements: boolean;
 };
 
-export type SettingsDevice = {
-  id: string;
-  label?: string | null;
-  lastSeenAt?: string | null;
-  current?: boolean;
-};
-
 export type SettingsProfileOut = {
   id: string;
   firstName?: string | null;
@@ -55,7 +48,6 @@ export type SettingsProfileOut = {
   tier: string;
   tierExpiresAt?: string | null;
   hasPassword: boolean;
-  devices: SettingsDevice[];
   notificationPreferences: NotificationPreferences;
 };
 
@@ -438,7 +430,13 @@ export type TopicPageOut = {
   mastery: number | null;
   available: boolean;
   alreadyPassed: boolean;
-  questionCount: number;
+  attemptedCount: number;
+  level?: string | null;
+  retention?: number | null;
+  confidence?: number | null;
+  accObservations?: number;
+  lessonObservations?: number;
+  srsObservations?: number;
   canonicalLessonId?: string | null;
   createsAttempt?: boolean | null;
   lesson?: Record<string, unknown> | null;
