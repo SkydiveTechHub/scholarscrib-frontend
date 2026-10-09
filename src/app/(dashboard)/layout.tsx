@@ -7,6 +7,7 @@ import { MobileHeader } from "@/components/ui/mobile-header";
 import { SessionGuard } from "@/components/auth/session-guard";
 import { PushSync } from "@/components/push/push-sync";
 import { AnnouncementBanner } from "@/components/announcements/announcement-banner";
+import { EncouragementModal } from "@/components/ui/encouragement-modal";
 import type { ProfileUser } from "@/components/ui/user-menu";
 import { daysUntilExam, examTargetFor } from "@/lib/exam-target";
 import { NOINDEX } from "@/lib/seo/metadata";
@@ -44,6 +45,7 @@ export default async function DashboardLayout({
     <div className="min-h-full">
       <SessionGuard realm="student" />
       <PushSync />
+      <EncouragementModal firstName={user.firstName} />
       <Sidebar user={user as ProfileUser} />
       <MobileHeader
         user={user as ProfileUser}

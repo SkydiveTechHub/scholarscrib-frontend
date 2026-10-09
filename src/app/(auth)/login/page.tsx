@@ -13,6 +13,7 @@ import {
 import { Logo } from "@/components/ui/logo";
 import { cn } from "@/lib/utils";
 import { useLogin } from "@/hooks/api/use-auth";
+import { markFreshSignIn } from "@/lib/encouragement";
 
 function LoginForm() {
   const searchParams = useSearchParams();
@@ -44,6 +45,7 @@ function LoginForm() {
     try {
       const data = await login.mutateAsync({ email, password });
       setStudentToken(data.accessToken);
+      markFreshSignIn();
 
       // A full navigation, not router.push + router.refresh. The refresh
       // re-fetched /login under the new session cookie, so the (auth)
@@ -77,6 +79,7 @@ function LoginForm() {
       import("@/lib/api/endpoints"),
       import("@/lib/api/errors"),
     ]);
+    markFreshSignIn();
     try {
       // The backend owns the OAuth dance. /api/auth/google starts it and the
       // backend's own /api/auth/google/callback resolves it, redirecting the

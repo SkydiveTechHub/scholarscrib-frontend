@@ -3,6 +3,7 @@ import {
   LuCalendarDays,
   LuDatabase,
   LuGraduationCap,
+  LuListTree,
   LuLayoutDashboard,
   LuLibrary,
   LuMegaphone,
@@ -25,8 +26,8 @@ export type AdminNavGroup = {
 };
 
 // Every entry must have a page behind it. An earlier version listed Subjects,
-// Users and Lessons with no routes — three links straight to a 404. Curriculum
-// and Billing are deliberately absent for the same reason.
+// Users and Lessons with no routes — three links straight to a 404. Billing is
+// deliberately absent for the same reason.
 //
 // Import is not a top-level entry: it is an action inside Questions. The route
 // /admin/questions/import is unchanged.
@@ -39,6 +40,7 @@ export const ADMIN_NAV_GROUPS: readonly AdminNavGroup[] = [
     label: "Content",
     items: [
       { name: "Questions", href: "/admin/questions", icon: LuDatabase },
+      { name: "Curriculum", href: "/admin/curriculum", icon: LuListTree },
       { name: "Lessons", href: "/admin/lessons", icon: LuBookOpen },
       { name: "Library", href: "/admin/library", icon: LuLibrary },
       { name: "Term dates", href: "/admin/terms", icon: LuCalendarDays },

@@ -59,6 +59,11 @@ export const queryKeys = {
     materials: () => [...queryKeys.admin.all, "materials"] as const,
     students: () => [...queryKeys.admin.all, "students"] as const,
     admins: () => [...queryKeys.admin.all, "admins"] as const,
+    subjects: () => [...queryKeys.admin.all, "subjects"] as const,
+    curriculums: (subjectId: string) =>
+      [...queryKeys.admin.all, "curriculums", subjectId] as const,
+    curriculumTopics: (curriculumId: string) =>
+      [...queryKeys.admin.all, "curriculum-topics", curriculumId] as const,
     academicTerms: () => [...queryKeys.admin.all, "academic-terms"] as const,
     announcements: () => [...queryKeys.admin.all, "announcements"] as const,
   },

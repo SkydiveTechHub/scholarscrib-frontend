@@ -66,6 +66,7 @@ export type SubjectOut = {
   isWaec?: boolean | null;
   isJamb?: boolean | null;
   isNeco?: boolean | null;
+  isActive?: boolean | null;
   _count?: SubjectCountOut | null;
 };
 
@@ -555,4 +556,39 @@ export type ApiErrorBody = {
   feature?: string;
   /** Login over the limit: the client renders "too many attempts". */
   code?: string;
+};
+// ─── Admin / Catalogue (subjects, curriculum levels, topics) ───────────────
+
+export type TrackCategory = "CORE" | "SCIENCE" | "ARTS" | "COMMERCIAL" | "VOCATIONAL";
+
+export type AdminSubjectOut = {
+  id: string;
+  name: string;
+  slug: string;
+  code?: string | null;
+  isWaec?: boolean | null;
+  isJamb?: boolean | null;
+  isNeco?: boolean | null;
+  isActive?: boolean | null;
+  trackCategory?: string | null;
+  _count?: { topics: number; questions: number } | null;
+};
+
+export type AdminCurriculumOut = {
+  id: string;
+  subjectId: string;
+  classLevel: string;
+  term: string;
+};
+
+export type AdminTopicOut = {
+  id: string;
+  subjectId: string;
+  curriculumLevelId?: string | null;
+  title: string;
+  slug: string;
+  orderIndex: number;
+  estimatedMinutes: number;
+  waecWeight: number;
+  jambWeight: number;
 };

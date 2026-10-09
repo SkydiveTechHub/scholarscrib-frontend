@@ -128,6 +128,18 @@ export const endpoints = {
       sign: "/admin/api/materials/sign",
       subjects: "/admin/api/materials/subjects",
     },
+    subjects: {
+      list: "/admin/api/subjects",
+      detail: (subjectId: string) => `/admin/api/subjects/${seg(subjectId)}`,
+    },
+    curriculums: {
+      list: "/admin/api/curriculums",
+      detail: (curriculumId: string) => `/admin/api/curriculums/${seg(curriculumId)}`,
+      topics: (curriculumId: string) => `/admin/api/curriculums/${seg(curriculumId)}/topics`,
+    },
+    topics: {
+      detail: (topicId: string) => `/admin/api/topics/${seg(topicId)}`,
+    },
     academicTerms: {
       list: "/admin/api/academic-terms",
       detail: (termId: string) => `/admin/api/academic-terms/${seg(termId)}`,
