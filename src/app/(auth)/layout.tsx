@@ -1,6 +1,6 @@
 import Image from "next/image";
 import { redirect } from "next/navigation";
-import { LuCheck, LuSparkles, LuClipboardCheck, LuCalendarClock } from "react-icons/lu";
+import { LuSparkles, LuClipboardCheck, LuCalendarClock } from "react-icons/lu";
 import { getSession } from "@/lib/session";
 import { NOINDEX } from "@/lib/seo/metadata";
 import { siteName } from "@/lib/seo/site";
@@ -79,13 +79,6 @@ export default async function AuthLayout({
               </li>
             ))}
           </ul>
-
-          <div className="mt-10 flex items-center gap-3 rounded-xl bg-white/10 px-4 py-3 backdrop-blur">
-            <LuCheck className="h-5 w-5 flex-shrink-0 text-emerald-300" />
-            <p className="text-sm text-hero-ink">
-              Trusted by students preparing for Nigeria&apos;s biggest exams.
-            </p>
-          </div>
         </div>
       </div>
 

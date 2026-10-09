@@ -33,8 +33,10 @@ export function Nav() {
         scrolled ? "glass-strong" : "glass",
       )}
     >
-      <div className="landing-container flex h-16 items-center justify-between">
-        <Logo />
+      <div className="landing-container flex h-16 items-center justify-between gap-3">
+        {/* The default lockup is 72px tall, which overflows this 64px bar and,
+            at 375px, makes the bar wider than the screen. */}
+        <Logo imageClassName="h-11 sm:h-12" className="shrink-0" />
 
         <nav className="hidden items-center gap-1 md:flex">
           {NAV_LINKS.map((link) => (
@@ -48,7 +50,7 @@ export function Nav() {
           ))}
         </nav>
 
-        <div className="flex items-center gap-2">
+        <div className="flex shrink-0 items-center gap-2">
           <Link
             href="/login"
             className={buttonClass("ghost", "md", "hidden sm:inline-flex")}
@@ -57,7 +59,7 @@ export function Nav() {
           </Link>
           <Link
             href="/register"
-            className={buttonClass("primary", "md", "btn-shine")}
+            className={buttonClass("primary", "md", "btn-shine whitespace-nowrap")}
           >
             Start free
           </Link>
@@ -66,7 +68,7 @@ export function Nav() {
             aria-label={open ? "Close menu" : "Open menu"}
             aria-expanded={open}
             onClick={() => setOpen((v) => !v)}
-            className="inline-flex h-9 w-9 items-center justify-center rounded-lg border hairline surface text-foreground transition-colors hover:bg-secondary md:hidden"
+            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border hairline surface text-foreground transition-colors hover:bg-secondary md:hidden"
           >
             {open ? <LuX className="h-5 w-5" /> : <LuMenu className="h-5 w-5" />}
           </button>

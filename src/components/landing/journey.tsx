@@ -7,7 +7,7 @@ import {
   LuTarget,
   LuTrendingUp,
   LuTrophy,
-  LuWandSparkles,
+  LuClock,
 } from "react-icons/lu";
 import { SectionHeader } from "./section";
 import { Reveal } from "./reveal";
@@ -16,7 +16,7 @@ const STEPS = [
   {
     icon: LuMapPin,
     title: "Choose your subject",
-    text: "Pick from 12+ subjects following the Nigerian curriculum.",
+    text: "Pick your subjects, following the Nigerian curriculum.",
   },
   {
     icon: LuBookOpen,
@@ -26,7 +26,7 @@ const STEPS = [
   {
     icon: LuClipboardList,
     title: "Practice questions",
-    text: "Thousands of WAEC, JAMB & NECO style questions with answers.",
+    text: "Past questions with answers and explanations.",
   },
   {
     icon: LuBrainCircuit,
@@ -34,9 +34,9 @@ const STEPS = [
     text: "Drill the facts until they stick, at your own pace.",
   },
   {
-    icon: LuWandSparkles,
-    title: "Ask the AI tutor",
-    text: "Stuck? Get a step-by-step explanation in plain English.",
+    icon: LuClock,
+    title: "Sit timed mock exams",
+    text: "Practise under CBT conditions so exam day feels familiar.",
   },
   {
     icon: LuTarget,

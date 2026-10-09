@@ -1,6 +1,5 @@
 import {
   LuBookOpen,
-  LuBot,
   LuBrainCircuit,
   LuCalendarClock,
   LuClipboardList,
@@ -112,13 +111,6 @@ export function WhyUs() {
             </Reveal>
           ))}
         </div>
-
-        <Reveal delay={120}>
-          <p className="mt-12 flex items-center justify-center gap-2 text-sm font-semibold ink-muted">
-            <LuBot className="h-4 w-4 text-primary" />
-            And the AI tutor never sleeps — it’s there at 2am before your exam.
-          </p>
-        </Reveal>
       </div>
     </section>
   );

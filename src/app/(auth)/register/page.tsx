@@ -121,7 +121,7 @@ export default function RegisterPage() {
       <h2 className="text-2xl font-bold tracking-tight text-foreground">
         Create your account
       </h2>
-      <p className="mt-1 text-muted">Free forever for students.</p>
+      <p className="mt-1 text-muted">Free to start for students.</p>
 
       {/* Stepper */}
       <ol className="mt-8 flex items-center gap-2">

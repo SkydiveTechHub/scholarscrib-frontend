@@ -6,7 +6,6 @@ import {
   LuCheck,
   LuFlame,
   LuSparkles,
-  LuStar,
   LuTrendingUp,
 } from "react-icons/lu";
 import { buttonClass } from "@/components/ui/button";
@@ -27,25 +26,6 @@ function FloatingCard({
       style={{ animationDelay: delay }}
     >
       {children}
-    </div>
-  );
-}
-
-function AiTutorBubble() {
-  return (
-    <div className="glass glass-strong rounded-2xl p-3 shadow-lift">
-      <div className="flex items-center gap-2">
-        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-br from-primary to-brand text-white">
-          <LuSparkles className="h-3.5 w-3.5" />
-        </span>
-        <div>
-          <p className="text-[11px] font-extrabold ink">AI Tutor</p>
-          <p className="text-[10px] font-medium ink-faint">scholarscrib.com</p>
-        </div>
-      </div>
-      <p className="mt-2 rounded-xl bg-primary-soft px-3 py-2 text-[11px] font-semibold leading-relaxed text-primary-soft-foreground">
-        Can you explain the chain rule again?
-      </p>
     </div>
   );
 }
@@ -137,8 +117,8 @@ function HeroAppWindow() {
 
             <div className="mt-4 space-y-2">
               {[
-                { letter: "A", text: "4", state: "correct" },
-                { letter: "B", text: "5", state: "idle" },
+                { letter: "A", text: "4", state: "idle" },
+                { letter: "B", text: "5", state: "correct" },
                 { letter: "C", text: "6", state: "idle" },
                 { letter: "D", text: "3", state: "idle" },
               ].map((opt) => (
@@ -171,7 +151,7 @@ function HeroAppWindow() {
               </span>
               <div>
                 <p className="text-[10px] font-extrabold uppercase tracking-widest text-primary">
-                  AI explanation
+                  Explanation
                 </p>
                 <p className="mt-1 text-xs leading-relaxed ink-muted">
                   2<sup>x</sup> = 32 means 2 multiplied by itself x times. Since
@@ -182,10 +162,6 @@ function HeroAppWindow() {
           </div>
         </div>
       </div>
-
-      <FloatingCard className="-right-5 -top-8 lg:-right-12" delay="0.4s">
-        <AiTutorBubble />
-      </FloatingCard>
 
       <FloatingCard className="-left-6 top-16 lg:-left-12" delay="0.9s">
         <StreakCard />
@@ -249,9 +225,9 @@ export function Hero() {
 
           <Reveal delay={160}>
             <p className="mt-6 max-w-xl text-base leading-relaxed ink-muted sm:text-lg">
-              Interactive lesson notes, an AI tutor that explains anything,
-              smart flashcards, quizzes, CBT practice and a revision plan that
-              adapts to you — built for WAEC, JAMB and NECO.
+              Interactive lesson notes, smart flashcards, quizzes, CBT practice
+              and a revision plan that adapts to you — built for WAEC, JAMB
+              and NECO.
             </p>
           </Reveal>
 
@@ -279,33 +255,6 @@ export function Hero() {
             </p>
           </Reveal>
 
-          <Reveal delay={320}>
-            <div className="mt-9 flex flex-wrap items-center gap-4">
-              <div className="flex -space-x-2.5">
-                {["Adaeze", "Tunde", "Aisha", "Chidi", "Fatima"].map((name) => (
-                  <span
-                    key={name}
-                    className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-background bg-gradient-to-br from-primary via-blue-600 to-brand text-[10px] font-extrabold text-white"
-                  >
-                    {name.charAt(0)}
-                  </span>
-                ))}
-              </div>
-              <div>
-                <div className="flex items-center gap-0.5">
-                  {Array.from({ length: 5 }).map((_, i) => (
-                    <LuStar key={i} className="h-3.5 w-3.5 fill-accent text-accent" />
-                  ))}
-                  <span className="ml-1.5 text-xs font-extrabold ink">
-                    4.9/5
-                  </span>
-                </div>
-                <p className="mt-0.5 text-xs ink-faint">
-                  Loved by students in Lagos, Kano, Enugu &amp; beyond
-                </p>
-              </div>
-            </div>
-          </Reveal>
         </div>
 
         <Reveal delay={200} className="lg:pl-8">

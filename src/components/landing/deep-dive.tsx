@@ -9,7 +9,6 @@ import {
   LuFlame,
   LuListChecks,
   LuTrendingUp,
-  LuWifiOff,
 } from "react-icons/lu";
 import { cn } from "@/lib/utils";
 import { SectionHeader } from "./section";
@@ -231,12 +230,6 @@ const MINI_FEATURES = [
     text: "Tell us your exam date and free hours. We map every week to a clear next step, so you never have to wonder what to study.",
     accent: "from-primary to-blue-600",
   },
-  {
-    icon: LuWifiOff,
-    title: "Offline Mode",
-    text: "Download lessons and flashcards and keep studying even when data runs out. Study on the bus, at home, anywhere.",
-    accent: "from-emerald-500 to-teal-600",
-  },
 ];
 
 export function DeepDive() {
@@ -253,7 +246,7 @@ export function DeepDive() {
               </span>
             </>
           }
-          description="Every feature exists for one reason — to turn study time into exam confidence. Here’s the thinking behind the big four."
+          description="Every feature exists for one reason — to turn study time into exam confidence. Here’s the thinking behind the big three."
         />
 
         <div className="mt-16 space-y-20 lg:space-y-24">
@@ -296,7 +289,7 @@ export function DeepDive() {
           })}
         </div>
 
-        <div className="mt-16 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="mt-16 grid gap-5 sm:grid-cols-2">
           {MINI_FEATURES.map((feature, i) => (
             <Reveal key={feature.title} delay={i * 90}>
               <div className="group relative h-full overflow-hidden rounded-2xl surface hairline p-6 shadow-card transition-all duration-300 hover:-translate-y-1 hover:shadow-lift">

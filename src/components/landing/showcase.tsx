@@ -11,9 +11,7 @@ import {
   LuFlame,
   LuLayoutDashboard,
   LuPlay,
-  LuSparkles,
   LuTrendingUp,
-  LuWandSparkles,
 } from "react-icons/lu";
 import { cn } from "@/lib/utils";
 import { SectionHeader } from "./section";
@@ -23,7 +21,6 @@ const TABS = [
   { key: "dashboard", label: "Dashboard", icon: LuLayoutDashboard },
   { key: "lesson", label: "Lesson", icon: LuBookOpen },
   { key: "flashcards", label: "Flashcards", icon: LuBrainCircuit },
-  { key: "tutor", label: "AI Tutor", icon: LuWandSparkles },
   { key: "quiz", label: "Quiz", icon: LuClipboardList },
   { key: "analytics", label: "Analytics", icon: LuChartColumn },
 ] as const;
@@ -218,44 +215,6 @@ function FlashcardsScreen() {
   );
 }
 
-function TutorScreen() {
-  return (
-    <div className="space-y-4 p-5 sm:p-6">
-      <div className="flex max-w-[85%] items-start gap-2.5 rounded-2xl rounded-tl-md surface-2 hairline p-3.5">
-        <span className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-primary-soft text-primary">
-          <LuSparkles className="h-3.5 w-3.5" />
-        </span>
-        <div className="space-y-1.5">
-          <p className="text-xs font-semibold ink">
-            Explain the mole concept simply.
-          </p>
-          <p className="text-xs font-semibold ink">
-            And why is 1 mole = 6.022 × 10²³?
-          </p>
-        </div>
-      </div>
-      <div className="ml-auto max-w-[88%] rounded-2xl rounded-tr-md bg-gradient-to-br from-primary to-brand p-3.5 text-white shadow-soft">
-        <p className="text-xs leading-relaxed">
-          Imagine eggs in a crate — you count by crates, not individual eggs. A
-          mole is the chemist’s “crate”: one mole always holds 6.022 × 10²³
-          particles, called Avogadro’s number. So 2 moles of atoms = 2 ×
-          (6.022 × 10²³) atoms. Want a practice question?
-        </p>
-      </div>
-      <div className="flex items-center gap-2 rounded-2xl surface-2 hairline p-2.5">
-        <input
-          aria-label="Ask the AI tutor a question"
-          placeholder="Ask anything…"
-          className="w-full bg-transparent px-2 text-sm text-foreground outline-none placeholder:text-muted"
-        />
-        <span className="inline-flex items-center gap-1 rounded-xl bg-primary px-3 py-1.5 text-[11px] font-bold text-white">
-          <LuWandSparkles className="h-3.5 w-3.5" /> Ask
-        </span>
-      </div>
-    </div>
-  );
-}
-
 function QuizScreen() {
   return (
     <div className="p-5 sm:p-6">
@@ -357,7 +316,6 @@ const SCREENS: Record<TabKey, () => React.JSX.Element> = {
   dashboard: DashboardScreen,
   lesson: LessonScreen,
   flashcards: FlashcardsScreen,
-  tutor: TutorScreen,
   quiz: QuizScreen,
   analytics: AnalyticsScreen,
 };
@@ -366,8 +324,10 @@ export function Showcase() {
   const [active, setActive] = useState<TabKey>("dashboard");
   const Screen = SCREENS[active];
 
+  // overflow-x-clip on the section: the decorative glow below uses -inset-x-8 and
+  // would otherwise widen the page by ~12px at 375px.
   return (
-    <section id="product" className="scroll-mt-20 bg-gradient-to-b from-transparent to-secondary/40">
+    <section id="product" className="scroll-mt-20 overflow-x-clip bg-gradient-to-b from-transparent to-secondary/40">
       <div className="landing-container py-20 lg:py-28">
         <SectionHeader
           eyebrow="Product tour"
@@ -379,7 +339,7 @@ export function Showcase() {
               </span>
             </>
           }
-          description="Explore every corner of ScholarsCrib — from your personal dashboard to the AI tutor that’s with you through every topic."
+          description="Explore every corner of ScholarsCrib — from your personal dashboard to timed quizzes and progress analytics."
         />
 
         <Reveal delay={120}>

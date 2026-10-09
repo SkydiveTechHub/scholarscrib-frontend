@@ -1,10 +1,3 @@
-import {
-  LuFacebook,
-  LuInstagram,
-  LuLinkedin,
-  LuTwitter,
-  LuYoutube,
-} from "react-icons/lu";
 import { Logo } from "@/components/ui/logo";
 
 const COLUMNS: { heading: string; links: { label: string; href: string }[] }[] = [
@@ -32,7 +25,6 @@ const COLUMNS: { heading: string; links: { label: string; href: string }[] }[] =
   {
     heading: "Resources",
     links: [
-      { label: "Blog", href: "/" },
       { label: "Help Center", href: "/#faq" },
       { label: "About us", href: "/about" },
       { label: "Contact", href: "/contact" },
@@ -41,19 +33,9 @@ const COLUMNS: { heading: string; links: { label: string; href: string }[] }[] =
   {
     heading: "Legal",
     links: [
-      { label: "Privacy Policy", href: "/" },
       { label: "Terms of Service", href: "/terms" },
-      { label: "Cookie Policy", href: "/" },
     ],
   },
-];
-
-const SOCIALS = [
-  { label: "Twitter", icon: LuTwitter, href: "/" },
-  { label: "Instagram", icon: LuInstagram, href: "/" },
-  { label: "Facebook", icon: LuFacebook, href: "/" },
-  { label: "LinkedIn", icon: LuLinkedin, href: "/" },
-  { label: "YouTube", icon: LuYoutube, href: "/" },
 ];
 
 export function Footer() {
@@ -68,18 +50,6 @@ export function Footer() {
               students across Nigeria learn with confidence — one question at a
               time.
             </p>
-            <div className="mt-6 flex items-center gap-2">
-              {SOCIALS.map((social) => (
-                <a
-                  key={social.label}
-                  href={social.href}
-                  aria-label={social.label}
-                  className="flex h-9 w-9 items-center justify-center rounded-xl surface-2 hairline text-ink-muted transition-all duration-200 hover:-translate-y-0.5 hover:text-primary"
-                >
-                  <social.icon className="h-4 w-4" />
-                </a>
-              ))}
-            </div>
             {/* <div className="mt-8 max-w-xs">
               <p className="text-xs font-extrabold uppercase tracking-widest ink">
                 Study tips, weekly

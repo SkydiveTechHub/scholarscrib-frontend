@@ -1,7 +1,6 @@
 import { AboutHero } from "@/components/about/hero";
 import { AboutStory } from "@/components/about/story";
 import { AboutValues } from "@/components/about/values";
-import { StatsBand } from "@/components/landing/stats";
 import { FinalCta } from "@/components/landing/final-cta";
 import { JsonLd } from "@/components/seo/json-ld";
 import { aboutPageJsonLd, breadcrumbJsonLd } from "@/lib/seo/jsonld";
@@ -36,7 +35,6 @@ export default function AboutPage() {
       <AboutHero />
       <AboutStory />
       <AboutValues />
-      <StatsBand />
       <FinalCta />
     </>
   );

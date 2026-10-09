@@ -24,7 +24,7 @@ export function Faq() {
               </span>
             </>
           }
-          description="Everything students, parents and teachers usually ask us before getting started."
+          description="Everything students and parents usually ask us before getting started."
         />
 
         <Reveal delay={120}>

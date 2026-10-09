@@ -65,6 +65,12 @@ export default async function BillingPage({
               })}.`
             : "."}
         </p>
+        <p className="text-sm text-muted">
+          Plans are prepaid for 1 or 12 months and do not renew automatically.
+          When a plan ends, your account returns to Free until you buy again. If
+          you buy while a plan is active, the new period starts when the current
+          one ends.
+        </p>
 
         <PlanPicker
           enabled={isBillingEnabled()}
