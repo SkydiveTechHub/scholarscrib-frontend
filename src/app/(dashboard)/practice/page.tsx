@@ -14,16 +14,16 @@ const practiceOptions = [
     stats: "JAMB • WAEC • NECO",
     badge: "green" as const,
   },
-  {
-    title: "Mock Exam",
-    description:
-      "Take a full-length exam under timed conditions, with auto-grading.",
-    href: "/practice/mock-exam",
-    icon: LuTimer,
-    tile: "bg-tone-purple-soft text-tone-purple-ink",
-    stats: "Timed • Full-length",
-    badge: "purple" as const,
-  },
+  // {
+  //   title: "Mock Exam",
+  //   description:
+  //     "Take a full-length exam under timed conditions, with auto-grading.",
+  //   href: "/practice/mock-exam",
+  //   icon: LuTimer,
+  //   tile: "bg-tone-purple-soft text-tone-purple-ink",
+  //   stats: "Timed • Full-length",
+  //   badge: "purple" as const,
+  // },
   {
     title: "JAMB CBT Practice",
     description:
