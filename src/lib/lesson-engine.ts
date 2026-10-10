@@ -80,6 +80,20 @@ export interface CheckBlock {
   passage?: string | null;
 }
 
+/**
+ * A theory question the student types an answer to, then marks themselves
+ * against the model answer. Never auto-graded: free text is not reliably
+ * markable, and a wrong auto-mark would punish a correct answer.
+ */
+export interface ShortBlock {
+  type: "short";
+  id: string;
+  question: string;
+  /** The model answer shown after the student has typed theirs. */
+  answer: string;
+  explanation?: string;
+}
+
 export type LessonBlock =
   | ConceptBlock
   | DiagramBlock
@@ -87,6 +101,7 @@ export type LessonBlock =
   | TipBlock
   | MistakeBlock
   | MnemonicBlock
+  | ShortBlock
   | CheckBlock;
 
 export type LintIssue = { blockId?: string; message: string };
@@ -98,6 +113,7 @@ const BLOCK_TYPE_SET = new Set([
   "tip",
   "mistake",
   "mnemonic",
+  "short",
   "check",
 ]);
 
@@ -210,6 +226,25 @@ function parseBlock(raw: unknown): LessonBlock | null {
         phrase: typeof raw.phrase === "string" ? raw.phrase : "",
         encoded: isStringArray(raw.encoded) ? raw.encoded : [],
       };
+    case "short": {
+      const question =
+        typeof raw.question === "string"
+          ? raw.question
+          : typeof raw.text === "string"
+            ? raw.text
+            : "";
+      const answer = typeof raw.answer === "string" ? raw.answer : "";
+      // Without a model answer there is nothing to mark against.
+      if (!question.trim() || !answer.trim()) return null;
+      return {
+        type: "short",
+        id,
+        question,
+        answer,
+        explanation:
+          typeof raw.explanation === "string" ? raw.explanation : undefined,
+      };
+    }
     case "check": {
       // The note parser writes the prompt as `text`; hand-authored blocks use
       // `question`. Reading only `question` dropped every parsed check.
@@ -261,6 +296,12 @@ export function blockWordCount(block: LessonBlock): number {
       return wordCount(block.wrong) + wordCount(block.right);
     case "mnemonic":
       return wordCount(block.phrase) + block.encoded.reduce((s, e) => s + wordCount(e), 0);
+    case "short":
+      return (
+        wordCount(block.question) +
+        wordCount(block.answer) +
+        wordCount(block.explanation ?? "")
+      );
     case "check":
       return wordCount(block.question);
   }

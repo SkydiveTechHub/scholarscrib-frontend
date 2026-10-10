@@ -4,7 +4,13 @@
 // erroring when its inner shape does not match.
 // See docs/superpowers/specs/2026-08-06-natural-lesson-note-format-design.md
 
-import type { LessonBlock, CheckBlock, ConceptBlock, ExampleBlock } from "@/lib/lesson-engine";
+import type {
+  LessonBlock,
+  CheckBlock,
+  ConceptBlock,
+  ExampleBlock,
+  ShortBlock,
+} from "@/lib/lesson-engine";
 import type { Issue } from "./types";
 import { slugify } from "./ids";
 
@@ -240,16 +246,27 @@ export function parseQuizSection(args: SectionArgs): SectionResult {
     // theory questions are how a WAEC/NECO paper's second section is written,
     // and rejecting them blocked whole uploads over content that was correct.
     //
-    // With a sample answer it becomes a tap-to-reveal card; without one it is
-    // still a card, just one the student answers in their own head or their
-    // notebook. Dropping it silently would lose a question the teacher wrote.
+    // With a sample answer it becomes a `short` block (type your answer, then
+    // self-mark); without one it is still a card, just one the student answers
+    // in their own head or their notebook. Dropping it silently would lose a question the teacher wrote.
     if (question.options.length === 0) {
       const shortAnswer = SHORT_ANSWER_RE.exec(stem);
+      if (shortAnswer) {
+        // The student types an answer, then marks it against this one.
+        const short: ShortBlock = {
+          type: "short",
+          id: nextId("short-answer"),
+          question: stem.replace(SHORT_ANSWER_RE, "").trim(),
+          answer: shortAnswer[1].trim(),
+        };
+        blocks.push(short);
+        lastNonCheckId = short.id;
+        continue;
+      }
       const block: ConceptBlock = {
         type: "concept",
-        id: nextId(shortAnswer ? "short-answer" : "theory"),
-        text: shortAnswer ? stem.replace(SHORT_ANSWER_RE, "").trim() : stem,
-        ...(shortAnswer ? { reveal: shortAnswer[1].trim() } : {}),
+        id: nextId("theory"),
+        text: stem,
       };
       blocks.push(block);
       lastNonCheckId = block.id;

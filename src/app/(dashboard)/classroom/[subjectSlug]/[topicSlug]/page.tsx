@@ -12,7 +12,7 @@ import {
 } from "react-icons/lu";
 import { getSessionUser } from "@/lib/session";
 import { getTopicPageData } from "@/lib/classroom-topic";
-import type { CheckBlock } from "@/lib/lesson-engine";
+import type { CheckBlock, ShortBlock } from "@/lib/lesson-engine";
 import { PretestDialog } from "@/components/path/pretest-dialog";
 import { LessonNotes } from "@/components/classroom/lesson-notes";
 import { TopicActionBar } from "@/components/classroom/topic-action-bar";
@@ -259,7 +259,8 @@ export default async function TopicDetailPage({
           hasDeck={Boolean(deckId)}
           deckId={deckId}
           checks={lesson.blocks.filter(
-            (block): block is CheckBlock => block.type === "check",
+            (block): block is CheckBlock | ShortBlock =>
+              block.type === "check" || block.type === "short",
           )}
         />
       )}

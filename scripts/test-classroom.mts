@@ -46,8 +46,9 @@ test("toNotes keeps every non-check type", () => {
     { type: "tip", id: "t", text: "tip" },
     { type: "mistake", id: "m", wrong: "w", right: "r" },
     { type: "mnemonic", id: "n", phrase: "p", encoded: ["e"] },
+    { type: "short", id: "s", question: "q", answer: "a" },
   ];
-  assert.equal(toNotes(blocks).length, 6);
+  assert.equal(toNotes(blocks).length, 7);
 });
 
 test("toNotes on an empty list returns empty", () => {

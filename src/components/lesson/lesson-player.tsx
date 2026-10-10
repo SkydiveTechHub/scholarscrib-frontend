@@ -158,7 +158,9 @@ function BlockLesson(props: LessonPlayerProps) {
 
   const block = props.blocks[stepIndex];
   const isLastStep = stepIndex === props.blocks.length - 1;
-  const currentIsCheck = block?.type === "check";
+  // A multiple-choice check and a typed short answer both hold the student on
+  // the card until they have answered it.
+  const currentIsCheck = block?.type === "check" || block?.type === "short";
   const currentCheckSettled =
     currentIsCheck && block && visited.has(block.id);
   const visitedCount = visited.size;
@@ -352,7 +354,7 @@ function BlockLesson(props: LessonPlayerProps) {
       <div className="mt-6 card p-5 md:p-7">
         <div className="mb-4 flex items-center justify-between gap-3">
           <p className="text-sm font-bold text-foreground">
-            {block && block.type !== "check"
+            {block && !currentIsCheck
               ? `Card ${stepIndex + 1} of ${props.blocks.length}`
               : `Checkpoint — card ${stepIndex + 1} of ${props.blocks.length}`}
           </p>

@@ -11,8 +11,11 @@ import { UpgradeModal } from "@/components/billing/upgrade-modal";
 import { isSubscriptionTier, type SubscriptionTier } from "@/lib/subscription";
 import { useGenerateDeck } from "@/hooks/api/use-flashcards";
 import { useRecordTopicAnswers } from "@/hooks/api/use-topic-answers";
-import type { CheckBlock } from "@/lib/lesson-engine";
-import { QuickQuizModal, type QuickQuizResult } from "./quick-quiz-modal";
+import {
+  QuickQuizModal,
+  type QuickQuizResult,
+  type QuizQuestion,
+} from "./quick-quiz-modal";
 
 // The topic page's call-to-action row, rendered after the lesson note so it
 // appears once the student has read to the end: take the note's quick quiz,
@@ -32,7 +35,7 @@ export function TopicActionBar({
   hasDeck: boolean;
   deckId: string | null;
   /** The lesson note's own questions; the quick quiz is hidden when it has none. */
-  checks: CheckBlock[];
+  checks: QuizQuestion[];
 }) {
   const router = useRouter();
   const generateDeck = useGenerateDeck<{ deck: { id: string } }>();

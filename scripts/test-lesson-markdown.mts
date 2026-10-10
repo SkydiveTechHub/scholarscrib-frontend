@@ -4,7 +4,11 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { parseLessonMarkdown, sanitizeSvg, validateLessonMarkdown } from "../src/lib/lesson-markdown";
 import { stripAnswerMarker, stripLessonNotePrefix } from "../src/lib/lesson-markdown/natural";
-import type { ConceptBlock } from "../src/lib/lesson-engine";
+import type { ConceptBlock, ShortBlock } from "../src/lib/lesson-engine";
+import { parseBlocks } from "../src/lib/lesson-engine";
+
+const shorts = (blocks: { type: string }[]) =>
+  blocks.filter((b) => b.type === "short") as ShortBlock[];
 import type {
   ExampleBlock,
   TipBlock,
@@ -985,14 +989,12 @@ test("every accepted answer marker works", () => {
   }
 });
 
-test("a short-answer question becomes a concept card with a reveal", () => {
+test("a short-answer question becomes a short block", () => {
   const result = parseLessonMarkdown(QUIZ_LESSON);
-  const reveal = result.blocks.find(
-    (b) => b.type === "concept" && (b as ConceptBlock).reveal,
-  ) as ConceptBlock;
-  assert.equal(reveal.text, "Convert 3,000 g to kilograms.");
-  assert.equal(reveal.reveal, "3 kg");
-  assert.equal(reveal.id, "short-answer-1");
+  const [short] = shorts(result.blocks);
+  assert.equal(short.question, "Convert 3,000 g to kilograms.");
+  assert.equal(short.answer, "3 kg");
+  assert.equal(short.id, "short-answer-1");
 });
 
 test("a short answer containing punctuation is captured whole", () => {
@@ -1007,11 +1009,9 @@ test("a short answer containing punctuation is captured whole", () => {
       "1. Explain the difference. *(Short answer: Fundamental cannot be broken down, e.g., mass; derived are combinations, e.g., speed = distance/time)*",
     ].join("\n"),
   );
-  const reveal = result.blocks.find(
-    (b) => b.type === "concept" && (b as ConceptBlock).reveal,
-  ) as ConceptBlock;
+  const [short] = shorts(result.blocks);
   assert.equal(
-    reveal.reveal,
+    short.answer,
     "Fundamental cannot be broken down, e.g., mass; derived are combinations, e.g., speed = distance/time",
   );
 });
@@ -1072,13 +1072,11 @@ test("a theory question's sample answer may be qualified before the colon", () =
       ["## A", "", "Text.", "", "## Quiz", "", `1. State ONE safety rule. ${aside}`].join("\n"),
     );
     assert.deepEqual(result.errors, [], `${aside} produced errors`);
-    const card = result.blocks.find(
-      (b) => b.type === "concept" && (b as ConceptBlock).reveal,
-    ) as ConceptBlock;
-    assert.ok(card, `${aside} did not produce a reveal card`);
-    assert.equal(card.reveal, "Do not eat in the laboratory", `${aside} captured the wrong answer`);
+    const [card] = shorts(result.blocks);
+    assert.ok(card, `${aside} did not produce a short block`);
+    assert.equal(card.answer, "Do not eat in the laboratory", `${aside} captured the wrong answer`);
     assert.equal(
-      card.text,
+      card.question,
       "State ONE safety rule.",
       `${aside} was not stripped from the visible question`,
     );
@@ -1104,15 +1102,13 @@ test("the three theory questions from a real note all parse", () => {
     ].join("\n"),
   );
   assert.deepEqual(result.errors, []);
-  const reveals = result.blocks.filter(
-    (b) => b.type === "concept" && (b as ConceptBlock).reveal,
-  ) as ConceptBlock[];
-  assert.equal(reveals.length, 3);
-  assert.equal(reveals[0].reveal, "Do not eat or drink in the laboratory");
-  assert.equal(reveals[1].reveal, "power generation, GSM telecommunication");
-  assert.match(reveals[2].reveal as string, /^Engineering applies physics principles/);
-  for (const card of reveals) {
-    assert.ok(!card.text.includes("Short answer"), `aside leaked into: ${card.text}`);
+  const found = shorts(result.blocks);
+  assert.equal(found.length, 3);
+  assert.equal(found[0].answer, "Do not eat or drink in the laboratory");
+  assert.equal(found[1].answer, "power generation, GSM telecommunication");
+  assert.match(found[2].answer, /^Engineering applies physics principles/);
+  for (const card of found) {
+    assert.ok(!card.question.includes("Short answer"), `aside leaked into: ${card.question}`);
   }
 });
 
@@ -1367,14 +1363,10 @@ test("the real lesson note produces the expected block mix", () => {
   assert.equal(counts.example, 3, "three worked examples become example blocks");
   assert.equal(
     counts.concept,
-    10,
-    "ten concept cards: five body sections, the objectives, the resources, and three short-answer reveal cards",
+    7,
+    "seven concept cards: five body sections, the objectives, and the resources",
   );
-
-  const reveals = result.blocks.filter(
-    (b) => b.type === "concept" && (b as ConceptBlock).reveal,
-  );
-  assert.equal(reveals.length, 3, "three short-answer questions become reveal cards");
+  assert.equal(counts.short, 3, "three short-answer questions become short blocks");
 });
 
 test("the real lesson note's header is read, not carded", () => {
@@ -1505,12 +1497,10 @@ test("a blank line before a *(Short answer: ...)* aside on its own line does not
     ].join("\n"),
   );
   assert.deepEqual(result.errors, []);
-  const reveal = result.blocks.find(
-    (b) => b.type === "concept" && (b as ConceptBlock).reveal,
-  ) as ConceptBlock;
-  assert.ok(reveal, "the short answer must still be recognised, not reported as missing");
-  assert.equal(reveal.text, "Convert 3,000 g to kilograms.");
-  assert.equal(reveal.reveal, "3 kg");
+  const [short] = shorts(result.blocks);
+  assert.ok(short, "the short answer must still be recognised, not reported as missing");
+  assert.equal(short.question, "Convert 3,000 g to kilograms.");
+  assert.equal(short.answer, "3 kg");
 });
 
 test("a wrapped quiz stem across a blank line still parses with its options", () => {
@@ -1571,4 +1561,41 @@ test("known limitation: without a bolded final answer, a remark after a blank li
     "A closing remark.",
     "known limitation: with no trailing prose detection, the remark is read as the final line of the working, and its lack of a bolded span just means the whole line becomes the answer",
   );
+});
+
+// ─── short blocks: type an answer, self-mark ─────────────────
+
+test("a short block survives the stored-JSON round trip", () => {
+  const result = parseLessonMarkdown(QUIZ_LESSON);
+  const stored = JSON.parse(JSON.stringify(result.blocks));
+  const reloaded = shorts(parseBlocks(stored));
+  assert.equal(reloaded.length, 1);
+  assert.equal(reloaded[0].answer, "3 kg");
+});
+
+test("parseBlocks drops a short block with no model answer", () => {
+  const blocks = parseBlocks([
+    { type: "short", id: "s1", question: "Define diffusion.", answer: "" },
+    { type: "short", id: "s2", question: "", answer: "x" },
+    { type: "short", id: "s3", question: "Define diffusion.", answer: "Spreading out." },
+  ]);
+  assert.deepEqual(blocks.map((b) => b.id), ["s3"]);
+});
+
+test("a short block counts towards the card word cap and is linted", () => {
+  const long = WORD.repeat(130).trim();
+  const result = validateLessonMarkdown(
+    ["## A", "", "Text.", "", "## Quiz", "", `1. Explain. *(Short answer: ${long})*`].join("\n"),
+  );
+  assert.ok(
+    result.errors.some((e) => /cards must be/.test(e.message)),
+    "an over-long model answer should fail the word-cap lint",
+  );
+});
+
+test("a theory question with no model answer stays a plain card, not a short block", () => {
+  const result = parseLessonMarkdown(
+    ["## A", "", "Text.", "", "## Quiz", "", "1. State ONE safety rule."].join("\n"),
+  );
+  assert.equal(shorts(result.blocks).length, 0);
 });

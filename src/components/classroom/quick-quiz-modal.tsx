@@ -5,14 +5,24 @@ import { LuCheck } from "react-icons/lu";
 import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/ui/modal";
 import { InlineMarkdown } from "@/components/lesson/markdown";
+import { ShortAnswer } from "@/components/lesson/short-answer";
 import { cn } from "@/lib/utils";
-import type { CheckBlock } from "@/lib/lesson-engine";
+import type { CheckBlock, ShortBlock } from "@/lib/lesson-engine";
+
+/** A question in the quiz: multiple choice, or a typed answer the student self-marks. */
+export type QuizQuestion = CheckBlock | ShortBlock;
 
 export type QuickQuizResult = {
   correct: number;
   total: number;
   /** What the student picked, per question, for the caller to record. */
-  answers: { questionId: string; selectedAnswer: string }[];
+  answers: {
+    questionId: string;
+    /** Multiple choice: marked server-side against the stored answer. */
+    selectedAnswer?: string;
+    /** Short answer: the student's own verdict, true for "I got it". */
+    firstTry?: boolean;
+  }[];
 };
 
 // The lesson note's own practice questions, in a modal that only the two
@@ -31,15 +41,20 @@ export function QuickQuizModal({
   onSubmit,
 }: {
   open: boolean;
-  checks: CheckBlock[];
+  checks: QuizQuestion[];
   onCancel: () => void;
   onSubmit: (result: QuickQuizResult) => void;
 }) {
   const [picked, setPicked] = useState<Record<string, string>>({});
+  // Short answers settle themselves: true once the student marks "I got it".
+  const [selfMarked, setSelfMarked] = useState<Record<string, boolean>>({});
 
   const answered = useMemo(
-    () => checks.filter((check) => picked[check.id]).length,
-    [checks, picked],
+    () =>
+      checks.filter((check) =>
+        check.type === "short" ? check.id in selfMarked : picked[check.id],
+      ).length,
+    [checks, picked, selfMarked],
   );
   const complete = answered === checks.length;
 
@@ -47,14 +62,18 @@ export function QuickQuizModal({
   function finish(action: () => void) {
     action();
     setPicked({});
+    setSelfMarked({});
   }
 
   function submit() {
-    const correct = checks.filter((check) => picked[check.id] === check.answer).length;
-    const answers = checks.map((check) => ({
-      questionId: check.id,
-      selectedAnswer: picked[check.id],
-    }));
+    const correct = checks.filter((check) =>
+      check.type === "short" ? selfMarked[check.id] : picked[check.id] === check.answer,
+    ).length;
+    const answers = checks.map((check) =>
+      check.type === "short"
+        ? { questionId: check.id, firstTry: selfMarked[check.id] }
+        : { questionId: check.id, selectedAnswer: picked[check.id] },
+    );
     finish(() => onSubmit({ correct, total: checks.length, answers }));
   }
 
@@ -79,7 +98,20 @@ export function QuickQuizModal({
       }
     >
       <ol className="space-y-6">
-        {checks.map((check, index) => (
+        {checks.map((check, index) =>
+          check.type === "short" ? (
+            <li key={check.id}>
+              <p className="mb-2 text-xs font-semibold text-muted">
+                {index + 1}. Theory question
+              </p>
+              <ShortAnswer
+                block={check}
+                onResult={(attempts) =>
+                  setSelfMarked((prev) => ({ ...prev, [check.id]: attempts === 1 }))
+                }
+              />
+            </li>
+          ) : (
           <li key={check.id}>
             <p className="text-sm font-medium leading-relaxed text-foreground">
               <span className="mr-1.5 text-muted">{index + 1}.</span>
@@ -118,7 +150,8 @@ export function QuickQuizModal({
               })}
             </div>
           </li>
-        ))}
+          ),
+        )}
       </ol>
     </Modal>
   );

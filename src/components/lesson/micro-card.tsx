@@ -19,6 +19,7 @@ import { Badge } from "@/components/ui/badge";
 import { InteractiveDiagram } from "./interactive-diagram";
 import { WorkedExample } from "./worked-example";
 import { KnowledgeCheck } from "./knowledge-check";
+import { ShortAnswer } from "./short-answer";
 import type { LessonBlock } from "@/lib/lesson-engine";
 
 type MicroCardProps = {
@@ -40,6 +41,15 @@ export function MicroCard({ block, onCheckResult }: MicroCardProps) {
       return <MistakeCard block={block} />;
     case "mnemonic":
       return <MnemonicCard block={block} />;
+    case "short":
+      return (
+        <ShortAnswer
+          block={block}
+          onResult={(attempts, correct) =>
+            onCheckResult?.(block.id, attempts, correct)
+          }
+        />
+      );
     case "check":
       return (
         <KnowledgeCheck

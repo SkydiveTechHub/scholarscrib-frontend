@@ -56,6 +56,23 @@ function NoteBlock({ block }: { block: NotesBlock }) {
     case "example":
       return <WorkedExample block={block} />;
 
+    case "short":
+      return (
+        <section className="rounded-xl border border-border bg-secondary/30 p-4">
+          <p className="text-sm font-semibold leading-relaxed text-foreground">
+            <InlineMarkdown content={block.question} />
+          </p>
+          <details className="mt-2">
+            <summary className="cursor-pointer text-sm font-semibold text-primary">
+              Show model answer
+            </summary>
+            <div className="mt-2 text-sm text-muted">
+              <Markdown content={block.answer} />
+            </div>
+          </details>
+        </section>
+      );
+
     case "diagram":
       return <InteractiveDiagram block={block} />;
 
