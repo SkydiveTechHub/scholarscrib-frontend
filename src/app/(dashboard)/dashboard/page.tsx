@@ -11,9 +11,6 @@ import {
   LuMonitor,
   LuBook,
   LuSparkles,
-  LuCompass,
-  LuTriangleAlert,
-  LuRotateCcw,
 } from "react-icons/lu";
 import { getSessionUser } from "@/lib/session";
 import { DASHBOARD_ATTEMPTS_PAGE_SIZE, getDashboardData } from "@/lib/dashboard";
@@ -22,9 +19,7 @@ import { Greeting } from "@/components/ui/greeting";
 import { Progress } from "@/components/ui/progress";
 import { EmptyState } from "@/components/ui/empty-state";
 import { cn } from "@/lib/utils";
-import { NextTopics } from "@/components/path/next-topics";
-import { GapList } from "@/components/path/gap-list";
-import { RevisionQueue } from "@/components/path/revision-queue";
+import { TodaysSession } from "@/components/path/todays-session";
 import { InstallBanner } from "@/components/pwa/install-banner";
 
 const STAT_CARDS = [
@@ -119,7 +114,7 @@ export default async function DashboardPage({
     accuracy,
     topicCount,
     lastWeekActivity,
-    // "Next for you" and "Revise today" stay hidden until the student has
+    // Today's session stays hidden until the student has
     // engaged somewhere: a completed attempt, an answered question, or any
     // learning evidence (lessons, flashcards). The backend decides.
     hasActivity,
@@ -129,10 +124,7 @@ export default async function DashboardPage({
     recentAttempts,
     attemptTotal,
     subjects,
-    learningPicks,
-    gaps,
-    revision,
-    revisionTotal,
+    session: todaysSession,
   } = await getDashboardData(activityPage);
 
   const activityWindow = pageWindow({
@@ -253,89 +245,11 @@ export default async function DashboardPage({
         </div>
       </section>
 
-      {/* Learning path — next for you (hidden until the student has activity) */}
-      {hasActivity && (
+      {/* Today's session (hidden until the student has activity) */}
+      {hasActivity && todaysSession && (
         <section>
-          <h2 className="mb-3 section-label">Next for you</h2>
-          <div className="grid gap-6 lg:grid-cols-2 lg:gap-4">
-            <div className="space-y-3">
-              <div className="flex items-center gap-2">
-                <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary-soft text-primary">
-                  <LuCompass className="h-4 w-4" />
-                </span>
-                <div>
-                  <h3 className="text-sm font-bold text-foreground">Keep learning</h3>
-                  <p className="text-xs text-muted">
-                    Ranked by what helps most next
-                  </p>
-                </div>
-              </div>
-              {learningPicks.length > 0 ? (
-                <NextTopics items={learningPicks} subjects={subjects} />
-              ) : (
-                <div className="card p-4 text-sm text-muted">
-                  Nothing to learn right now — try a subject quiz to keep the
-                  momentum going.
-                </div>
-              )}
-            </div>
-
-            <div className="space-y-3">
-              <div className="flex items-center gap-2">
-                <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-tone-red-soft text-tone-red-ink">
-                  <LuTriangleAlert className="h-4 w-4" />
-                </span>
-                <div>
-                  <h3 className="text-sm font-bold text-foreground">
-                    Tighten your gaps
-                  </h3>
-                  <p className="text-xs text-muted">
-                    Weak spots ranked by how much they unlock
-                  </p>
-                </div>
-              </div>
-              {gaps.length > 0 ? (
-                <GapList items={gaps.slice(0, 4)} subjects={subjects} />
-              ) : (
-                <div className="card p-4 text-sm text-muted">
-                  No gaps detected — every topic is at your target mastery.
-                </div>
-              )}
-            </div>
-          </div>
-        </section>
-      )}
-
-      {/* Learning path — revise today (hidden until the student has activity) */}
-      {hasActivity && (
-        <section>
-          <div className="space-y-3">
-            <div className="flex items-center gap-2">
-              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-tone-orange-soft text-tone-orange-ink">
-                <LuRotateCcw className="h-4 w-4" />
-              </span>
-              <div>
-                <h3 className="text-sm font-bold text-foreground">
-                  Revise today
-                </h3>
-                <p className="text-xs text-muted">
-                  Merged from your flashcard reviews and revision schedule
-                </p>
-              </div>
-              {revisionTotal > 0 && (
-                <span className="ml-auto rounded-full bg-tone-orange-soft px-2.5 py-0.5 text-xs font-bold text-tone-orange-ink">
-                  {revisionTotal} due
-                </span>
-              )}
-            </div>
-            {revision.length > 0 ? (
-              <RevisionQueue items={revision} subjects={subjects} />
-            ) : (
-              <div className="card p-4 text-sm text-muted">
-                Nothing due for revision — your retention is holding up.
-              </div>
-            )}
-          </div>
+          <h2 className="mb-3 section-label">Today&apos;s session</h2>
+          <TodaysSession session={todaysSession} subjects={subjects} />
         </section>
       )}
 
