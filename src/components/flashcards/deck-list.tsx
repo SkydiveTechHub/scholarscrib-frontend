@@ -50,7 +50,7 @@ function DeckCard({ deck }: { deck: DeckSummary }) {
   return (
     <div className="card card-interactive group flex flex-col p-4 md:p-5">
       <div className="flex items-start justify-between gap-2">
-        <div className="flex items-center gap-2.5">
+        <div className="flex min-w-0 flex-1 items-start gap-2.5">
           <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-primary-soft text-primary">
             {deck.source === "LESSON" ? (
               <LuSparkles className="h-4 w-4" />
@@ -58,12 +58,12 @@ function DeckCard({ deck }: { deck: DeckSummary }) {
               <LuBookOpen className="h-4 w-4" />
             )}
           </span>
-          <div className="min-w-0">
-            <p className="truncate text-sm font-bold text-foreground">
+          <div className="min-w-0 flex-1">
+            <p className="break-words text-sm font-bold leading-snug text-foreground">
               {deck.title}
             </p>
             {deck.subjectName && (
-              <p className="truncate text-xs text-muted">
+              <p className="mt-0.5 break-words text-xs text-muted">
                 {deck.subjectName}
                 {deck.topicTitle ? ` · ${deck.topicTitle}` : ""}
               </p>

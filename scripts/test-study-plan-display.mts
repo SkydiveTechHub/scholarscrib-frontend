@@ -5,7 +5,7 @@ import { groupWindow, planItemHref } from "../src/lib/study-plan-display";
 const subject = { slug: "mathematics" };
 
 test("planItemHref sends each activity to the page that completes it", () => {
-  assert.equal(planItemHref({ activityType: "LESSON", topicSlug: "sets", subject }), "/classroom/mathematics/sets/study");
+  assert.equal(planItemHref({ activityType: "LESSON", topicSlug: "sets", subject }), "/classroom/mathematics/sets");
   assert.equal(planItemHref({ activityType: "PRACTICE", topicSlug: "sets", subject }), "/classroom/mathematics/sets/practice");
   assert.equal(planItemHref({ activityType: "REVISION", topicSlug: "sets", subject }), "/classroom/mathematics/sets/quiz");
   assert.equal(planItemHref({ activityType: "REVISION", topicSlug: null, subject }), "/flashcards");

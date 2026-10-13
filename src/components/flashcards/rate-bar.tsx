@@ -7,12 +7,14 @@ import {
   LuSmile,
 } from "react-icons/lu";
 import { cn } from "@/lib/utils";
-import { RATINGS, RATING_LABEL } from "@/lib/spaced-repetition";
+import { RATINGS, RATING_LABEL, shortInterval } from "@/lib/spaced-repetition";
 import type { ReviewRating } from "@/lib/spaced-repetition";
 
 type RateBarProps = {
   onRate: (rating: ReviewRating) => void;
   disabled?: boolean;
+  /** Days until the next review per rating, shown under each label. */
+  intervals?: Partial<Record<ReviewRating, number>> | null;
 };
 
 const RATING_ICON = {
@@ -36,7 +38,7 @@ const RATING_KEY: Record<ReviewRating, string> = {
   EASY: "4",
 };
 
-export function RateBar({ onRate, disabled }: RateBarProps) {
+export function RateBar({ onRate, disabled, intervals }: RateBarProps) {
   return (
     <div className="grid grid-cols-4 gap-2 md:gap-3">
       {RATINGS.map((rating) => {
@@ -54,6 +56,11 @@ export function RateBar({ onRate, disabled }: RateBarProps) {
           >
             <Icon className="h-5 w-5" />
             <span>{RATING_LABEL[rating]}</span>
+            {intervals?.[rating] !== undefined && (
+              <span className="text-[11px] font-medium text-muted">
+                {shortInterval(intervals[rating] as number)}
+              </span>
+            )}
             <span className="hidden text-[10px] font-medium text-muted sm:block">
               press {RATING_KEY[rating]}
             </span>

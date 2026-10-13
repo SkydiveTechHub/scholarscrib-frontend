@@ -362,7 +362,7 @@ export type DashboardOut = {
   streak: number;
   tier: string;
   session?: DashboardSession | null;
-  /** Subjects referenced by the rails, keyed by subject id. */
+  /** Subjects referenced by today's session items, keyed by subject id. */
   subjects: Record<string, { slug: string; name: string; code: string }>;
   todayItems: DashboardTodayItem[];
   hasStudyPlan: boolean;

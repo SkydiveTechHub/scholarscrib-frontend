@@ -28,7 +28,7 @@ const check = (id: string): LessonBlock => ({
 // ─── toNotes ───────────────────────────────────────────────
 
 test("toNotes drops check blocks", () => {
-  // A knowledge check belongs to the player, where an answer is graded.
+  // Questions are the quick quiz, not part of the lesson.
   const notes = toNotes([concept("c1"), check("k1"), concept("c2")]);
   assert.deepEqual(notes.map((b) => b.id), ["c1", "c2"]);
 });
@@ -38,7 +38,38 @@ test("toNotes preserves authored order", () => {
   assert.deepEqual(notes.map((b) => b.id), ["c3", "c1", "c2"]);
 });
 
-test("toNotes keeps every non-check type", () => {
+test("toNotes drops theory questions too", () => {
+  const short: LessonBlock = { type: "short", id: "s", question: "q", answer: "a" };
+  assert.deepEqual(
+    toNotes([concept("c1"), short, concept("c2")]).map((b) => b.id),
+    ["c1", "c2"],
+  );
+});
+
+test("toNotes drops the quiz section's heading and instructions", () => {
+  const rubric: LessonBlock = {
+    type: "concept",
+    id: "quiz-8-questions",
+    title: "Quiz (8 Questions)",
+    text: "Choose the correct option for questions 1-6, then answer the short-answer questions.",
+  };
+  assert.deepEqual(
+    toNotes([concept("c1"), rubric, concept("c2")]).map((b) => b.id),
+    ["c1", "c2"],
+  );
+});
+
+test("toNotes keeps a lesson card that merely mentions a quiz", () => {
+  const card: LessonBlock = {
+    type: "concept",
+    id: "c",
+    title: "Why quizzes help recall",
+    text: "Testing yourself beats rereading.",
+  };
+  assert.equal(toNotes([card]).length, 1);
+});
+
+test("toNotes keeps every teaching type", () => {
   const blocks: LessonBlock[] = [
     concept("c"),
     { type: "diagram", id: "d", svg: "<svg/>", hotspots: [] },
@@ -46,9 +77,8 @@ test("toNotes keeps every non-check type", () => {
     { type: "tip", id: "t", text: "tip" },
     { type: "mistake", id: "m", wrong: "w", right: "r" },
     { type: "mnemonic", id: "n", phrase: "p", encoded: ["e"] },
-    { type: "short", id: "s", question: "q", answer: "a" },
   ];
-  assert.equal(toNotes(blocks).length, 7);
+  assert.equal(toNotes(blocks).length, 6);
 });
 
 test("toNotes on an empty list returns empty", () => {

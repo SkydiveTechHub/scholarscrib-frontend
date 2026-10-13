@@ -8,14 +8,13 @@ import { isApiError } from "@/lib/api/errors";
 import { useDeleteDeck } from "@/hooks/api/use-flashcards";
 
 /**
- * Removes a deck from the student's list — which, for a deck they created,
- * means deleting it. They are not enrolled in their own deck, so there is no
- * unfollow to offer instead.
+ * Removes a deck from the student's list.
  *
- * The confirmation states both consequences: the review history is gone, and a
- * lesson deck has to be rebuilt from the lesson to come back. `followerCount`
- * is surfaced when it is non-zero so the decision is informed rather than
- * silent — other students lose their schedules too.
+ * A deck built from a lesson is shared with everyone studying that lesson, so
+ * removing it only leaves it: it disappears from this student's list, their
+ * review history is kept, and building flashcards on the lesson again brings it
+ * back. A deck a student made themselves is theirs, so removing it deletes it,
+ * and the confirmation says so, naming any other students studying it.
  */
 export function DeleteDeckButton({
   deckId,
@@ -44,7 +43,7 @@ export function DeleteDeckButton({
       onError: (err) => {
         setError(
           isApiError(err)
-            ? (err.body?.error ?? "Couldn’t delete this deck.")
+            ? (err.body?.error ?? "Couldn’t remove this deck.")
             : "Something went wrong. Please try again.",
         );
       },
@@ -61,7 +60,7 @@ export function DeleteDeckButton({
         className="text-muted hover:text-danger"
       >
         <LuTrash2 className="h-4 w-4" />
-        Delete deck
+        {fromLesson ? "Remove from my decks" : "Delete deck"}
       </Button>
     );
   }
@@ -70,23 +69,32 @@ export function DeleteDeckButton({
     <div className="rounded-xl border border-danger/30 bg-danger-soft/30 p-4">
       <p className="flex items-start gap-2 text-sm font-semibold text-foreground">
         <LuTriangleAlert className="mt-0.5 h-4 w-4 flex-shrink-0 text-danger" />
-        <span>Delete “{deckTitle}”?</span>
+        <span>
+          {fromLesson ? "Remove" : "Delete"} “{deckTitle}”
+          {fromLesson ? " from your decks?" : "?"}
+        </span>
       </p>
-      <ul className="mt-2 space-y-1 pl-6 text-xs leading-relaxed text-muted">
-        <li>Every card in it goes, along with your review history.</li>
-        {followerCount > 0 && (
-          <li className="font-semibold text-warning">
-            {followerCount} other student{followerCount === 1 ? "" : "s"}{" "}
-            {followerCount === 1 ? "is" : "are"} studying this deck. They lose
-            their cards and their progress too.
+      {fromLesson ? (
+        <ul className="mt-2 space-y-1 pl-6 text-xs leading-relaxed text-muted">
+          <li>Your review history is kept.</li>
+          <li>
+            Build flashcards on the lesson again to bring it back, exactly as
+            you left it.
           </li>
-        )}
-        <li>
-          {fromLesson
-            ? "You can build it again from the lesson, but it starts fresh."
-            : "This cannot be undone."}
-        </li>
-      </ul>
+        </ul>
+      ) : (
+        <ul className="mt-2 space-y-1 pl-6 text-xs leading-relaxed text-muted">
+          <li>Every card in it goes, along with your review history.</li>
+          {followerCount > 0 && (
+            <li className="font-semibold text-warning">
+              {followerCount} other student{followerCount === 1 ? "" : "s"}{" "}
+              {followerCount === 1 ? "is" : "are"} studying this deck. They lose
+              their cards and their progress too.
+            </li>
+          )}
+          <li>This cannot be undone.</li>
+        </ul>
+      )}
 
       {error && (
         <p className="mt-3 text-sm font-medium text-danger">{error}</p>
@@ -100,7 +108,13 @@ export function DeleteDeckButton({
           onClick={remove}
           disabled={busy}
         >
-          {busy ? "Deleting…" : "Delete deck"}
+          {busy
+            ? fromLesson
+              ? "Removing…"
+              : "Deleting…"
+            : fromLesson
+              ? "Remove deck"
+              : "Delete deck"}
         </Button>
         <Button
           type="button"

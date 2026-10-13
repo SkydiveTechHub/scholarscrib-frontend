@@ -8,12 +8,12 @@ import type {
 
 /**
  * Dashboard read: one call to the backend's aggregate `GET /api/dashboard`,
- * which computes every figure, rail and pager total the page renders. This
+ * which computes every figure, session item and pager total the page renders. This
  * module only narrows the payload to the page's shape — it derives nothing
  * the backend did not send, so the numbers cannot drift from the server's.
  */
 
-/** A subject referenced by a learning-path card, keyed by id in the payload. */
+/** A subject referenced by today's session, keyed by id in the payload. */
 export type DashboardSubject = {
   slug: string;
   name: string;

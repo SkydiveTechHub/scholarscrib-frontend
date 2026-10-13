@@ -19,7 +19,7 @@ export function planItemHref(item: {
   const topic = item.topicSlug ? `/classroom/${item.subject.slug}/${item.topicSlug}` : null;
   switch (item.activityType) {
     case "LESSON":
-      return topic ? `${topic}/study` : `/classroom/${item.subject.slug}`;
+      return topic ?? `/classroom/${item.subject.slug}`;
     case "PRACTICE":
       return topic ? `${topic}/practice` : `/classroom/${item.subject.slug}`;
     case "REVISION":

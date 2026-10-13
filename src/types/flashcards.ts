@@ -27,6 +27,8 @@ export type StudyCardState = {
   prompt: string | null;
   payload: unknown;
   authoredDifficulty: string;
+  /** Days until the next review if the student picks each rating. */
+  nextIntervals: Partial<Record<ReviewRating, number>> | null;
   review: {
     state: string;
     intervalDays: number;

@@ -45,7 +45,7 @@ export default async function TopicPracticeResultPage({
   const { attemptId } = await searchParams;
 
   const topicHref = `/classroom/${subjectSlug}/${topicSlug}`;
-  const studyHref = `${topicHref}/study`;
+  const studyHref = topicHref;
   if (!attemptId) redirect(studyHref);
 
   const outcome = await getTopicPracticeResult(

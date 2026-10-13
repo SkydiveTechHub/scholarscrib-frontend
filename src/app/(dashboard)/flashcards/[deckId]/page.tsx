@@ -86,7 +86,7 @@ export default async function DeckPage({
         />
       )}
 
-      {deck.isOwner && (
+      {(deck.isOwner || fromLesson) && (
         <section className="border-t border-border pt-5">
           <DeleteDeckButton
             deckId={deck.id}

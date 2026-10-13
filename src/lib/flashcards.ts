@@ -207,11 +207,16 @@ function asStudyCard(row: Record<string, unknown>): StudyCardState {
       }
     : null;
   return {
-    cardId: String(row.cardId ?? ""),
-    cardType: (row.cardType as StudyCardState["cardType"]) ?? "DEFINITION",
+    cardId: String(row.cardId ?? row.id ?? ""),
+    cardType:
+      ((row.cardType ?? row.type) as StudyCardState["cardType"]) ?? "DEFINITION",
     prompt: str(row.prompt),
     payload: row.payload,
     authoredDifficulty: String(row.authoredDifficulty ?? 5),
+    nextIntervals:
+      row.nextIntervals && typeof row.nextIntervals === "object"
+        ? (row.nextIntervals as StudyCardState["nextIntervals"])
+        : null,
     review,
   };
 }
