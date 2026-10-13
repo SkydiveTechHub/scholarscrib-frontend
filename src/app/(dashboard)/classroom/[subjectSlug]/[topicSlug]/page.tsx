@@ -240,9 +240,9 @@ export default async function TopicDetailPage({
         </div>
       )}
 
-      {/* A topic the student has not touched leads with the guided lesson, not
-          the notes: first learning is the card player's job, notes are for
-          revising something already met. */}
+      {/* A topic the student has not touched leads with the lesson page, which
+          tracks progress and checks and leads to the exit test; these notes are
+          the same material without any of that, for revising something met. */}
       {lesson && !started && topicReady && (
         <div className="card mt-6 flex flex-wrap items-center justify-between gap-4 p-5">
           <div className="min-w-0">
@@ -250,8 +250,9 @@ export default async function TopicDetailPage({
               New to this topic?
             </h2>
             <p className="mt-0.5 text-xs text-muted">
-              Learn it one idea at a time, with a check along the way. The
-              notes below are there when you want to read instead.
+              Work through the lesson with checks along the way, then take the
+              test that completes it. The notes below are the same material to
+              skim.
             </p>
           </div>
           <Link

@@ -11,7 +11,7 @@ import { InlineMarkdown, Markdown } from "./markdown";
 type KnowledgeCheckProps = {
   block: CheckBlock;
   onResult: (attempts: number, correct: boolean) => void;
-  /** The card this question follows, shown on request after a wrong answer. */
+  /** A way back to the material this question covers, offered after a wrong answer. */
   refresher?: ReactNode;
 };
 
@@ -152,7 +152,7 @@ export function KnowledgeCheck({
         {wrongAnswer && refresher && (
           <details className="mt-3 rounded-xl border border-border bg-secondary/40 p-3">
             <summary className="cursor-pointer text-xs font-bold uppercase tracking-wide text-foreground/70">
-              Re-read the card this came from
+              Need a refresher?
             </summary>
             <div className="mt-3">{refresher}</div>
           </details>

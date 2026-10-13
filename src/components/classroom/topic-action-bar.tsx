@@ -99,14 +99,15 @@ export function TopicActionBar({
           : "Reading is a start. Prove it to yourself."}
       </p>
       <div className="flex flex-wrap items-center gap-2">
-        {/* The card player is the only route to a completed lesson, so it is
-            always offered here; it leads when the topic is new to the student. */}
+        {/* The lesson page is where checks and progress live and it leads to
+            the exit that completes the lesson, so it is always offered here;
+            it leads when the topic is new to the student. */}
         <Link
           href={studyHref}
           className={buttonClass(started ? "outline" : "primary", "md")}
         >
           <LuPlay className="h-4 w-4" />
-          Study step by step
+          Take the lesson
         </Link>
         {checks.length > 0 && (
           <button

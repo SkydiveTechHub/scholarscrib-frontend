@@ -3,7 +3,7 @@ import Link from "next/link";
 import { LuArrowLeft } from "react-icons/lu";
 import { getSessionUser } from "@/lib/session";
 import { getTopicStudyData } from "@/lib/classroom-topic";
-import { LessonPlayer } from "@/components/lesson/lesson-player";
+import { LessonScroll } from "@/components/lesson/lesson-scroll";
 
 export default async function StudyPage({
   params,
@@ -32,18 +32,16 @@ export default async function StudyPage({
         {data.subjectName} · {data.topicTitle}
       </Link>
 
-      <LessonPlayer
+      <LessonScroll
         lessonTitle={data.lessonTitle}
         blocks={data.blocks}
         objectives={data.objectives}
         durationMinutes={data.estimatedMinutes}
-        difficulty={data.difficulty}
         prerequisiteLabels={data.prerequisiteLabels}
         locked={data.locked}
         lockedReason={data.lockedReason}
         legacy={data.legacy}
         backHref={backHref}
-        quizHref={`/classroom/${subjectSlug}/${topicSlug}/quiz`}
         lessonId={data.lessonId}
         subjectSlug={subjectSlug}
         topicSlug={topicSlug}
