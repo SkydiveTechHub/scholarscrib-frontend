@@ -3,7 +3,13 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { LuClipboardCheck, LuLayers, LuLoader, LuTarget } from "react-icons/lu";
+import {
+  LuClipboardCheck,
+  LuLayers,
+  LuLoader,
+  LuPlay,
+  LuTarget,
+} from "react-icons/lu";
 import { buttonClass } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { isApiError } from "@/lib/api/errors";
@@ -28,12 +34,15 @@ export function TopicActionBar({
   hasDeck,
   deckId,
   checks,
+  started,
 }: {
   subjectSlug: string;
   topicSlug: string;
   lessonId: string | null;
   hasDeck: boolean;
   deckId: string | null;
+  /** The student already has evidence on this topic, so this is revision. */
+  started: boolean;
   /** The lesson note's own questions; the quick quiz is hidden when it has none. */
   checks: QuizQuestion[];
 }) {
@@ -47,6 +56,7 @@ export function TopicActionBar({
   const [quizResult, setQuizResult] = useState<QuickQuizResult | null>(null);
 
   const practiceHref = `/classroom/${subjectSlug}/${topicSlug}/practice`;
+  const studyHref = `/classroom/${subjectSlug}/${topicSlug}/study`;
 
   async function handleFlashcards() {
     if (hasDeck) {
@@ -84,14 +94,25 @@ export function TopicActionBar({
   return (
     <div className="mt-8 rounded-2xl border border-border bg-card p-4">
       <p className="mb-3 text-sm font-semibold text-foreground">
-        Finished reading? Check what you&apos;ve learned.
+        {started
+          ? "Finished reading? Check what you've learned."
+          : "Reading is a start. Prove it to yourself."}
       </p>
       <div className="flex flex-wrap items-center gap-2">
+        {/* The card player is the only route to a completed lesson, so it is
+            always offered here; it leads when the topic is new to the student. */}
+        <Link
+          href={studyHref}
+          className={buttonClass(started ? "outline" : "primary", "md")}
+        >
+          <LuPlay className="h-4 w-4" />
+          Study step by step
+        </Link>
         {checks.length > 0 && (
           <button
             type="button"
             onClick={() => setQuizOpen(true)}
-            className={buttonClass("primary", "md")}
+            className={buttonClass(started ? "primary" : "outline", "md")}
           >
             <LuTarget className="h-4 w-4" />
             Quick quiz

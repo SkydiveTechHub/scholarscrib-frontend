@@ -49,6 +49,7 @@ export function QuizEngine({
     [subjectSlug, topicSlug, examType, examYear, count],
   );
 
+  const isExit = Boolean(practiceExit);
   // mutateAsync is stable, so `generate` only changes with the quiz itself.
   const { mutateAsync: generateQuiz } = useGenerateQuiz();
   const generate = useCallback(async (): Promise<GeneratedExam> => {
@@ -59,9 +60,22 @@ export function QuizEngine({
       ...(examYear !== undefined ? { examYear } : {}),
       ...(titleOverride ? { title: titleOverride } : {}),
       ...(untimed ? { untimed: true } : {}),
-      count,
+      // A lesson's exit is sized, timed and marked by the server; `count` is
+      // only a placeholder that satisfies the request's 5-question minimum.
+      ...(isExit ? { practiceExit: true } : {}),
+      count: isExit ? Math.max(5, count) : count,
     });
-  }, [generateQuiz, subjectSlug, topicSlug, examType, examYear, count, titleOverride, untimed]);
+  }, [
+    generateQuiz,
+    subjectSlug,
+    topicSlug,
+    examType,
+    examYear,
+    count,
+    titleOverride,
+    untimed,
+    isExit,
+  ]);
 
   const toResult = useCallback(
     (attemptId: string) =>

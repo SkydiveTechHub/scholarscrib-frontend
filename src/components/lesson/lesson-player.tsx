@@ -370,7 +370,15 @@ function BlockLesson(props: LessonPlayerProps) {
 
         <div className="mt-6">
           {block ? (
-            <MicroCard block={block} onCheckResult={handleCheckResult} />
+            <MicroCard
+              block={block}
+              onCheckResult={handleCheckResult}
+              sourceBlock={
+                block.type === "check"
+                  ? props.blocks.find((b) => b.id === block.afterCard)
+                  : undefined
+              }
+            />
           ) : null}
         </div>
 
