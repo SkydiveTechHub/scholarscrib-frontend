@@ -76,7 +76,7 @@ export function PracticeResultActions({
         </Link>
         <Link href={lessonHref} className={buttonClass("secondary", "md")}>
           <LuBookOpen className="h-4 w-4" />
-          Review lesson cards
+          Review the lesson
         </Link>
         {passed ? (
           <Link href={quizHref} className={buttonClass("success", "md")}>

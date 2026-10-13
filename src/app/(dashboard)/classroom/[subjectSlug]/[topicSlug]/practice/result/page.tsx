@@ -114,7 +114,7 @@ export default async function TopicPracticeResultPage({
           <p className="mt-1.5 max-w-xl text-sm leading-relaxed text-muted">
             {passed
               ? `You cleared the ${passMarkPercent}% pass mark for ${topicTitle}. Your mastery is locked in at ${bestMastery}% (${MASTERY_LABEL[masteryLevel]}).`
-              : `You scored ${Math.round(percentage)}% against a ${passMarkPercent}% pass mark. The questions you missed are listed below — revisit those cards, then retry.`}
+              : `You scored ${Math.round(percentage)}% against a ${passMarkPercent}% pass mark. The questions you missed are listed below — revisit those parts of the lesson, then retry.`}
           </p>
 
           <div className="mt-6 flex flex-wrap items-end justify-between gap-4">
@@ -239,7 +239,7 @@ export default async function TopicPracticeResultPage({
             className="mt-5 inline-flex items-center gap-2 text-sm font-bold text-primary transition-colors hover:text-primary-hover"
           >
             <LuBookOpen className="h-4 w-4" />
-            Revisit the cards these questions came from
+            Revisit the lesson sections these questions came from
           </Link>
         </div>
       )}

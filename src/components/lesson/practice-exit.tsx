@@ -49,7 +49,7 @@ export function PracticeExit(props: PracticeExitProps) {
             <p className="mt-2 max-w-xl text-sm leading-relaxed text-muted">
               This timed test is the gate that completes the lesson. Reach the
               pass mark and the lesson is yours; miss it and you&apos;ll be sent
-              back to the cards that tripped you up.
+              back to the parts of the lesson that tripped you up.
             </p>
           </div>
           <Badge variant="blue" className="text-sm">

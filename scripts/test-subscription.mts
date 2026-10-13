@@ -10,6 +10,8 @@ import {
   planFor,
   formatNaira,
   ENTITLEMENTS,
+  PAID_ENTITLEMENTS,
+  BETA_OPEN_FEATURES,
   GATED_FEATURES,
   can,
 } from "../src/lib/subscription";
@@ -113,19 +115,26 @@ test("every gated feature declares a minimum tier", () => {
   }
 });
 
-test("the matrix matches what the landing page sells", () => {
+test("the paid matrix matches what the landing page sells", () => {
   // src/components/landing/pricing.tsx is the promise made to buyers; if these
-  // drift apart, the site is selling something the app does not grant.
-  assert.equal(ENTITLEMENTS.flashcards, "STANDARD");
-  assert.equal(ENTITLEMENTS.studyPlanner, "STANDARD");
-  assert.equal(ENTITLEMENTS.premiumLibrary, "PREMIUM");
-  assert.equal(ENTITLEMENTS.advancedAnalytics, "PREMIUM");
+  // drift apart, the site is selling something the app does not grant. This is
+  // the paid matrix, which stays intact while a beta opens features up.
+  assert.equal(PAID_ENTITLEMENTS.flashcards, "STANDARD");
+  assert.equal(PAID_ENTITLEMENTS.studyPlanner, "STANDARD");
+  assert.equal(PAID_ENTITLEMENTS.premiumLibrary, "PREMIUM");
+  assert.equal(PAID_ENTITLEMENTS.advancedAnalytics, "PREMIUM");
 });
 
-test("freemium gets none of the gated features", () => {
+test("beta features are open to every tier and nothing else is", () => {
   for (const feature of GATED_FEATURES) {
-    assert.equal(can("FREEMIUM", feature), false, feature);
+    assert.equal(
+      can("FREEMIUM", feature),
+      BETA_OPEN_FEATURES.includes(feature),
+      feature,
+    );
   }
+  assert.equal(ENTITLEMENTS.premiumLibrary, "PREMIUM");
+  assert.equal(ENTITLEMENTS.advancedAnalytics, "PREMIUM");
 });
 
 test("premium gets all of them", () => {
