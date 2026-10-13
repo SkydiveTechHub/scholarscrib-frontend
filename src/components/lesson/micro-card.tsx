@@ -25,9 +25,11 @@ import type { LessonBlock } from "@/lib/lesson-engine";
 type MicroCardProps = {
   block: LessonBlock;
   onCheckResult?: (blockId: string, attempts: number, correct: boolean) => void;
+  /** For a check: the card it follows, offered for re-reading after a wrong answer. */
+  sourceBlock?: LessonBlock;
 };
 
-export function MicroCard({ block, onCheckResult }: MicroCardProps) {
+export function MicroCard({ block, onCheckResult, sourceBlock }: MicroCardProps) {
   switch (block.type) {
     case "concept":
       return <ConceptCard block={block} />;
@@ -54,6 +56,11 @@ export function MicroCard({ block, onCheckResult }: MicroCardProps) {
       return (
         <KnowledgeCheck
           block={block}
+          refresher={
+            sourceBlock && sourceBlock.type !== "check" ? (
+              <MicroCard block={sourceBlock} />
+            ) : null
+          }
           onResult={(attempts, correct) =>
             onCheckResult?.(block.id, attempts, correct)
           }

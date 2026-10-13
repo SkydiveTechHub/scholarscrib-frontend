@@ -8,8 +8,10 @@ import {
   LuClock,
   LuLink,
   LuLock,
+  LuPlay,
   LuTarget,
 } from "react-icons/lu";
+import { buttonClass } from "@/components/ui/button";
 import { getSessionUser } from "@/lib/session";
 import { getTopicPageData } from "@/lib/classroom-topic";
 import type { CheckBlock, ShortBlock } from "@/lib/lesson-engine";
@@ -89,6 +91,7 @@ export default async function TopicDetailPage({
   } = data;
 
   const { classLevel, term } = topic;
+  const started = Boolean(topicState && hasEvidence(topicState));
   const classColor = CLASS_COLORS[classLevel] ?? "bg-secondary text-muted border-border";
 
   return (
@@ -237,6 +240,30 @@ export default async function TopicDetailPage({
         </div>
       )}
 
+      {/* A topic the student has not touched leads with the guided lesson, not
+          the notes: first learning is the card player's job, notes are for
+          revising something already met. */}
+      {lesson && !started && topicReady && (
+        <div className="card mt-6 flex flex-wrap items-center justify-between gap-4 p-5">
+          <div className="min-w-0">
+            <h2 className="text-sm font-bold text-foreground">
+              New to this topic?
+            </h2>
+            <p className="mt-0.5 text-xs text-muted">
+              Learn it one idea at a time, with a check along the way. The
+              notes below are there when you want to read instead.
+            </p>
+          </div>
+          <Link
+            href={`/classroom/${subjectSlug}/${topicSlug}/study`}
+            className={buttonClass("primary", "lg")}
+          >
+            <LuPlay className="h-4 w-4" />
+            Start learning
+          </Link>
+        </div>
+      )}
+
       <div className="mt-6">
         {lesson ? (
           <LessonNotes
@@ -258,6 +285,7 @@ export default async function TopicDetailPage({
           lessonId={lesson.id}
           hasDeck={Boolean(deckId)}
           deckId={deckId}
+          started={started}
           checks={lesson.blocks.filter(
             (block): block is CheckBlock | ShortBlock =>
               block.type === "check" || block.type === "short",

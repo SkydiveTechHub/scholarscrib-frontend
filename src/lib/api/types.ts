@@ -445,6 +445,7 @@ export type TopicPageOut = {
   accObservations?: number;
   lessonObservations?: number;
   srsObservations?: number;
+  prerequisites?: Record<string, unknown>[];
   canonicalLessonId?: string | null;
   createsAttempt?: boolean | null;
   lesson?: Record<string, unknown> | null;

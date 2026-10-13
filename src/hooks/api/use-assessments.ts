@@ -24,6 +24,8 @@ export type GenerateQuizInput = {
   title?: string;
   untimed?: boolean;
   count: number;
+  /** Start the lesson's graded exit; the server sets count, timing and pass mark. */
+  practiceExit?: boolean;
 };
 
 /** Single-subject quiz: topic quizzes, past-question sets, practice exits. */
