@@ -66,16 +66,11 @@ export type DeckStat = {
 };
 
 export type FlashcardStats = {
-  reviewsToday: number;
   reviewsThisWeek: number;
-  totalReviews: number;
   cardsLearned: number;
-  learnedToday: number;
   measuredRetention: number | null;
   predictedRetention: number | null;
-  avgIntervalDays: number | null;
   streak: number;
-  medianResponseTimeMs: number | null;
   activity: ActivityPoint[];
   decks: DeckStat[];
   difficultyMix: { easy: number; medium: number; hard: number };

@@ -267,16 +267,11 @@ export async function getFlashcardStatsFor(
   const data = await api<FlashcardStatsOut>(endpoints.flashcards.stats);
   const raw = (data.stats ?? {}) as Partial<FlashcardStats>;
   return {
-    reviewsToday: num(raw.reviewsToday) ?? 0,
     reviewsThisWeek: num(raw.reviewsThisWeek) ?? 0,
-    totalReviews: num(raw.totalReviews) ?? 0,
     cardsLearned: num(raw.cardsLearned) ?? 0,
-    learnedToday: num(raw.learnedToday) ?? 0,
     measuredRetention: num(raw.measuredRetention),
     predictedRetention: num(raw.predictedRetention),
-    avgIntervalDays: num(raw.avgIntervalDays),
     streak: num(raw.streak) ?? 0,
-    medianResponseTimeMs: num(raw.medianResponseTimeMs),
     activity: Array.isArray(raw.activity) ? raw.activity : [],
     decks: Array.isArray(raw.decks) ? raw.decks : [],
     difficultyMix: raw.difficultyMix ?? { easy: 0, medium: 0, hard: 0 },
