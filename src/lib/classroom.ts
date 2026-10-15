@@ -67,6 +67,15 @@ export function resolveClassLevel(
   return available[0] ?? "SS1";
 }
 
+/**
+ * Remounts the class/term browser when the subject or the student's class
+ * changes, so its tab state resets to the opening class instead of carrying
+ * over from the previous subject.
+ */
+export function browserKey(subjectId: string, initialClassLevel: string): string {
+  return `${subjectId}:${initialClassLevel}`;
+}
+
 export type TopicNavItem = {
   slug: string;
   title: string;

@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
+  browserKey,
   mockExamHrefFor,
   resolveClassLevel,
   selectResources,
@@ -193,4 +194,12 @@ test("mockExamHrefFor encodes a subject id containing url-unsafe characters", ()
   const href = mockExamHrefFor({ subjectId: "a b&c=d", classLevel: "SS1" });
   const params = new URLSearchParams(href.split("?")[1]);
   assert.equal(params.get("subjectId"), "a b&c=d");
+});
+
+// ─── browserKey ────────────────────────────────────────────
+
+test("browserKey changes with the subject and with the class", () => {
+  assert.notEqual(browserKey("maths", "SS1"), browserKey("physics", "SS1"));
+  assert.notEqual(browserKey("maths", "SS1"), browserKey("maths", "SS2"));
+  assert.equal(browserKey("maths", "SS2"), browserKey("maths", "SS2"));
 });
