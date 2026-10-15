@@ -1,7 +1,7 @@
 import { api } from "@/lib/api/server";
 import { endpoints } from "@/lib/api/endpoints";
 import type { PlanPageOut, PlanSubjectRow } from "@/lib/api/types";
-import type { ClassLevel } from "@/lib/curriculum-scope";
+import type { ClassLevel, Term } from "@/lib/curriculum-scope";
 import type {
   DayKey,
   OutlineWeek,
@@ -47,6 +47,10 @@ function asDayKey(value: unknown): DayKey | null {
 
 function asClassLevel(value: unknown): ClassLevel | null {
   return value === "SS1" || value === "SS2" || value === "SS3" ? value : null;
+}
+
+function asTerm(value: unknown): Term {
+  return value === "FIRST" || value === "SECOND" || value === "THIRD" ? value : "FIRST";
 }
 
 function asTermSource(value: unknown): TermSource {
@@ -176,6 +180,17 @@ function asPlan(
 
   return {
     id: String(value.id ?? ""),
+    scope: (() => {
+      const raw =
+        value.scope && typeof value.scope === "object"
+          ? (value.scope as Record<string, unknown>)
+          : {};
+      return {
+        classLevel: asClassLevel(raw.classLevel) ?? classLevel ?? "SS1",
+        term: asTerm(raw.term),
+      };
+    })(),
+    followsCalendar: asBoolean(value.followsCalendar),
     mode,
     subjectIds,
     studyDays: asNumberList(value.studyDays),
@@ -224,6 +239,7 @@ export async function getStudyPlanPageData(): Promise<StudyPlanPageData> {
   return {
     today,
     classLevel,
+    currentTerm: asTerm(data.currentTerm),
     termLabel: typeof data.termLabel === "string" ? data.termLabel : "",
     termSource: asTermSource(data.termSource),
     daysToExam: num(data.daysToExam),

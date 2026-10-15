@@ -265,6 +265,7 @@ export type PlanSubjectRow = Record<string, unknown> & { id: string };
 export type PlanPageOut = {
   today: string;
   classLevel?: string | null;
+  currentTerm?: string | null;
   termLabel?: string | null;
   termSource?: string | null;
   daysToExam?: number | null;
