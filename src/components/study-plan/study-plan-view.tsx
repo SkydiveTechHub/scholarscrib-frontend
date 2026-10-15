@@ -8,6 +8,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/ui/page-header";
 import { buttonClass } from "@/components/ui/button";
 import type { StudyPlanPageData } from "@/lib/study-plan";
+import { scopeHeader } from "@/lib/study-plan-scope";
 import { isApiError } from "@/lib/api/errors";
 import {
   useSaveStudyPlan,
@@ -61,14 +62,15 @@ export function StudyPlanView({ data }: { data: StudyPlanPageData }) {
   }
 
   const description = [
-    data.classLevel,
-    data.termLabel,
+    plan
+      ? scopeHeader(plan.scope, plan.followsCalendar, data.termLabel)
+      : [data.classLevel, data.termLabel].filter(Boolean).join(" · "),
     plan?.targetExam && plan.mode !== "TERM" && data.daysToExam !== null && data.daysToExam > 0
       ? `${plan.targetExam} in ${data.daysToExam} days`
       : null,
   ].filter(Boolean).join(" · ");
   // Only SS3 students can set exam dates, so only they are told to add a new one.
-  const examPassed = data.classLevel === "SS3" && plan?.targetDate != null && plan.targetDate < data.today;
+  const examPassed = plan?.scope.classLevel === "SS3" && plan?.targetDate != null && plan.targetDate < data.today;
 
   return (
     <div className="animate-fade-in">
