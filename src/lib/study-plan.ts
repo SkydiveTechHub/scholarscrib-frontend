@@ -1,4 +1,5 @@
-import type { ClassLevel } from "./curriculum-scope";
+import type { ClassLevel, Term } from "./curriculum-scope";
+import type { PlanScope } from "./study-plan-scope";
 import type { DayKey } from "@/types/study-plan";
 import type { PlanMode } from "@/types/study-plan";
 import type { OutlineWeek } from "@/types/study-plan";
@@ -33,6 +34,9 @@ export type PositionOption = { id: string; title: string; scope: string };
 
 export type StudyPlanData = {
   id: string;
+  scope: PlanScope;
+  /** True while the plan's term is the live school term for the student's class. */
+  followsCalendar: boolean;
   mode: PlanMode;
   subjectIds: string[];
   studyDays: number[];
@@ -57,6 +61,7 @@ export type StudyPlanData = {
 export type StudyPlanPageData = {
   today: DayKey;
   classLevel: ClassLevel | null;
+  currentTerm: Term;
   termLabel: string;
   termSource: TermSource;
   daysToExam: number | null;

@@ -137,7 +137,7 @@ export default async function FlashcardsPage() {
       </section>
 
       {/* Generate from lesson */}
-      <section className="card p-5 md:p-6">
+      <section id="build" className="card scroll-mt-20 p-5 md:p-6">
         <div className="mb-4">
           <h2 className="text-sm font-bold text-foreground">
             Build cards from a lesson

@@ -1,4 +1,4 @@
-import type { CheckBlock, LessonBlock } from "@/lib/lesson-engine";
+import type { CheckBlock, LessonBlock, ShortBlock } from "@/lib/lesson-engine";
 import {
   CLASS_LEVELS,
   type ClassLevel,
@@ -7,17 +7,44 @@ import {
 // Decision logic for the Classroom section. Pure — no database, no React — so
 // the rules that decide what a student sees can be tested directly.
 
-/** Everything a note renders. `check` belongs to the player, not the note. */
-export type NotesBlock = Exclude<LessonBlock, CheckBlock>;
+/**
+ * Whether the graded practice test, and the untimed "more questions" set beside
+ * it, are offered on the topic page. Off while the question logic behind them is
+ * not ready: the lesson ends on the quick quiz instead. The backend that marks
+ * the test and completes the lesson is built and unaffected; turning this on
+ * puts the test back as the end-of-lesson action and moves the quick quiz into
+ * the "practise this topic" row. Until then no lesson can be completed from the
+ * page, because completion comes only from passing the test.
+ */
+export const PRACTICE_TEST_ENABLED = false;
+
+/**
+ * Everything a note renders. Questions (`check` and `short`) are not part of
+ * the lesson: they are the quick quiz, so the lesson would otherwise ask the
+ * same things twice.
+ */
+export type NotesBlock = Exclude<LessonBlock, CheckBlock | ShortBlock>;
 
 /**
  * The lesson as a continuous note.
  *
- * Knowledge checks are dropped: a note is read, not answered, and a check
- * rendered here would grade nothing and record nothing.
+ * Questions are dropped: a note is read, not answered, and the quick quiz
+ * already asks every one of them. So is the quiz section's own heading and
+ * instructions ("Quiz (8 Questions) / Choose the correct option..."), which the
+ * lesson parser keeps as a card of its own and which is meaningless once the
+ * questions are gone.
  */
 export function toNotes(blocks: readonly LessonBlock[]): NotesBlock[] {
-  return blocks.filter((block): block is NotesBlock => block.type !== "check");
+  return blocks.filter(
+    (block): block is NotesBlock =>
+      block.type !== "check" && block.type !== "short" && !isQuizRubric(block),
+  );
+}
+
+/** The card a note's "## Quiz ..." section leaves behind: its heading and rubric. */
+function isQuizRubric(block: LessonBlock): boolean {
+  // Same test the lesson parser uses to recognise a quiz heading.
+  return block.type === "concept" && /^quiz\b/i.test((block.title ?? "").trim());
 }
 
 /**
@@ -38,6 +65,15 @@ export function resolveClassLevel(
     return preferred as ClassLevel;
   }
   return available[0] ?? "SS1";
+}
+
+/**
+ * Remounts the class/term browser when the subject or the student's class
+ * changes, so its tab state resets to the opening class instead of carrying
+ * over from the previous subject.
+ */
+export function browserKey(subjectId: string, initialClassLevel: string): string {
+  return `${subjectId}:${initialClassLevel}`;
 }
 
 export type TopicNavItem = {

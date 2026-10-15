@@ -28,7 +28,7 @@ export function sessionItemHref(
     case "PRACTICE":
       return `${topic}/practice`;
     case "CONTINUE":
-      return `${topic}/study`;
+      return topic;
     case "LEARN":
       return topic;
     default:

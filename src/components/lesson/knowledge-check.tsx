@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { LuCheck, LuCircleHelp, LuRotateCcw, LuX } from "react-icons/lu";
 import { Button } from "@/components/ui/button";
@@ -11,15 +11,9 @@ import { InlineMarkdown, Markdown } from "./markdown";
 type KnowledgeCheckProps = {
   block: CheckBlock;
   onResult: (attempts: number, correct: boolean) => void;
-  /** A way back to the material this question covers, offered after a wrong answer. */
-  refresher?: ReactNode;
 };
 
-export function KnowledgeCheck({
-  block,
-  onResult,
-  refresher,
-}: KnowledgeCheckProps) {
+export function KnowledgeCheck({ block, onResult }: KnowledgeCheckProps) {
   const [selected, setSelected] = useState<string | null>(null);
   const [wrongAnswer, setWrongAnswer] = useState<string | null>(null);
   const [attempts, setAttempts] = useState(0);
@@ -147,15 +141,6 @@ export function KnowledgeCheck({
               <Markdown content={block.explanation} />
             </div>
           </div>
-        )}
-
-        {wrongAnswer && refresher && (
-          <details className="mt-3 rounded-xl border border-border bg-secondary/40 p-3">
-            <summary className="cursor-pointer text-xs font-bold uppercase tracking-wide text-foreground/70">
-              Need a refresher?
-            </summary>
-            <div className="mt-3">{refresher}</div>
-          </details>
         )}
 
         {wrongAnswer && (

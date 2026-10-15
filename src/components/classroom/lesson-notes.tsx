@@ -4,10 +4,10 @@ import { InlineMarkdown, Markdown } from "@/components/lesson/markdown";
 import { InteractiveDiagram } from "@/components/lesson/interactive-diagram";
 
 // The one place a lesson's blocks are rendered as reading material. The topic
-// page uses it for revision and the lesson page (`/study`) uses it for first
-// learning, adding inline checks around it. Everything is shown plainly: the
-// reveal / flip / step-by-step behaviour is recall practice, and that belongs to
-// flashcards, not to the lesson.
+// page uses it for locked previews and for lessons without blocks; `LessonScroll`
+// uses it for the tracked lesson, adding inline checks around it. Everything is
+// shown plainly: the reveal / flip / step-by-step behaviour is recall practice,
+// and that belongs to flashcards, not to the lesson.
 
 export function LessonNotes({
   blocks,
@@ -55,23 +55,6 @@ export function NoteBlockView({ block }: { block: NotesBlock }) {
 
     case "example":
       return <PlainExample block={block} />;
-
-    case "short":
-      return (
-        <section className="rounded-xl border border-border bg-secondary/30 p-4">
-          <p className="text-sm font-semibold leading-relaxed text-foreground">
-            <InlineMarkdown content={block.question} />
-          </p>
-          <details className="mt-2">
-            <summary className="cursor-pointer text-sm font-semibold text-primary">
-              Show model answer
-            </summary>
-            <div className="mt-2 text-sm text-muted">
-              <Markdown content={block.answer} />
-            </div>
-          </details>
-        </section>
-      );
 
     case "diagram":
       return <InteractiveDiagram block={block} />;

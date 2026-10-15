@@ -21,8 +21,8 @@ export default async function TopicPracticePage({
   const data = await getTopicStudyData(session.id, subjectSlug, topicSlug);
   if (!data) notFound();
   if (data === "no-lesson") redirect(backHref);
-  // A locked lesson explains what it needs on the study page.
-  if (data.locked) redirect(`${backHref}/study`);
+  // A locked lesson is a preview on the topic page, which says what it needs.
+  if (data.locked) redirect(backHref);
 
   return (
     <PracticeExit

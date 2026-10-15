@@ -20,7 +20,7 @@ export type EvidenceCounts = {
    * (graph-view.tsx) and so crosses the server -> client boundary. This
    * project's convention for that boundary is ISO strings, not live Date
    * instances (see the comment on DashboardAttempt in lib/performance.ts) —
-   * kept consistent here even though TopicGap/NextTopicRecommendation don't
+   * kept consistent here even though the dashboard's session items don't
    * currently cross that boundary themselves, so the three producers of this
    * shape don't have to disagree on representation.
    */

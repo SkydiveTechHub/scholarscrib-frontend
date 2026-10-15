@@ -15,6 +15,7 @@ import { FlashcardView } from "./flashcard-view";
 import { RateBar } from "./rate-bar";
 import { useReviewFlashcard } from "@/hooks/api/use-flashcards";
 import { intervalLabel } from "@/lib/spaced-repetition";
+import { isObjectiveCard } from "@/lib/flashcard-content";
 import type { ReviewOutcome, StudyCardState } from "@/types/flashcards";
 import type { ReviewRating } from "@/lib/spaced-repetition";
 
@@ -42,6 +43,7 @@ export function StudySession({ deckId, initialQueue }: StudySessionProps) {
   const [revealed, setRevealed] = useState(false);
   const [done, setDone] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [startMs, setStartMs] = useState(() => Date.now());
   const [now, setNow] = useState(() => Date.now());
   const [results, setResults] = useState<Record<string, CardResult>>({});
@@ -79,6 +81,7 @@ export function StudySession({ deckId, initialQueue }: StudySessionProps) {
     ) => {
       if (busy || !card) return;
       setBusy(true);
+      setSaveError(null);
       try {
         const data = await reviewFlashcard({
           flashcardId: card.cardId,
@@ -113,6 +116,7 @@ export function StudySession({ deckId, initialQueue }: StudySessionProps) {
         advance();
       } catch (error) {
         console.error(error);
+        setSaveError("Couldn't save your answer. Check your connection and rate it again.");
       } finally {
         setBusy(false);
       }
@@ -258,7 +262,16 @@ export function StudySession({ deckId, initialQueue }: StudySessionProps) {
                 submit(rating, result?.objective?.correct ?? null, elapsed);
               }}
               disabled={busy}
+              intervals={card.nextIntervals}
             />
+            {saveError && (
+              <p
+                role="alert"
+                className="rounded-xl border border-danger/30 bg-danger-soft/40 px-4 py-2.5 text-center text-sm font-semibold text-danger"
+              >
+                {saveError}
+              </p>
+            )}
           </>
         )}
         {revealed && answered && result?.outcome && (
@@ -277,8 +290,3 @@ export function StudySession({ deckId, initialQueue }: StudySessionProps) {
   );
 }
 
-function isObjectiveCard(card: StudyCardState | undefined): boolean {
-  return (
-    card?.cardType === "FILL_IN_BLANK" || card?.cardType === "TRUE_FALSE"
-  );
-}

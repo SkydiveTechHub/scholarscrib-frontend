@@ -8,7 +8,12 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Markdown } from "@/components/lesson/markdown";
 import { renderLatex as renderLatexShared } from "@/lib/latex";
-import { CARD_TYPE_BADGE, CARD_TYPE_LABEL } from "@/lib/flashcard-content";
+import {
+  CARD_TYPE_BADGE,
+  CARD_TYPE_LABEL,
+  frontBack,
+  isObjectiveCard,
+} from "@/lib/flashcard-content";
 import type { StudyCardState } from "@/types/flashcards";
 import { cn } from "@/lib/utils";
 
@@ -35,8 +40,7 @@ export function FlashcardView({
   onObjective,
 }: FlashcardViewProps) {
   const payload = card.payload as Record<string, unknown>;
-  const isObjective =
-    card.cardType === "FILL_IN_BLANK" || card.cardType === "TRUE_FALSE";
+  const isObjective = isObjectiveCard(card);
   const showBack = revealed;
 
   return (
@@ -111,6 +115,8 @@ function FrontSide({
   revealed: boolean;
   onReveal: () => void;
 }) {
+  const plain = frontBack(payload);
+  if (plain) return <PlainFront card={card} front={plain.front} />;
   switch (card.cardType) {
     case "DEFINITION":
       return <DefinitionFront payload={payload} />;
@@ -154,6 +160,8 @@ function BackSide({
   card: StudyCardState;
   payload: Record<string, unknown>;
 }) {
+  const plain = frontBack(payload);
+  if (plain) return <Markdown content={plain.back} />;
   switch (card.cardType) {
     case "DEFINITION":
       return <DefinitionBack payload={payload} />;
@@ -182,6 +190,23 @@ function str(value: unknown): string {
 
 function strList(value: unknown): string[] {
   return Array.isArray(value) ? value.filter((v): v is string => typeof v === "string") : [];
+}
+
+const PLAIN_HINT: Partial<Record<StudyCardState["cardType"], string>> = {
+  DEFINITION: "Recall the answer, then check it.",
+  SCENARIO: "Work it out, then check your answer.",
+  TRUE_FALSE: "What is wrong here? Say the correction, then check.",
+};
+
+function PlainFront({ card, front }: { card: StudyCardState; front: string }) {
+  return (
+    <div>
+      <Markdown content={front} />
+      <p className="mt-3 text-sm text-muted">
+        {PLAIN_HINT[card.cardType] ?? "Recall the answer, then check it."}
+      </p>
+    </div>
+  );
 }
 
 function DefinitionFront({ payload }: { payload: Record<string, unknown> }) {

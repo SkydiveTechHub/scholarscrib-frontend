@@ -56,10 +56,10 @@ test("retrieve with due cards goes to flashcards, without goes to practice", () 
   );
 });
 
-test("continue resumes in the lesson player; learn opens the topic", () => {
+test("continue and learn both open the topic, which is the lesson", () => {
   assert.equal(
     sessionItemHref(item({ kind: "CONTINUE", lessonId: "l1" }), subjects),
-    "/classroom/physics/gas-laws/study",
+    "/classroom/physics/gas-laws",
   );
   assert.equal(
     sessionItemHref(item({ kind: "LEARN" }), subjects),
