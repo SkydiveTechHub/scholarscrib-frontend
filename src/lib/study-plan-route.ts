@@ -173,23 +173,22 @@ function asPlan(
   const subjectIds = asStringList(value.subjectIds);
   const weekdayMinutes = num(value.weekdayMinutes) ?? defaults.weekdayMinutes;
   const weekendMinutes = num(value.weekendMinutes) ?? defaults.weekendMinutes;
+  const rawScope =
+    value.scope && typeof value.scope === "object"
+      ? (value.scope as Record<string, unknown>)
+      : {};
+  const scope = {
+    classLevel: asClassLevel(rawScope.classLevel) ?? classLevel ?? "SS1",
+    term: asTerm(rawScope.term),
+  };
   const mode: PlanMode =
     value.mode === "TERM" || value.mode === "BLENDED" || value.mode === "EXAM"
       ? value.mode
-      : fallbackMode(classLevel, targetDate, forceExamMode, today);
+      : fallbackMode(scope.classLevel, targetDate, forceExamMode, today);
 
   return {
     id: String(value.id ?? ""),
-    scope: (() => {
-      const raw =
-        value.scope && typeof value.scope === "object"
-          ? (value.scope as Record<string, unknown>)
-          : {};
-      return {
-        classLevel: asClassLevel(raw.classLevel) ?? classLevel ?? "SS1",
-        term: asTerm(raw.term),
-      };
-    })(),
+    scope,
     followsCalendar: asBoolean(value.followsCalendar),
     mode,
     subjectIds,
