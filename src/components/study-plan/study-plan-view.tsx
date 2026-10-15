@@ -11,6 +11,7 @@ import type { StudyPlanPageData } from "@/lib/study-plan";
 import { scopeHeader } from "@/lib/study-plan-scope";
 import { isApiError } from "@/lib/api/errors";
 import {
+  useDeleteStudyPlan,
   useSaveStudyPlan,
   useSaveStudyPlanPositions,
   useSetStudyPlanItemStatus,
@@ -32,6 +33,7 @@ export function StudyPlanView({ data }: { data: StudyPlanPageData }) {
   const savePlan = useSaveStudyPlan();
   const setItemStatus = useSetStudyPlanItemStatus();
   const setPlanPositions = useSaveStudyPlanPositions();
+  const removePlan = useDeleteStudyPlan();
 
   /** Runs a mutation, then refreshes; resolves to an error message or null. */
   async function run(mutation: () => Promise<unknown>): Promise<string | null> {
@@ -49,6 +51,12 @@ export function StudyPlanView({ data }: { data: StudyPlanPageData }) {
 
   async function saveSettings(settings: PlanSettings) {
     const problem = await run(() => savePlan.mutateAsync({ settings, exists: Boolean(plan) }));
+    if (!problem) setEditing(false);
+    return problem;
+  }
+
+  async function deletePlan() {
+    const problem = await run(() => removePlan.mutateAsync());
     if (!problem) setEditing(false);
     return problem;
   }
@@ -90,7 +98,13 @@ export function StudyPlanView({ data }: { data: StudyPlanPageData }) {
       {error && <p className="mb-4 text-sm text-danger">{error}</p>}
 
       {editing && (
-        <PlanSetupForm data={data} plan={plan} onSubmit={saveSettings} onCancel={plan ? () => setEditing(false) : undefined} />
+        <PlanSetupForm
+          data={data}
+          plan={plan}
+          onSubmit={saveSettings}
+          onCancel={plan ? () => setEditing(false) : undefined}
+          onDelete={plan ? deletePlan : undefined}
+        />
       )}
 
       {!plan && !editing && (

@@ -9,6 +9,7 @@ import { CLASS_LEVELS, TERMS, TERM_LABELS, type ClassLevel, type Term } from "@/
 import { defaultScope, needsClassPrompt } from "@/lib/study-plan-scope";
 import { useUpdateProfile } from "@/hooks/api/use-user";
 import { ClassMismatchModal } from "./class-mismatch-modal";
+import { DeletePlanModal } from "./delete-plan-modal";
 
 const DAYS = [
   { value: 1, label: "Mon" }, { value: 2, label: "Tue" }, { value: 3, label: "Wed" },
@@ -41,11 +42,13 @@ export function PlanSetupForm({
   plan,
   onSubmit,
   onCancel,
+  onDelete,
 }: {
   data: StudyPlanPageData;
   plan: StudyPlanData | null;
   onSubmit: (settings: PlanSettings) => Promise<string | null>;
   onCancel?: () => void;
+  onDelete?: () => Promise<string | null>;
 }) {
   // A passed exam date is not pre-filled: saving it would only fail validation.
   const upcomingDate = plan?.targetDate && plan.targetDate > data.today ? plan.targetDate : null;
@@ -63,6 +66,9 @@ export function PlanSetupForm({
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   const [prompting, setPrompting] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
   const updateProfile = useUpdateProfile();
   const isSS3 = settings.classLevel === "SS3";
 
@@ -88,6 +94,15 @@ export function PlanSetupForm({
     } finally {
       setSaving(false);
     }
+  }
+
+  async function confirmDelete() {
+    if (!onDelete) return;
+    setDeleting(true);
+    setDeleteError("");
+    const problem = await onDelete();
+    setDeleting(false);
+    if (problem) setDeleteError(problem);
   }
 
   function submit() {
@@ -248,6 +263,12 @@ export function PlanSetupForm({
         {onCancel && (
           <button type="button" onClick={onCancel} className={buttonClass("secondary", "lg")}>Cancel</button>
         )}
+        {plan && onDelete && (
+          <button type="button" onClick={() => setConfirmingDelete(true)}
+            className={cn(buttonClass("secondary", "lg"), "ml-auto text-danger")}>
+            Delete plan
+          </button>
+        )}
       </div>
 
       {data.classLevel && (
@@ -259,6 +280,16 @@ export function PlanSetupForm({
           onUpdate={updateClassThenSave}
           onKeep={keepClassThenSave}
           onClose={() => setPrompting(false)}
+        />
+      )}
+
+      {onDelete && (
+        <DeletePlanModal
+          open={confirmingDelete}
+          busy={deleting}
+          error={deleteError}
+          onConfirm={confirmDelete}
+          onClose={() => { setConfirmingDelete(false); setDeleteError(""); }}
         />
       )}
     </div>

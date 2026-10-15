@@ -52,3 +52,12 @@ export function useSaveStudyPlanPositions() {
     onSuccess: invalidate,
   });
 }
+
+export function useDeleteStudyPlan() {
+  const invalidate = useInvalidateStudyPlan();
+  return useMutation({
+    mutationFn: () =>
+      request<unknown>({ method: "DELETE", url: endpoints.studyPlan.root }),
+    onSuccess: invalidate,
+  });
+}
