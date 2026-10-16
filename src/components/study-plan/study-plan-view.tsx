@@ -8,6 +8,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/ui/page-header";
 import { buttonClass } from "@/components/ui/button";
 import type { StudyPlanPageData } from "@/lib/study-plan";
+import { scopeHeader } from "@/lib/study-plan-scope";
 import { isApiError } from "@/lib/api/errors";
 import {
   useDeleteStudyPlan,
@@ -33,6 +34,7 @@ export function StudyPlanView({ data }: { data: StudyPlanPageData }) {
   const deletePlan = useDeleteStudyPlan();
   const setItemStatus = useSetStudyPlanItemStatus();
   const setPlanPositions = useSaveStudyPlanPositions();
+  const removePlan = useDeleteStudyPlan();
 
   /** Runs a mutation, then refreshes; resolves to an error message or null. */
   async function run(mutation: () => Promise<unknown>): Promise<string | null> {
@@ -68,14 +70,15 @@ export function StudyPlanView({ data }: { data: StudyPlanPageData }) {
   }
 
   const description = [
-    data.classLevel,
-    data.termLabel,
+    plan
+      ? scopeHeader(plan.scope, plan.followsCalendar, data.termLabel)
+      : [data.classLevel, data.termLabel].filter(Boolean).join(" · "),
     plan?.targetExam && plan.mode !== "TERM" && data.daysToExam !== null && data.daysToExam > 0
       ? `${plan.targetExam} in ${data.daysToExam} days`
       : null,
   ].filter(Boolean).join(" · ");
   // Only SS3 students can set exam dates, so only they are told to add a new one.
-  const examPassed = data.classLevel === "SS3" && plan?.targetDate != null && plan.targetDate < data.today;
+  const examPassed = plan?.scope.classLevel === "SS3" && plan?.targetDate != null && plan.targetDate < data.today;
 
   return (
     <div className="animate-fade-in">
@@ -106,7 +109,13 @@ export function StudyPlanView({ data }: { data: StudyPlanPageData }) {
       {error && <p className="mb-4 text-sm text-danger">{error}</p>}
 
       {editing && (
-        <PlanSetupForm data={data} plan={plan} onSubmit={saveSettings} onCancel={plan ? () => setEditing(false) : undefined} />
+        <PlanSetupForm
+          data={data}
+          plan={plan}
+          onSubmit={saveSettings}
+          onCancel={plan ? () => setEditing(false) : undefined}
+          onDelete={plan ? deletePlan : undefined}
+        />
       )}
 
       {!plan && !editing && (

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { LuArrowLeft, LuBookOpen } from "react-icons/lu";
 import { getSessionUser } from "@/lib/session";
 import { getSubjectPageData } from "@/lib/classroom-data";
+import { browserKey } from "@/lib/classroom";
 import { EmptyState } from "@/components/ui/empty-state";
 import { cn } from "@/lib/utils";
 import { ClassTermBrowser } from "@/components/classroom/class-term-browser";
@@ -68,6 +69,7 @@ export default async function SubjectDetailPage({
       <div className="mt-8">
         {hasTopics ? (
           <ClassTermBrowser
+            key={browserKey(subject.id, initialClassLevel)}
             subjectSlug={subjectSlug}
             subjectId={subject.id}
             classes={classes}

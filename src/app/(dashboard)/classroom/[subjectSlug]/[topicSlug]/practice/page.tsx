@@ -1,13 +1,11 @@
 import { notFound, redirect } from "next/navigation";
 import { getSessionUser } from "@/lib/session";
-import { getTopicQuizData } from "@/lib/classroom-topic";
-import { LessonQuickQuiz } from "@/components/classroom/lesson-quick-quiz";
+import { getTopicStudyData } from "@/lib/classroom-topic";
+import { PracticeExit } from "@/components/lesson/practice-exit";
 
-// Practice is ten random questions for the topic from
-// `GET /api/questions/topic-quiz`: WAEC first, JAMB when WAEC has none, our
-// bank before the provider. Untimed and recorded as mastery evidence -- a self-check over the
-// material just read. (The lesson note's own questions live in the quick-quiz
-// modal on the topic page.)
+// The graded, timed test that completes a lesson. The server sizes it, times it
+// and marks it against the lesson's pass mark; nothing here decides a pass.
+// (The untimed self-check is `/quiz`.)
 
 export default async function TopicPracticePage({
   params,
@@ -18,24 +16,23 @@ export default async function TopicPracticePage({
   if (!session?.id) redirect("/login");
 
   const { subjectSlug, topicSlug } = await params;
+  const backHref = `/classroom/${subjectSlug}/${topicSlug}`;
 
-  const data = await getTopicQuizData(subjectSlug, topicSlug);
+  const data = await getTopicStudyData(session.id, subjectSlug, topicSlug);
   if (!data) notFound();
-
-  const count = data.checks.length;
+  if (data === "no-lesson") redirect(backHref);
+  // A locked lesson is a preview on the topic page, which says what it needs.
+  if (data.locked) redirect(backHref);
 
   return (
-    <LessonQuickQuiz
-      checks={data.checks}
-      lessonTitle={data.topicTitle}
-      backHref={`/classroom/${subjectSlug}/${topicSlug}`}
-      title="Practice"
-      record={{ subjectSlug, topicSlug }}
-      description={
-        count === 0
-          ? "Answer at your own pace."
-          : `${count} question${count === 1 ? "" : "s"} on this topic. — answer at your own pace.`
-      }
+    <PracticeExit
+      subjectSlug={subjectSlug}
+      topicSlug={topicSlug}
+      lessonTitle={data.lessonTitle}
+      topicTitle={data.topicTitle}
+      passMarkPercent={data.passMarkPercent}
+      practiceCount={data.practiceCount}
+      backHref={backHref}
     />
   );
 }

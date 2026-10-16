@@ -3,23 +3,22 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { LuClipboardCheck, LuLayers, LuLoader, LuTarget } from "react-icons/lu";
+import { LuLayers, LuListChecks, LuLoader } from "react-icons/lu";
 import { buttonClass } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { isApiError } from "@/lib/api/errors";
 import { UpgradeModal } from "@/components/billing/upgrade-modal";
 import { isSubscriptionTier, type SubscriptionTier } from "@/lib/subscription";
 import { useGenerateDeck } from "@/hooks/api/use-flashcards";
-import { useRecordTopicAnswers } from "@/hooks/api/use-topic-answers";
-import {
-  QuickQuizModal,
-  type QuickQuizResult,
-  type QuizQuestion,
-} from "./quick-quiz-modal";
+import { PRACTICE_TEST_ENABLED } from "@/lib/classroom";
+import { QuickQuiz } from "./quick-quiz";
+import type { QuizQuestion } from "./quick-quiz-modal";
 
-// The topic page's call-to-action row, rendered after the lesson note so it
-// appears once the student has read to the end: take the note's quick quiz,
-// drill flashcards, or practise with exam questions.
+// The topic page's "practise this topic" row, rendered after the lesson. The
+// graded practice test that completes the lesson is not here: it is the lesson's
+// own end card. While that test is switched off (PRACTICE_TEST_ENABLED) the quick
+// quiz is the end card's action, so this row is flashcards alone. With the test
+// on, the quick quiz and an untimed set of exam questions join flashcards here.
 
 export function TopicActionBar({
   subjectSlug,
@@ -28,25 +27,25 @@ export function TopicActionBar({
   hasDeck,
   deckId,
   checks,
+  completed,
 }: {
   subjectSlug: string;
   topicSlug: string;
   lessonId: string | null;
   hasDeck: boolean;
   deckId: string | null;
+  /** The lesson is completed, so flashcards lead: the job now is retention. */
+  completed: boolean;
   /** The lesson note's own questions; the quick quiz is hidden when it has none. */
   checks: QuizQuestion[];
 }) {
   const router = useRouter();
   const generateDeck = useGenerateDeck<{ deck: { id: string } }>();
-  const { mutate: recordAnswers } = useRecordTopicAnswers();
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [upgradeTier, setUpgradeTier] = useState<SubscriptionTier | null>(null);
-  const [quizOpen, setQuizOpen] = useState(false);
-  const [quizResult, setQuizResult] = useState<QuickQuizResult | null>(null);
 
-  const practiceHref = `/classroom/${subjectSlug}/${topicSlug}/practice`;
+  const moreQuestionsHref = `/classroom/${subjectSlug}/${topicSlug}/quiz`;
 
   async function handleFlashcards() {
     if (hasDeck) {
@@ -84,24 +83,14 @@ export function TopicActionBar({
   return (
     <div className="mt-8 rounded-2xl border border-border bg-card p-4">
       <p className="mb-3 text-sm font-semibold text-foreground">
-        Finished reading? Check what you&apos;ve learned.
+        {PRACTICE_TEST_ENABLED ? "Practise this topic" : "Remember it"}
       </p>
       <div className="flex flex-wrap items-center gap-2">
-        {checks.length > 0 && (
-          <button
-            type="button"
-            onClick={() => setQuizOpen(true)}
-            className={buttonClass("primary", "md")}
-          >
-            <LuTarget className="h-4 w-4" />
-            Quick quiz
-          </button>
-        )}
         <button
           type="button"
           onClick={handleFlashcards}
           disabled={!lessonId || generating}
-          className={cn(buttonClass("outline", "md"))}
+          className={cn(buttonClass(completed ? "primary" : "outline", "md"))}
         >
           {generating ? (
             <LuLoader className="h-4 w-4 animate-spin" />
@@ -110,31 +99,25 @@ export function TopicActionBar({
           )}
           {hasDeck ? "Flashcards" : "Build flashcards"}
         </button>
-        {/* Practice is not gated: a student who already knows the topic can go
-            straight to the questions. */}
-        <Link href={practiceHref} className={buttonClass("outline", "md")}>
-          <LuClipboardCheck className="h-4 w-4" />
-          Practice
-        </Link>
+        {PRACTICE_TEST_ENABLED && (
+          <>
+            <QuickQuiz
+              subjectSlug={subjectSlug}
+              topicSlug={topicSlug}
+              checks={checks}
+            />
+            {/* Untimed exam-style questions: low stakes, and open to anyone. */}
+            <Link
+              href={moreQuestionsHref}
+              className={buttonClass("outline", "md")}
+            >
+              <LuListChecks className="h-4 w-4" />
+              More questions
+            </Link>
+          </>
+        )}
       </div>
-      {quizResult && (
-        <p className="mt-3 text-sm font-medium text-foreground" role="status">
-          Quick quiz: {quizResult.correct} of {quizResult.total} correct.
-        </p>
-      )}
       {error && <p className="mt-2 text-xs font-medium text-danger">{error}</p>}
-      <QuickQuizModal
-        open={quizOpen}
-        checks={checks}
-        onCancel={() => setQuizOpen(false)}
-        onSubmit={(result) => {
-          setQuizResult(result);
-          setQuizOpen(false);
-          // Counts towards mastery. A failed save stays silent: the score is
-          // already on screen and the quiz is a self-check.
-          recordAnswers({ subjectSlug, topicSlug, answers: result.answers });
-        }}
-      />
       {upgradeTier && (
         <UpgradeModal
           open

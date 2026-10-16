@@ -420,6 +420,9 @@ export type PracticeRecord = {
   at: string;
 };
 
+/** How long a failed practice exit blocks a retry. Mirrors the backend's EXIT_COOLDOWN. */
+export const EXIT_COOLDOWN_MS = 30 * 60 * 1000;
+
 /** What the engine stores in `StudentProgress.checkpointData`. */
 export type CheckpointState = {
   visited: string[];

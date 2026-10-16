@@ -1,7 +1,7 @@
 import { api } from "@/lib/api/server";
 import { endpoints } from "@/lib/api/endpoints";
 import type { PlanPageOut, PlanSubjectRow } from "@/lib/api/types";
-import type { ClassLevel } from "@/lib/curriculum-scope";
+import type { ClassLevel, Term } from "@/lib/curriculum-scope";
 import type {
   DayKey,
   OutlineWeek,
@@ -47,6 +47,10 @@ function asDayKey(value: unknown): DayKey | null {
 
 function asClassLevel(value: unknown): ClassLevel | null {
   return value === "SS1" || value === "SS2" || value === "SS3" ? value : null;
+}
+
+function asTerm(value: unknown): Term {
+  return value === "FIRST" || value === "SECOND" || value === "THIRD" ? value : "FIRST";
 }
 
 function asTermSource(value: unknown): TermSource {
@@ -169,13 +173,23 @@ function asPlan(
   const subjectIds = asStringList(value.subjectIds);
   const weekdayMinutes = num(value.weekdayMinutes) ?? defaults.weekdayMinutes;
   const weekendMinutes = num(value.weekendMinutes) ?? defaults.weekendMinutes;
+  const rawScope =
+    value.scope && typeof value.scope === "object"
+      ? (value.scope as Record<string, unknown>)
+      : {};
+  const scope = {
+    classLevel: asClassLevel(rawScope.classLevel) ?? classLevel ?? "SS1",
+    term: asTerm(rawScope.term),
+  };
   const mode: PlanMode =
     value.mode === "TERM" || value.mode === "BLENDED" || value.mode === "EXAM"
       ? value.mode
-      : fallbackMode(classLevel, targetDate, forceExamMode, today);
+      : fallbackMode(scope.classLevel, targetDate, forceExamMode, today);
 
   return {
     id: String(value.id ?? ""),
+    scope,
+    followsCalendar: asBoolean(value.followsCalendar),
     mode,
     subjectIds,
     studyDays: asNumberList(value.studyDays),
@@ -224,6 +238,7 @@ export async function getStudyPlanPageData(): Promise<StudyPlanPageData> {
   return {
     today,
     classLevel,
+    currentTerm: asTerm(data.currentTerm),
     termLabel: typeof data.termLabel === "string" ? data.termLabel : "",
     termSource: asTermSource(data.termSource),
     daysToExam: num(data.daysToExam),

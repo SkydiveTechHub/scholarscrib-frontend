@@ -3,6 +3,7 @@ import Link from "next/link";
 import {
   LuArrowLeft,
   LuArrowRight,
+  LuBookOpen,
   LuCheck,
   LuChevronRight,
   LuClock,
@@ -13,8 +14,11 @@ import {
 import { getSessionUser } from "@/lib/session";
 import { getTopicPageData } from "@/lib/classroom-topic";
 import type { CheckBlock, ShortBlock } from "@/lib/lesson-engine";
+import { toNotes } from "@/lib/classroom";
 import { PretestDialog } from "@/components/path/pretest-dialog";
 import { LessonNotes } from "@/components/classroom/lesson-notes";
+import { LessonScroll } from "@/components/lesson/lesson-scroll";
+import { LessonExitCard } from "@/components/lesson/lesson-exit-card";
 import { TopicActionBar } from "@/components/classroom/topic-action-bar";
 import { TopicResources } from "@/components/classroom/topic-resources";
 import { Badge } from "@/components/ui/badge";
@@ -89,6 +93,16 @@ export default async function TopicDetailPage({
   } = data;
 
   const { classLevel, term } = topic;
+  const completed = lesson?.status === "COMPLETED";
+  const resumeId =
+    lesson && lesson.unlocked && !completed ? lesson.firstUnseenId : null;
+  const unmetNames = prereqs.filter((p) => !p.met).map((p) => p.title);
+  // The lesson is the teaching blocks; every question lives in the quick quiz.
+  const lessonBody = toNotes(lesson?.blocks ?? []);
+  const quizQuestions = (lesson?.blocks ?? []).filter(
+    (block): block is CheckBlock | ShortBlock =>
+      block.type === "check" || block.type === "short",
+  );
   const classColor = CLASS_COLORS[classLevel] ?? "bg-secondary text-muted border-border";
 
   return (
@@ -132,6 +146,18 @@ export default async function TopicDetailPage({
               <span className={cn("chip border font-bold", classColor)}>
                 {classLevel} · {TERM_LABELS[term] ?? term}
               </span>
+              {lesson?.unlocked && completed && (
+                <Badge variant="green">
+                  <LuCheck className="h-3 w-3" />
+                  Lesson completed
+                </Badge>
+              )}
+              {lesson?.unlocked && !completed && lesson.percentRead > 0 && (
+                <Badge variant="blue">
+                  <LuBookOpen className="h-3 w-3" />
+                  In progress · {lesson.percentRead}%
+                </Badge>
+              )}
               {topic.attemptedCount > 0 && (
                 <Badge variant="green">
                   <LuTarget className="h-3 w-3" />
@@ -174,6 +200,15 @@ export default async function TopicDetailPage({
                 </Badge>
               )}
             </div>
+            {resumeId && (
+              <a
+                href={`#block-${resumeId}`}
+                className="mt-3 inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline"
+              >
+                Continue where you left off
+                <LuArrowRight className="h-3.5 w-3.5" />
+              </a>
+            )}
           </div>
 
           <PretestDialog
@@ -230,39 +265,73 @@ export default async function TopicDetailPage({
           </div>
           {!topicReady && (
             <p className="mt-3 text-xs text-muted">
-              Complete the prerequisites above to unlock this topic&apos;s
-              lessons.
+              You can read the lesson below as a preview. Progress tracking and
+              the practice test unlock once these are met.
             </p>
           )}
         </div>
       )}
 
-      <div className="mt-6">
-        {lesson ? (
-          <LessonNotes
-            blocks={lesson.blocks}
-            fallbackContent={lesson.fallbackContent}
-          />
-        ) : (
+      {/* The topic opens on the lesson itself: tracked, with its checks inline.
+          A locked topic shows the same material as a read-only preview. */}
+      <div id="lesson-top" className="mt-6 scroll-mt-4">
+        {!lesson ? (
           <div className="card p-6 text-sm text-muted">
             Notes for this topic are still being prepared.
           </div>
+        ) : lesson.unlocked && lessonBody.length > 0 ? (
+          <LessonScroll
+            blocks={lessonBody}
+            lessonId={lesson.id}
+            visitedIds={lesson.checkpoint.visited}
+          />
+        ) : (
+          <>
+            {!lesson.unlocked && (
+              <div className="mb-6 flex items-start gap-2.5 rounded-xl bg-tone-amber-soft px-4 py-3 text-sm text-tone-amber-ink">
+                <LuLock className="mt-0.5 h-4 w-4 flex-shrink-0" />
+                <p>
+                  <span className="font-semibold">Preview.</span> Progress and
+                  the practice test unlock once{" "}
+                  {unmetNames.length > 0
+                    ? unmetNames.join(", ")
+                    : "the prerequisite"}{" "}
+                  {unmetNames.length > 1 ? "are" : "is"} solid.
+                </p>
+              </div>
+            )}
+            <LessonNotes
+              blocks={lesson.blocks}
+              fallbackContent={lesson.fallbackContent}
+            />
+          </>
         )}
       </div>
 
-      {/* After the note, so the actions appear once the student reaches its end. */}
-      {lesson && (
-        <TopicActionBar
-          subjectSlug={subjectSlug}
-          topicSlug={topicSlug}
-          lessonId={lesson.id}
-          hasDeck={Boolean(deckId)}
-          deckId={deckId}
-          checks={lesson.blocks.filter(
-            (block): block is CheckBlock | ShortBlock =>
-              block.type === "check" || block.type === "short",
-          )}
-        />
+      {lesson?.unlocked && (
+        <>
+          <div className="mt-6">
+            <LessonExitCard
+              subjectSlug={subjectSlug}
+              topicSlug={topicSlug}
+              completed={completed}
+              lastAttempt={lesson.lastAttempt}
+              passMarkPercent={lesson.passMarkPercent}
+              practiceCount={lesson.practiceCount}
+              checks={quizQuestions}
+            />
+          </div>
+
+          <TopicActionBar
+            subjectSlug={subjectSlug}
+            topicSlug={topicSlug}
+            lessonId={lesson.id}
+            hasDeck={Boolean(deckId)}
+            deckId={deckId}
+            completed={completed}
+            checks={quizQuestions}
+          />
+        </>
       )}
 
       <TopicResources

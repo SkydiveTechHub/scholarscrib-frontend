@@ -34,7 +34,9 @@ export function ClassPositionPanel({
     <details className="card p-5">
       <summary className="cursor-pointer text-sm font-bold text-foreground">Where is your class?</summary>
       <p className="mt-2 text-xs text-muted">
-        We guess from the school calendar. If your teacher is ahead or behind, pick the topic your class is on now.
+        {plan.followsCalendar
+          ? "We guess from the school calendar. If your teacher is ahead or behind, pick the topic your class is on now."
+          : "We start at the first topic of this term. If your class is further along, pick the topic it is on now."}
       </p>
       <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
         {plan.subjectIds.map((subjectId) => {
@@ -47,7 +49,8 @@ export function ClassPositionPanel({
               <select className="input" value={values[subjectId]}
                 onChange={(e) => setValues({ ...values, [subjectId]: e.target.value })}>
                 <option value={FOLLOW}>
-                  Follow the calendar{guess ? ` (${guess.title})` : ""}
+                  {plan.followsCalendar ? "Follow the calendar" : "Start of this term"}
+                  {guess ? ` (${guess.title})` : ""}
                 </option>
                 {options.map((o) => (
                   <option key={o.id} value={o.id}>{o.scope} — {o.title}</option>

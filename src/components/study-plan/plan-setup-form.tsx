@@ -5,6 +5,11 @@ import { LuCheck, LuSparkles } from "react-icons/lu";
 import { buttonClass } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { StudyPlanData, StudyPlanPageData } from "@/lib/study-plan";
+import { CLASS_LEVELS, TERMS, TERM_LABELS, type ClassLevel, type Term } from "@/lib/curriculum-scope";
+import { defaultScope, needsClassPrompt } from "@/lib/study-plan-scope";
+import { useUpdateProfile } from "@/hooks/api/use-user";
+import { ClassMismatchModal } from "./class-mismatch-modal";
+import { DeletePlanModal } from "./delete-plan-modal";
 
 const DAYS = [
   { value: 1, label: "Mon" }, { value: 2, label: "Tue" }, { value: 3, label: "Wed" },
@@ -12,6 +17,8 @@ const DAYS = [
 ];
 
 export type PlanSettings = {
+  classLevel: ClassLevel;
+  term: Term;
   subjectIds: string[];
   studyDays: number[];
   weekdayMinutes: number;
@@ -35,15 +42,18 @@ export function PlanSetupForm({
   plan,
   onSubmit,
   onCancel,
+  onDelete,
 }: {
   data: StudyPlanPageData;
   plan: StudyPlanData | null;
   onSubmit: (settings: PlanSettings) => Promise<string | null>;
   onCancel?: () => void;
+  onDelete?: () => Promise<string | null>;
 }) {
   // A passed exam date is not pre-filled: saving it would only fail validation.
   const upcomingDate = plan?.targetDate && plan.targetDate > data.today ? plan.targetDate : null;
   const [settings, setSettings] = useState<PlanSettings>(() => ({
+    ...(plan?.scope ?? defaultScope(data.classLevel, data.currentTerm)),
     subjectIds: plan?.subjectIds ?? [],
     studyDays: plan?.studyDays ?? [1, 2, 3, 4, 6],
     weekdayMinutes: plan?.weekdayMinutes ?? data.defaults.weekdayMinutes,
@@ -55,7 +65,12 @@ export function PlanSetupForm({
   const [preparing, setPreparing] = useState(Boolean(upcomingDate));
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
-  const isSS3 = data.classLevel === "SS3";
+  const [prompting, setPrompting] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
+  const updateProfile = useUpdateProfile();
+  const isSS3 = settings.classLevel === "SS3";
 
   const toggle = <K extends "subjectIds" | "studyDays">(key: K, value: PlanSettings[K][number]) =>
     setSettings((s) => {
@@ -64,18 +79,59 @@ export function PlanSetupForm({
       return { ...s, [key]: next };
     });
 
-  async function submit() {
-    setSaving(true);
-    setError("");
-    const payload = preparing && isSS3
+  function payloadFor(): PlanSettings {
+    return preparing && isSS3
       ? settings
       : { ...settings, targetExam: null, targetDate: null, forceExamMode: false };
+  }
+
+  async function save() {
+    setSaving(true);
+    setError("");
     try {
-      const problem = await onSubmit(payload);
+      const problem = await onSubmit(payloadFor());
       if (problem) setError(problem);
     } finally {
       setSaving(false);
     }
+  }
+
+  async function confirmDelete() {
+    if (!onDelete) return;
+    setDeleting(true);
+    setDeleteError("");
+    const problem = await onDelete();
+    setDeleting(false);
+    if (problem) setDeleteError(problem);
+  }
+
+  function submit() {
+    if (needsClassPrompt(settings.classLevel, data.classLevel)) {
+      setPrompting(true);
+      return;
+    }
+    void save();
+  }
+
+  async function updateClassThenSave() {
+    setSaving(true);
+    setError("");
+    try {
+      await updateProfile.mutateAsync({ classLevel: settings.classLevel });
+    } catch {
+      setPrompting(false);
+      setSaving(false);
+      setError("We could not update your class, so the plan was not saved. Please try again.");
+      return;
+    }
+    setPrompting(false);
+    setSaving(false);
+    await save();
+  }
+
+  function keepClassThenSave() {
+    setPrompting(false);
+    void save();
   }
 
   return (
@@ -84,11 +140,36 @@ export function PlanSetupForm({
         {plan ? "Change your plan" : "Set up your study plan"}
       </h2>
       <p className="mt-1 text-sm text-muted">
-        {data.classLevel ? `For ${data.classLevel}` : "For your class"} — change your class in Settings.
-        Tell us when you can study and we&apos;ll keep it realistic.
+        Planning for {settings.classLevel}, {TERM_LABELS[settings.term]}. Tell us when you can study and we&apos;ll keep it realistic.
       </p>
 
       <div className="mt-6 space-y-6">
+        <div>
+          <span className="label">Class</span>
+          <div className="flex flex-wrap gap-2">
+            {CLASS_LEVELS.map((level) => (
+              <button key={level} type="button" aria-pressed={settings.classLevel === level}
+                onClick={() => setSettings({ ...settings, classLevel: level })}
+                className={chip(settings.classLevel === level)}>
+                {level}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div>
+          <span className="label">Term</span>
+          <div className="flex flex-wrap gap-2">
+            {TERMS.map((term) => (
+              <button key={term} type="button" aria-pressed={settings.term === term}
+                onClick={() => setSettings({ ...settings, term })}
+                className={chip(settings.term === term)}>
+                {TERM_LABELS[term]}
+              </button>
+            ))}
+          </div>
+        </div>
+
         <div>
           <span className="label">Subjects</span>
           <div className="flex flex-wrap gap-2">
@@ -182,7 +263,35 @@ export function PlanSetupForm({
         {onCancel && (
           <button type="button" onClick={onCancel} className={buttonClass("secondary", "lg")}>Cancel</button>
         )}
+        {plan && onDelete && (
+          <button type="button" onClick={() => setConfirmingDelete(true)}
+            className={cn(buttonClass("secondary", "lg"), "ml-auto text-danger")}>
+            Delete plan
+          </button>
+        )}
       </div>
+
+      {data.classLevel && (
+        <ClassMismatchModal
+          open={prompting}
+          profileClass={data.classLevel}
+          chosenClass={settings.classLevel}
+          busy={saving}
+          onUpdate={updateClassThenSave}
+          onKeep={keepClassThenSave}
+          onClose={() => setPrompting(false)}
+        />
+      )}
+
+      {onDelete && (
+        <DeletePlanModal
+          open={confirmingDelete}
+          busy={deleting}
+          error={deleteError}
+          onConfirm={confirmDelete}
+          onClose={() => { setConfirmingDelete(false); setDeleteError(""); }}
+        />
+      )}
     </div>
   );
 }

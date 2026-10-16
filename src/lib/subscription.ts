@@ -136,11 +136,28 @@ export const GATED_FEATURES = [
 
 export type GatedFeature = (typeof GATED_FEATURES)[number];
 
-export const ENTITLEMENTS: Record<GatedFeature, SubscriptionTier> = {
+export const PAID_ENTITLEMENTS: Record<GatedFeature, SubscriptionTier> = {
   flashcards: "STANDARD",
   studyPlanner: "STANDARD",
   premiumLibrary: "PREMIUM",
   advancedAnalytics: "PREMIUM",
+};
+
+/**
+ * Beta: open to every tier while testers try the product. Ending the beta is
+ * emptying this list (and `BETA_OPEN_FEATURES` in the backend's `domain.py`);
+ * `PAID_ENTITLEMENTS` is untouched.
+ */
+export const BETA_OPEN_FEATURES: readonly GatedFeature[] = [
+  "flashcards",
+  "studyPlanner",
+];
+
+export const ENTITLEMENTS: Record<GatedFeature, SubscriptionTier> = {
+  ...PAID_ENTITLEMENTS,
+  ...Object.fromEntries(
+    BETA_OPEN_FEATURES.map((feature) => [feature, "FREEMIUM" as const]),
+  ),
 };
 
 /**

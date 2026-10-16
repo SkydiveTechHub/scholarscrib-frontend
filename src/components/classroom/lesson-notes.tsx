@@ -1,8 +1,13 @@
 import { toNotes, type NotesBlock } from "@/lib/classroom";
-import type { LessonBlock } from "@/lib/lesson-engine";
+import type { ExampleBlock, LessonBlock } from "@/lib/lesson-engine";
 import { InlineMarkdown, Markdown } from "@/components/lesson/markdown";
-import { WorkedExample } from "@/components/lesson/worked-example";
 import { InteractiveDiagram } from "@/components/lesson/interactive-diagram";
+
+// The one place a lesson's blocks are rendered as reading material. The topic
+// page uses it for locked previews and for lessons without blocks; `LessonScroll`
+// uses it for the tracked lesson, adding inline checks around it. Everything is
+// shown plainly: the reveal / flip / step-by-step behaviour is recall practice,
+// and that belongs to flashcards, not to the lesson.
 
 export function LessonNotes({
   blocks,
@@ -21,13 +26,13 @@ export function LessonNotes({
   return (
     <article className="space-y-6">
       {notes.map((block) => (
-        <NoteBlock key={block.id} block={block} />
+        <NoteBlockView key={block.id} block={block} />
       ))}
     </article>
   );
 }
 
-function NoteBlock({ block }: { block: NotesBlock }) {
+export function NoteBlockView({ block }: { block: NotesBlock }) {
   switch (block.type) {
     case "concept":
       return (
@@ -41,37 +46,15 @@ function NoteBlock({ block }: { block: NotesBlock }) {
             <Markdown content={block.text} />
           </div>
           {block.reveal && (
-            <details className="mt-3 rounded-xl border border-border bg-secondary/40 p-3.5">
-              <summary className="cursor-pointer text-sm font-semibold text-foreground">
-                Show more
-              </summary>
-              <div className="mt-2 text-sm text-muted">
-                <Markdown content={block.reveal} />
-              </div>
-            </details>
+            <div className="mt-3 rounded-xl bg-primary-soft/60 px-3.5 py-3 text-sm leading-relaxed text-foreground">
+              <Markdown content={block.reveal} />
+            </div>
           )}
         </section>
       );
 
     case "example":
-      return <WorkedExample block={block} />;
-
-    case "short":
-      return (
-        <section className="rounded-xl border border-border bg-secondary/30 p-4">
-          <p className="text-sm font-semibold leading-relaxed text-foreground">
-            <InlineMarkdown content={block.question} />
-          </p>
-          <details className="mt-2">
-            <summary className="cursor-pointer text-sm font-semibold text-primary">
-              Show model answer
-            </summary>
-            <div className="mt-2 text-sm text-muted">
-              <Markdown content={block.answer} />
-            </div>
-          </details>
-        </section>
-      );
+      return <PlainExample block={block} />;
 
     case "diagram":
       return <InteractiveDiagram block={block} />;
@@ -112,4 +95,47 @@ function NoteBlock({ block }: { block: NotesBlock }) {
     default:
       return null;
   }
+}
+
+function PlainExample({ block }: { block: ExampleBlock }) {
+  return (
+    <section className="overflow-hidden rounded-2xl border border-border bg-card">
+      <div className="border-b border-border bg-primary-soft px-4 py-3">
+        <p className="text-xs font-bold uppercase tracking-wide text-primary-soft-foreground">
+          Worked example
+        </p>
+        {block.title && (
+          <p className="text-sm font-semibold text-foreground">{block.title}</p>
+        )}
+      </div>
+      <div className="p-4">
+        <Markdown content={block.problem} />
+        {block.steps.length > 0 && (
+          <ol className="mt-4 space-y-2">
+            {block.steps.map((step, i) => (
+              <li
+                key={i}
+                className="flex items-start gap-2.5 rounded-xl border border-border bg-secondary/40 px-3 py-2.5"
+              >
+                <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-primary text-[11px] font-bold text-primary-foreground">
+                  {i + 1}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <Markdown content={step} />
+                </div>
+              </li>
+            ))}
+          </ol>
+        )}
+        {block.answer && (
+          <div className="mt-3 rounded-xl bg-success-soft/70 px-3 py-2.5">
+            <p className="text-sm leading-relaxed text-foreground">
+              <span className="font-semibold text-success">Answer: </span>
+              <InlineMarkdown content={block.answer} />
+            </p>
+          </div>
+        )}
+      </div>
+    </section>
+  );
 }

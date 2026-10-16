@@ -14,6 +14,29 @@ export type FlashcardType =
 
 // ─── Typed payloads ─────────────────────────────────────────
 
+/**
+ * Cards built from a lesson carry a plain `{ front, back }` payload (markdown
+ * prose lifted straight from the lesson blocks), whatever their card type.
+ * They have no structured fields to render, so they study as front/back.
+ */
+export function frontBack(
+  payload: unknown,
+): { front: string; back: string } | null {
+  if (!payload || typeof payload !== "object") return null;
+  const { front, back } = payload as Record<string, unknown>;
+  return typeof front === "string" && typeof back === "string"
+    ? { front, back }
+    : null;
+}
+
+/** Only structured fill-in / true-false cards are graded on the card itself. */
+export function isObjectiveCard(
+  card: { cardType: FlashcardType; payload: unknown } | undefined,
+): boolean {
+  if (!card || frontBack(card.payload)) return false;
+  return card.cardType === "FILL_IN_BLANK" || card.cardType === "TRUE_FALSE";
+}
+
 export const CARD_TYPE_LABEL: Record<FlashcardType, string> = {
   DEFINITION: "Definition",
   FORMULA: "Formula",

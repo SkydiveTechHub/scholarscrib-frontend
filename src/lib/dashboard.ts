@@ -2,20 +2,18 @@ import { api } from "@/lib/api/server";
 import { endpoints } from "@/lib/api/endpoints";
 import type {
   DashboardAttempt as ApiDashboardAttempt,
-  DashboardGap,
   DashboardOut,
-  DashboardPick,
-  DashboardRevisionItem,
+  DashboardSession,
 } from "@/lib/api/types";
 
 /**
  * Dashboard read: one call to the backend's aggregate `GET /api/dashboard`,
- * which computes every figure, rail and pager total the page renders. This
+ * which computes every figure, session item and pager total the page renders. This
  * module only narrows the payload to the page's shape — it derives nothing
  * the backend did not send, so the numbers cannot drift from the server's.
  */
 
-/** A subject referenced by a learning-path card, keyed by id in the payload. */
+/** A subject referenced by today's session, keyed by id in the payload. */
 export type DashboardSubject = {
   slug: string;
   name: string;
@@ -50,11 +48,8 @@ export type DashboardData = {
   /** Completed attempts in total, for the activity pager. */
   attemptTotal: number;
   subjects: Record<string, DashboardSubject>;
-  learningPicks: DashboardPick[];
-  gaps: DashboardGap[];
-  revision: DashboardRevisionItem[];
-  /** Every topic due for revision, of which `revision` is the top slice. */
-  revisionTotal: number;
+  /** Today's study session, or null until the student has any activity. */
+  session: DashboardSession | null;
 };
 
 /** Attempts per page in "Recent activity". Must match the backend's page size. */
@@ -107,9 +102,6 @@ export async function getDashboardData(
     recentAttempts: (dash.recentAttempts ?? []).map(asAttempt),
     attemptTotal: dash.attemptTotal ?? 0,
     subjects: dash.subjects ?? {},
-    learningPicks: dash.learningPicks ?? [],
-    gaps: dash.gaps ?? [],
-    revision: dash.revision ?? [],
-    revisionTotal: dash.revisionTotal ?? 0,
+    session: dash.session ?? null,
   };
 }

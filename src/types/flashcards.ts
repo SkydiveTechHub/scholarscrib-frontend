@@ -27,6 +27,8 @@ export type StudyCardState = {
   prompt: string | null;
   payload: unknown;
   authoredDifficulty: string;
+  /** Days until the next review if the student picks each rating. */
+  nextIntervals: Partial<Record<ReviewRating, number>> | null;
   review: {
     state: string;
     intervalDays: number;
@@ -64,16 +66,11 @@ export type DeckStat = {
 };
 
 export type FlashcardStats = {
-  reviewsToday: number;
   reviewsThisWeek: number;
-  totalReviews: number;
   cardsLearned: number;
-  learnedToday: number;
   measuredRetention: number | null;
   predictedRetention: number | null;
-  avgIntervalDays: number | null;
   streak: number;
-  medianResponseTimeMs: number | null;
   activity: ActivityPoint[];
   decks: DeckStat[];
   difficultyMix: { easy: number; medium: number; hard: number };

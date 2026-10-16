@@ -10,11 +10,12 @@ import {
   parseCheckpointState,
   parsePrerequisiteLabels,
   type CheckBlock,
+  type CheckpointRecord,
   type LessonBlock,
 } from "./lesson-engine";
 import type { PrereqStatus } from "@/types/learning";
 import type { TopicState } from "@/types/learning";
-import type { TopicNavItem } from "./classroom";
+import { toNotes, type TopicNavItem } from "./classroom";
 import { CLASS_LEVELS, TERMS, type ClassLevel, type Term } from "./curriculum-scope";
 
 /** Matches the `ResourceItem` shape `TopicResources` renders. */
@@ -47,6 +48,19 @@ export type TopicPageData = {
     id: string;
     blocks: LessonBlock[];
     fallbackContent: string | null;
+    /** False while a prerequisite is unmet: the lesson is a read-only preview. */
+    unlocked: boolean;
+    /** Server-owned: COMPLETED only after passing the practice exit. */
+    status: "NOT_STARTED" | "IN_PROGRESS" | "COMPLETED";
+    checkpoint: { visited: string[]; checks: Record<string, CheckpointRecord> };
+    /** Share of the lesson's sections read or answered, 0..100. */
+    percentRead: number;
+    /** Where a returning student left off; null when nothing is left unseen. */
+    firstUnseenId: string | null;
+    /** The student's most recent practice-exit attempt, if any. */
+    lastAttempt: { passed: boolean; percentage: number; at: string } | null;
+    passMarkPercent: number;
+    practiceCount: number;
   } | null;
   deckId: string | null;
   pretestCertified: boolean;
@@ -165,13 +179,9 @@ function mapTopicPageData(payload: TopicPageOut): TopicPageData {
 
   const lesson =
     lessonRow !== null
-      ? {
-          id: str(lessonRow.id) || canonicalLessonId || topicId,
-          blocks: parseBlocks(lessonRow.blocks),
-          fallbackContent: typeof lessonRow.content === "string" ? lessonRow.content : null,
-        }
+      ? mapLesson(lessonRow, topicId, canonicalLessonId, payload.available)
       : canonicalLessonId
-        ? { id: canonicalLessonId, blocks: [], fallbackContent: null }
+        ? mapLesson({}, topicId, canonicalLessonId, payload.available)
         : null;
 
   // backend-ported: the overview carries the topic's curriculum level only when
@@ -206,9 +216,7 @@ function mapTopicPageData(payload: TopicPageOut): TopicPageData {
     deckId: extras.deckId ? str(extras.deckId) : null,
     pretestCertified: Boolean(payload.alreadyPassed),
     topicReady: Boolean(payload.available),
-    // backend-ported: the payload has no per-prereq breakdown, only an
-    // `available` flag — the page renders no prerequisite chips.
-    prereqs: [],
+    prereqs: (payload.prerequisites ?? []).map(asPrereq),
     topicState: mastery !== null ? topicStateFor(topicId, mastery, extras) : null,
     // backend-ported: no neighbour links in the payload yet.
     previous: extras.previous ? mapNavItem(extras.previous) : null,
@@ -241,6 +249,56 @@ function topicStateFor(
     accObservations: num(extras.accObservations) ?? 0,
     lessonObservations: num(extras.lessonObservations) ?? 0,
     srsObservations: num(extras.srsObservations) ?? 0,
+  };
+}
+
+function mapLesson(
+  row: Record<string, unknown>,
+  topicId: string,
+  canonicalLessonId: string | null,
+  available: boolean,
+): NonNullable<TopicPageData["lesson"]> {
+  const blocks = parseBlocks(row.blocks);
+  // Progress is measured over what is read. The questions are the quick quiz.
+  const body = toNotes(blocks);
+  const checkpoint = parseCheckpointState(row.checkpoint);
+  // Blocks can be re-authored under a student, so ids that no longer exist are
+  // dropped rather than counted towards progress.
+  const visited = checkpoint.visited.filter((id) =>
+    body.some((block) => block.id === id),
+  );
+  const firstUnseen = body.find((block) => !visited.includes(block.id));
+  const status = str(row.status);
+  const last = checkpoint.practice?.[checkpoint.practice.length - 1];
+  return {
+    id: str(row.id) || canonicalLessonId || topicId,
+    blocks,
+    fallbackContent: typeof row.content === "string" ? row.content : null,
+    unlocked: typeof row.unlocked === "boolean" ? row.unlocked : Boolean(available),
+    status:
+      status === "COMPLETED" || status === "IN_PROGRESS" ? status : "NOT_STARTED",
+    checkpoint: { visited, checks: checkpoint.checks },
+    percentRead:
+      body.length === 0 ? 0 : Math.round((visited.length / body.length) * 100),
+    firstUnseenId: visited.length > 0 && firstUnseen ? firstUnseen.id : null,
+    lastAttempt: last
+      ? { passed: last.passed, percentage: last.percentage, at: last.at }
+      : null,
+    passMarkPercent: num(row.passMarkPercent) ?? 60,
+    practiceCount: num(row.practiceCount) ?? 0,
+  };
+}
+
+function asPrereq(raw: Record<string, unknown>): PrereqStatus {
+  return {
+    topicId: str(raw.topicId),
+    subjectId: str(raw.subjectId),
+    title: str(raw.title),
+    slug: str(raw.slug),
+    need: num(raw.need) ?? 0,
+    mastery: num(raw.mastery) ?? 0,
+    met: Boolean(raw.met),
+    rationale: raw.rationale ? str(raw.rationale) : null,
   };
 }
 
@@ -408,6 +466,9 @@ export async function getTopicStudyData(
       ? lessonRow.unlocked
       : Boolean(payload.available ?? true);
   const locked = !unlocked;
+  const prereqs = (payload.prerequisites ?? []).map(asPrereq);
+  const unmet = prereqs.filter((p) => !p.met);
+  const prereqLabels = prereqs.map((p) => p.title).filter(Boolean);
 
   return {
     subjectName,
@@ -420,10 +481,17 @@ export async function getTopicStudyData(
     // default to the values the player has always assumed.
     estimatedMinutes: num(lessonRow.estimatedMinutes) ?? 0,
     difficulty: str(lessonRow.difficulty) || "INTERMEDIATE",
-    prerequisiteLabels: parsePrerequisiteLabels(lessonRow.prerequisites),
+    prerequisiteLabels:
+      prereqLabels.length > 0
+        ? prereqLabels
+        : parsePrerequisiteLabels(lessonRow.prerequisites),
     locked,
     lockedReason: locked
-      ? `"${topicTitle}" is still locked. Complete its prerequisites, then return to unlock this lesson.`
+      ? unmet.length > 0
+        ? `"${topicTitle}" needs ${unmet
+            .map((p) => `${p.title} (${Math.round(p.mastery)}% of ${p.need}%)`)
+            .join(", ")} first. Build that up, then return to unlock this lesson.`
+        : `"${topicTitle}" is still locked. Complete its prerequisites, then return to unlock this lesson.`
       : null,
     passMarkPercent: num(lessonRow.passMarkPercent) ?? 60,
     practiceCount: num(lessonRow.practiceCount) ?? 0,
@@ -468,18 +536,18 @@ export type TopicPracticeResultOutcome =
   | { status: "no-attempt" }
   | { status: "ok"; result: TopicPracticeResult };
 
-/** The latest completed practice attempt for the topic (the backend resolves it client-side). */
+/** The result of one practice-exit attempt on the topic, as marked by the server. */
 export async function getTopicPracticeResult(
   userId: string,
   subjectSlug: string,
   topicSlug: string,
-  _attemptId: string,
+  attemptId: string,
 ): Promise<TopicPracticeResultOutcome> {
-  void _attemptId;
   let payload: PracticeResultOut;
   try {
     payload = await api<PracticeResultOut>(
       endpoints.classroom.topic(subjectSlug, topicSlug, "/practice/result"),
+      { params: { attemptId } },
     );
   } catch (error) {
     if (isApiError(error) && error.status === 404) return { status: "not-found" };
@@ -492,7 +560,9 @@ export async function getTopicPracticeResult(
 
   const percentage = num(result.percentage) ?? 0;
   const passMarkPercent = num(result.passMarkPercent) ?? 60;
-  const passed = Boolean(result.passed) || percentage >= passMarkPercent;
+  // The server marks the attempt against the lesson's pass mark and completes
+  // the lesson itself; re-deriving a pass here could disagree with it.
+  const passed = Boolean(result.passed);
   const bestMastery = num(result.bestMastery) ?? Math.round(percentage);
   const completedAt = result.completedAt ? str(result.completedAt) : null;
 

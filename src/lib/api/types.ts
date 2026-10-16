@@ -265,6 +265,7 @@ export type PlanSubjectRow = Record<string, unknown> & { id: string };
 export type PlanPageOut = {
   today: string;
   classLevel?: string | null;
+  currentTerm?: string | null;
   termLabel?: string | null;
   termSource?: string | null;
   daysToExam?: number | null;
@@ -311,44 +312,41 @@ export type DashboardEvidence = {
   lastStudy: string | null;
 };
 
-export type DashboardPick = DashboardEvidence & {
-  topicId: string;
-  subjectId: string;
+export type DashboardSessionKind =
+  | "RETRIEVE"
+  | "PRACTICE"
+  | "LEARN"
+  | "CONTINUE"
+  | "MOCK"
+  | "PAST";
+
+/** One step of today's session. `doneAt` is an ISO string once finished. */
+export type DashboardSessionItem = DashboardEvidence & {
+  id: string;
+  kind: DashboardSessionKind;
+  source: "PLAN" | "ENGINE";
+  topicId: string | null;
+  subjectId: string | null;
   title: string;
-  slug: string;
-  mastery: number;
-  score: number;
+  slug: string | null;
+  minutes: number;
   reason: string;
-  unlocks: number;
-  /** Set when the pick is the lesson the student left unfinished. */
+  doneAt: string | null;
   lessonId: string | null;
+  dueCards: number;
+  planItemId: string | null;
+  activityType: string | null;
+  mastery: number | null;
+  retention: number | null;
+  retentionSource: "CARDS" | "ESTIMATE" | null;
+  evidenceLevel: "NONE" | "THIN" | "ENOUGH";
 };
 
-export type DashboardGap = DashboardEvidence & {
-  topicId: string;
-  subjectId: string;
-  title: string;
-  slug: string;
-  category: "WEAK" | "DECAYED" | "BOTTLENECK" | "ABANDONED" | "UNTOUCHED";
-  mastery: number;
-  retention: number | null;
-  bottleneckScore: number;
-  blockedCount: number;
-  abandonedCount: number;
-};
-
-export type DashboardRevisionItem = DashboardEvidence & {
-  topicId: string;
-  subjectId: string;
-  title: string;
-  slug: string;
-  mastery: number;
-  retention: number | null;
-  priority: number;
-  reason: string;
-  blockedCount: number;
-  dueSrsCards: number;
-  cadenceDue: boolean;
+export type DashboardSession = {
+  minutes: number;
+  done: number;
+  total: number;
+  items: DashboardSessionItem[];
 };
 
 export type DashboardTodayItem = {
@@ -364,12 +362,8 @@ export type DashboardOut = {
   firstName?: string | null;
   streak: number;
   tier: string;
-  keepLearning?: Record<string, unknown> | null;
-  learningPicks: DashboardPick[];
-  gaps: DashboardGap[];
-  revision: DashboardRevisionItem[];
-  revisionTotal: number;
-  /** Subjects referenced by the rails, keyed by subject id. */
+  session?: DashboardSession | null;
+  /** Subjects referenced by today's session items, keyed by subject id. */
   subjects: Record<string, { slug: string; name: string; code: string }>;
   todayItems: DashboardTodayItem[];
   hasStudyPlan: boolean;
@@ -452,6 +446,7 @@ export type TopicPageOut = {
   accObservations?: number;
   lessonObservations?: number;
   srsObservations?: number;
+  prerequisites?: Record<string, unknown>[];
   canonicalLessonId?: string | null;
   createsAttempt?: boolean | null;
   lesson?: Record<string, unknown> | null;
