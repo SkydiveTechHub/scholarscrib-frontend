@@ -135,6 +135,7 @@ export function PastQuestionPicker({
           years: years.map((y) => y.year),
         }}
         year={year}
+        totalQuestions={years.find((y) => y.year === year)?.questionCount}
         onExit={() => {
           setYear(null);
           void historyQuery.refetch();

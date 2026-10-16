@@ -47,6 +47,11 @@ type ExamSurfaceProps = {
   confirmTitle?: string;
   /** Extra rows inside the confirm dialog, e.g. per-subject answered counts. */
   confirmExtra?: ReactNode;
+  /**
+   * The size of the whole paper when it is served a page at a time, so the
+   * counts show the real total instead of what has loaded so far.
+   */
+  totalQuestions?: number;
 };
 
 export function ExamSurface({
@@ -58,6 +63,7 @@ export function ExamSurface({
   showShortcutHint = true,
   confirmTitle = "Submit Quiz?",
   confirmExtra,
+  totalQuestions,
 }: ExamSurfaceProps) {
   const router = useRouter();
   const {
@@ -83,7 +89,6 @@ export function ExamSurface({
     indexById,
     answeredCount,
     flaggedCount,
-    unanswered,
     progressPercent,
     lowTime,
     setShowConfirmSubmit,
@@ -97,6 +102,14 @@ export function ExamSurface({
     isAnswered,
   } = session;
   const untimed = deadlineAt == null;
+  // A paged paper reports its full size up front; fall back to what has loaded.
+  const total = Math.max(totalQuestions ?? 0, questions.length);
+  const unanswered = Math.max(0, total - answeredCount);
+  // 1-based numbers of the loaded questions still blank. Questions past the
+  // last page loaded are unanswered too, but have no number to jump to yet.
+  const unansweredNumbers = questions.flatMap((q, i) =>
+    isAnswered(q.id) ? [] : [i + 1],
+  );
   // On a paged paper the last question loaded is not the last question.
   const onLastQuestion = currentIndex === questions.length - 1 && !hasMore;
 
@@ -241,9 +254,7 @@ export function ExamSurface({
               {title}
             </h1>
             <p className="text-xs text-muted">
-              {eyebrow && `${eyebrow} · `}Question {currentIndex + 1} of{" "}
-              {questions.length}
-              {hasMore && "+"}
+              {eyebrow && `${eyebrow} · `}Question {currentIndex + 1} of {total}
             </p>
           </div>
 
@@ -271,9 +282,8 @@ export function ExamSurface({
                 aria-live="off"
                 className={cn(
                   "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-bold tabular-nums transition-colors",
-                  lowTime
-                    ? "animate-pulse bg-danger-soft text-danger"
-                    : "bg-primary-soft text-primary-soft-foreground",
+                  "bg-danger-soft text-danger",
+                  lowTime && "animate-pulse",
                 )}
               >
                 <LuClock className="h-4 w-4" />
@@ -653,8 +663,7 @@ export function ExamSurface({
           </button>
 
           <div className="text-center text-xs font-semibold text-muted">
-            {answeredCount}/{questions.length}
-            {hasMore && "+"}
+            {answeredCount}/{total}
           </div>
 
           <Button
@@ -686,12 +695,22 @@ export function ExamSurface({
         <ConfirmSubmitDialog
           title={confirmTitle}
           answeredCount={answeredCount}
-          total={questions.length}
+          total={total}
           unanswered={unanswered}
+          unansweredNumbers={unansweredNumbers}
+          loadedCount={questions.length}
           flaggedCount={flaggedCount}
           submitting={submitting}
           extra={confirmExtra}
           onCancel={() => setShowConfirmSubmit(false)}
+          onKeepGoing={() => {
+            setShowConfirmSubmit(false);
+            if (unanswered === 0) return;
+            // First blank question; if every loaded one is answered the blanks
+            // lie past the last page, so land on the last question loaded.
+            const first = unansweredNumbers[0];
+            goToQuestion(first != null ? first - 1 : questions.length - 1);
+          }}
           onConfirm={handleSubmit}
         />
       )}
@@ -782,20 +801,26 @@ function ConfirmSubmitDialog({
   answeredCount,
   total,
   unanswered,
+  unansweredNumbers,
+  loadedCount,
   flaggedCount,
   submitting,
   extra,
   onCancel,
+  onKeepGoing,
   onConfirm,
 }: {
   title: string;
   answeredCount: number;
   total: number;
   unanswered: number;
+  unansweredNumbers: number[];
+  loadedCount: number;
   flaggedCount: number;
   submitting: boolean;
   extra?: ReactNode;
   onCancel: () => void;
+  onKeepGoing: () => void;
   onConfirm: () => void;
 }) {
   const panelRef = useRef<HTMLDivElement>(null);
@@ -865,7 +890,16 @@ function ConfirmSubmitDialog({
           {unanswered > 0 && (
             <p className="rounded-lg bg-warning-soft px-3 py-2 text-sm font-medium text-warning">
               {unanswered} unanswered{" "}
-              {unanswered === 1 ? "question is" : "questions are"} left blank.
+              {unanswered === 1 ? "question is" : "questions are"} left blank
+              {unansweredNumbers.length > 0 &&
+                `: ${unansweredNumbers.join(", ")}`}
+              {unanswered > unansweredNumbers.length &&
+                `${unansweredNumbers.length > 0 ? ", and " : ": "}${
+                  loadedCount + 1 === total
+                    ? total
+                    : `${loadedCount + 1}–${total}`
+                }`}
+              .
             </p>
           )}
           {flaggedCount > 0 && (
@@ -876,7 +910,7 @@ function ConfirmSubmitDialog({
           {extra}
         </div>
         <div className="mt-6 flex gap-3">
-          <Button variant="outline" className="flex-1" onClick={onCancel}>
+          <Button variant="outline" className="flex-1" onClick={onKeepGoing}>
             Keep going
           </Button>
           <Button

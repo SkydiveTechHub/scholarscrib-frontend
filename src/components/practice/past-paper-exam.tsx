@@ -36,12 +36,15 @@ export function PastPaperExam({
   examLabel,
   subject,
   year,
+  totalQuestions,
   onExit,
 }: {
   exam: string;
   examLabel: string;
   subject: PastPaperSubject;
   year: number;
+  /** The paper's question count, as shown on the year picker card. */
+  totalQuestions?: number;
   onExit: () => void;
 }) {
   // Versioned: papers saved by the old browser-graded flow carry a "local:"
@@ -98,6 +101,7 @@ export function PastPaperExam({
       eyebrow={`${examLabel} ${year}`}
       backHref="/practice/past-questions"
       onExit={onExit}
+      totalQuestions={totalQuestions}
       confirmTitle="Submit your paper?"
     />
   );
