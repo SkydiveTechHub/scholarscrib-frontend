@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { LuCalendar, LuPlus, LuSettings2, LuTriangleAlert } from "react-icons/lu";
+import { LuCalendar, LuPlus, LuSettings2, LuTrash2, LuTriangleAlert } from "react-icons/lu";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/ui/page-header";
@@ -10,6 +10,7 @@ import { buttonClass } from "@/components/ui/button";
 import type { StudyPlanPageData } from "@/lib/study-plan";
 import { isApiError } from "@/lib/api/errors";
 import {
+  useDeleteStudyPlan,
   useSaveStudyPlan,
   useSaveStudyPlanPositions,
   useSetStudyPlanItemStatus,
@@ -29,6 +30,7 @@ export function StudyPlanView({ data }: { data: StudyPlanPageData }) {
   const [error, setError] = useState("");
 
   const savePlan = useSaveStudyPlan();
+  const deletePlan = useDeleteStudyPlan();
   const setItemStatus = useSetStudyPlanItemStatus();
   const setPlanPositions = useSaveStudyPlanPositions();
 
@@ -47,9 +49,14 @@ export function StudyPlanView({ data }: { data: StudyPlanPageData }) {
   }
 
   async function saveSettings(settings: PlanSettings) {
-    const problem = await run(() => savePlan.mutateAsync({ settings, exists: Boolean(plan) }));
+    const problem = await run(() => savePlan.mutateAsync({ settings, planId: plan?.id }));
     if (!problem) setEditing(false);
     return problem;
+  }
+
+  async function removePlan() {
+    if (!plan || !window.confirm("Delete your study plan? This can't be undone.")) return;
+    setError((await run(() => deletePlan.mutateAsync(plan.id))) ?? "");
   }
 
   async function setStatus(id: string, status: "COMPLETED" | "SKIPPED" | "PENDING") {
@@ -77,10 +84,21 @@ export function StudyPlanView({ data }: { data: StudyPlanPageData }) {
         description={description}
         action={
           plan && !editing && (
-            <button type="button" onClick={() => setEditing(true)} className={buttonClass("secondary", "md")}>
-              <LuSettings2 className="h-4 w-4" />
-              Change plan
-            </button>
+            <div className="flex gap-2">
+              <button type="button" onClick={() => setEditing(true)} className={buttonClass("secondary", "md")}>
+                <LuSettings2 className="h-4 w-4" />
+                Change plan
+              </button>
+              <button
+                type="button"
+                onClick={removePlan}
+                disabled={deletePlan.isPending}
+                className={buttonClass("secondary", "md")}
+              >
+                <LuTrash2 className="h-4 w-4" />
+                Delete plan
+              </button>
+            </div>
           )
         }
       />

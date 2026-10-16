@@ -65,6 +65,7 @@ export const endpoints = {
   },
   studyPlan: {
     root: "/api/study-plan",
+    detail: (planId: string) => `/api/study-plan/${seg(planId)}`,
     positions: "/api/study-plan/positions",
     item: (itemId: string) => `/api/study-plan/items/${seg(itemId)}`,
   },

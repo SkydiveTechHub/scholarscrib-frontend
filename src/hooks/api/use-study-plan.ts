@@ -13,15 +13,31 @@ function useInvalidateStudyPlan() {
   return () => queryClient.invalidateQueries({ queryKey: queryKeys.studyPlan.all });
 }
 
-/** Creates the plan when there is none yet, otherwise updates its settings. */
+/**
+ * Creates the plan when there is no `planId` yet, otherwise updates that plan
+ * (`PATCH /api/study-plan/{id}`, id from the `plan` object of the GET response).
+ */
 export function useSaveStudyPlan() {
   const invalidate = useInvalidateStudyPlan();
   return useMutation({
-    mutationFn: ({ settings, exists }: { settings: unknown; exists: boolean }) =>
+    mutationFn: ({ settings, planId }: { settings: unknown; planId?: string | null }) =>
+      request<unknown>(
+        planId
+          ? { method: "PATCH", url: endpoints.studyPlan.detail(planId), data: settings }
+          : { method: "POST", url: endpoints.studyPlan.root, data: settings },
+      ),
+    onSuccess: invalidate,
+  });
+}
+
+/** `DELETE /api/study-plan/{id}` */
+export function useDeleteStudyPlan() {
+  const invalidate = useInvalidateStudyPlan();
+  return useMutation({
+    mutationFn: (planId: string) =>
       request<unknown>({
-        method: exists ? "PATCH" : "POST",
-        url: endpoints.studyPlan.root,
-        data: settings,
+        method: "DELETE",
+        url: endpoints.studyPlan.detail(planId),
       }),
     onSuccess: invalidate,
   });
