@@ -12,14 +12,16 @@ import { Progress } from "@/components/ui/progress";
 import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
 import { cn } from "@/lib/utils";
+import { progressPercent } from "@/lib/achievement-unlocks";
 
 export type Achievement = {
   id: string;
   title: string;
   description: string;
-  iconUrl: string | null;
   criteriaType: string;
   criteriaValue: number;
+  progress: number;
+  target: number;
   earned: boolean;
   earnedAt: string | null;
 };
@@ -134,6 +136,18 @@ export function AchievementsView({
                   <p className="mt-0.5 text-xs leading-relaxed text-muted">
                     {achievement.description}
                   </p>
+                  {!achievement.earned && achievement.target > 1 && (
+                    <div className="mt-3">
+                      <Progress
+                        value={progressPercent(achievement.progress, achievement.target)}
+                        tone="primary"
+                        className="h-1.5"
+                      />
+                      <p className="mt-1 text-[11px] font-medium text-muted">
+                        {achievement.progress} / {achievement.target}
+                      </p>
+                    </div>
+                  )}
                   {achievement.earned && achievement.earnedAt && (
                     <Badge variant="primary" className="mt-2">
                       Earned{" "}

@@ -6,9 +6,11 @@ export type StudentAchievement = {
   id: string;
   title: string;
   description: string;
-  iconUrl: string | null;
   criteriaType: string;
   criteriaValue: number;
+  /** Current figure toward `target`; equals `target` once earned. */
+  progress: number;
+  target: number;
   earned: boolean;
   /** ISO timestamp, or null when not yet earned. */
   earnedAt: string | null;
@@ -19,13 +21,16 @@ function asStudentAchievement(
   row: Record<string, unknown>,
 ): StudentAchievement {
   const criteriaValue = row.criteriaValue;
+  const target = typeof row.target === "number" && row.target > 0 ? row.target : 1;
+  const progress = typeof row.progress === "number" ? row.progress : 0;
   return {
     id: String(row.id),
     title: String(row.title ?? ""),
     description: String(row.description ?? ""),
-    iconUrl: row.iconUrl === null ? null : String(row.iconUrl ?? ""),
     criteriaType: String(row.criteriaType ?? ""),
     criteriaValue: typeof criteriaValue === "number" ? criteriaValue : 0,
+    progress,
+    target,
     earned: Boolean(row.earned),
     earnedAt: row.earnedAt === null || row.earnedAt === undefined
       ? null

@@ -24,6 +24,7 @@ import {
   ExplanationModal,
   type ExplainedQuestion,
 } from "@/components/assessment/explanation-modal";
+import { AchievementUnlockBanner } from "@/components/achievements/unlock-banner";
 
 type QuestionResult = {
   questionId: string;
@@ -188,6 +189,7 @@ export function ResultsView({
 
   return (
     <div className="mx-auto max-w-3xl space-y-6 animate-fade-in">
+      <AchievementUnlockBanner />
       <button
         type="button"
         onClick={() => (onBack ? onBack() : router.push("/practice/past-questions"))}
