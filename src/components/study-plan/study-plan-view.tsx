@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { LuCalendar, LuPlus, LuSettings2, LuTrash2, LuTriangleAlert } from "react-icons/lu";
+import { LuCalendar, LuPlus, LuSettings2, LuTriangleAlert } from "react-icons/lu";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/ui/page-header";
@@ -34,7 +34,6 @@ export function StudyPlanView({ data }: { data: StudyPlanPageData }) {
   const deletePlan = useDeleteStudyPlan();
   const setItemStatus = useSetStudyPlanItemStatus();
   const setPlanPositions = useSaveStudyPlanPositions();
-  const removePlan = useDeleteStudyPlan();
 
   /** Runs a mutation, then refreshes; resolves to an error message or null. */
   async function run(mutation: () => Promise<unknown>): Promise<string | null> {
@@ -56,9 +55,12 @@ export function StudyPlanView({ data }: { data: StudyPlanPageData }) {
     return problem;
   }
 
+  /** Confirmation lives in the form's DeletePlanModal; this only performs the delete. */
   async function removePlan() {
-    if (!plan || !window.confirm("Delete your study plan? This can't be undone.")) return;
-    setError((await run(() => deletePlan.mutateAsync(plan.id))) ?? "");
+    if (!plan) return null;
+    const problem = await run(() => deletePlan.mutateAsync(plan.id));
+    if (!problem) setEditing(false);
+    return problem;
   }
 
   async function setStatus(id: string, status: "COMPLETED" | "SKIPPED" | "PENDING") {
@@ -87,21 +89,10 @@ export function StudyPlanView({ data }: { data: StudyPlanPageData }) {
         description={description}
         action={
           plan && !editing && (
-            <div className="flex gap-2">
-              <button type="button" onClick={() => setEditing(true)} className={buttonClass("secondary", "md")}>
-                <LuSettings2 className="h-4 w-4" />
-                Change plan
-              </button>
-              <button
-                type="button"
-                onClick={removePlan}
-                disabled={deletePlan.isPending}
-                className={buttonClass("secondary", "md")}
-              >
-                <LuTrash2 className="h-4 w-4" />
-                Delete plan
-              </button>
-            </div>
+            <button type="button" onClick={() => setEditing(true)} className={buttonClass("secondary", "md")}>
+              <LuSettings2 className="h-4 w-4" />
+              Change plan
+            </button>
           )
         }
       />
@@ -114,7 +105,7 @@ export function StudyPlanView({ data }: { data: StudyPlanPageData }) {
           plan={plan}
           onSubmit={saveSettings}
           onCancel={plan ? () => setEditing(false) : undefined}
-          onDelete={plan ? deletePlan : undefined}
+          onDelete={plan ? removePlan : undefined}
         />
       )}
 
