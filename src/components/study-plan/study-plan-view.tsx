@@ -6,6 +6,7 @@ import { LuCalendar, LuPlus, LuSettings2, LuTriangleAlert } from "react-icons/lu
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/ui/page-header";
+import { Spinner } from "@/components/ui/spinner";
 import { buttonClass } from "@/components/ui/button";
 import type { StudyPlanPageData } from "@/lib/study-plan";
 import { scopeHeader } from "@/lib/study-plan-scope";
@@ -29,6 +30,9 @@ export function StudyPlanView({ data }: { data: StudyPlanPageData }) {
   const { plan } = data;
   const [editing, setEditing] = useState(false);
   const [error, setError] = useState("");
+  // True from a successful first save until the refreshed plan arrives, so the
+  // gap between the two shows a loader instead of the "No study plan yet" state.
+  const [justCreated, setJustCreated] = useState(false);
 
   const savePlan = useSaveStudyPlan();
   const deletePlan = useDeleteStudyPlan();
@@ -50,8 +54,12 @@ export function StudyPlanView({ data }: { data: StudyPlanPageData }) {
   }
 
   async function saveSettings(settings: PlanSettings) {
+    const creating = !plan;
     const problem = await run(() => savePlan.mutateAsync({ settings, planId: plan?.id }));
-    if (!problem) setEditing(false);
+    if (!problem) {
+      if (creating) setJustCreated(true);
+      setEditing(false);
+    }
     return problem;
   }
 
@@ -59,7 +67,10 @@ export function StudyPlanView({ data }: { data: StudyPlanPageData }) {
   async function removePlan() {
     if (!plan) return null;
     const problem = await run(() => deletePlan.mutateAsync(plan.id));
-    if (!problem) setEditing(false);
+    if (!problem) {
+      setJustCreated(false);
+      setEditing(false);
+    }
     return problem;
   }
 
@@ -109,7 +120,9 @@ export function StudyPlanView({ data }: { data: StudyPlanPageData }) {
         />
       )}
 
-      {!plan && !editing && (
+      {!plan && !editing && justCreated && <Spinner label="Building your study plan..." />}
+
+      {!plan && !editing && !justCreated && (
         <EmptyState
           tone="primary"
           icon={<LuCalendar className="h-6 w-6" />}
