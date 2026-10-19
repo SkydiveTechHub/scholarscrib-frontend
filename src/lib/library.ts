@@ -12,10 +12,7 @@ export type LibrarySubject = {
   _count: { resources: number };
 };
 
-type LibraryResponse =
-  | Record<string, unknown>[]
-  | { subjects?: Record<string, unknown>[] }
-  | { resources?: Record<string, unknown>[] };
+type LibraryResponse = { subjects?: Record<string, unknown>[] };
 
 function nestedCount(row: Record<string, unknown>): number {
   const count = row._count;
@@ -45,16 +42,14 @@ function asLibrarySubject(
 
 /**
  * The student's shelf: every subject in a track category relevant to them,
- * filtered server-side by the token. `GET /api/library` returns an array-like
- * collection; tolerate the two common envelope shapes.
+ * filtered server-side by the token. `GET /api/library` answers `{ subjects }`;
+ * a different shape is an error, not an empty shelf.
  */
 export async function getLibraryShelf(): Promise<LibrarySubject[]> {
   const data = await api<LibraryResponse>(endpoints.library);
-  const rows = Array.isArray(data)
-    ? data
-    : Array.isArray((data as Record<string, unknown>).subjects)
-      ? ((data as Record<string, unknown>).subjects as Record<string, unknown>[])
-      : ((data as Record<string, unknown>).resources as Record<string, unknown>[]) ?? [];
-  return rows.map(asLibrarySubject);
+  if (!Array.isArray(data?.subjects)) {
+    throw new Error("GET /api/library did not return a subjects list");
+  }
+  return data.subjects.map(asLibrarySubject);
 }
 
