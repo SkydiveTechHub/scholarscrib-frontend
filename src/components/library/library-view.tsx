@@ -44,6 +44,15 @@ type SubjectResource = {
   orderIndex: number;
   /** Set by the server when this resource needs a plan the viewer lacks. */
   locked?: boolean;
+  /** Epoch seconds when a private file's link stops working; null for public ones. */
+  expiresAt?: number | null;
+};
+
+type PdfViewerState = {
+  id: string;
+  file: string;
+  title: string;
+  expiresAt: number | null;
 };
 
 type Subject = {
@@ -169,7 +178,7 @@ export function LibraryView({ subjects }: { subjects: Subject[] }) {
   const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null);
   const [resources, setResources] = useState<SubjectResource[]>([]);
   const [resourcesLoading, setResourcesLoading] = useState(false);
-  const [pdfViewer, setPdfViewer] = useState<{ file: string; title: string } | null>(null);
+  const [pdfViewer, setPdfViewer] = useState<PdfViewerState | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const openSubject = useCallback(async (subject: Subject) => {
@@ -188,8 +197,29 @@ export function LibraryView({ subjects }: { subjects: Subject[] }) {
   }, [queryClient]);
 
   const handleRead = useCallback((resource: SubjectResource) => {
-    setPdfViewer({ file: resource.url, title: resource.title });
+    setPdfViewer({
+      id: resource.id,
+      file: resource.url,
+      title: resource.title,
+      expiresAt: resource.expiresAt ?? null,
+    });
   }, []);
+
+  // Private links expire; ask the server for a fresh one and swap it in while
+  // the reader stays mounted, so the student keeps their page and zoom.
+  const reloadPdf = useCallback(async () => {
+    if (!selectedSubject || !pdfViewer) return;
+    const rows = (await queryClient.fetchQuery({
+      ...libraryResourcesQuery(selectedSubject.id),
+      staleTime: 0,
+    })) as SubjectResource[];
+    const fresh = rows.find((row) => row.id === pdfViewer.id);
+    if (!fresh || fresh.locked || !fresh.url) {
+      throw new Error("This resource is no longer available.");
+    }
+    setResources(rows);
+    setPdfViewer({ ...pdfViewer, file: fresh.url, expiresAt: fresh.expiresAt ?? null });
+  }, [queryClient, selectedSubject, pdfViewer]);
 
   const grouped = new Map<string, Subject[]>();
   for (const subject of subjects) {
@@ -238,6 +268,8 @@ export function LibraryView({ subjects }: { subjects: Subject[] }) {
           <PDFReader
             file={pdfViewer.file}
             title={pdfViewer.title}
+            expiresAt={pdfViewer.expiresAt}
+            onReload={reloadPdf}
             onClose={() => setPdfViewer(null)}
           />
         ) : resourcesLoading ? (

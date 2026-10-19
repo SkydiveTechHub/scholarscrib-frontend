@@ -15,10 +15,24 @@ pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/b
 type PDFReaderProps = {
   file: string;
   title: string;
+  /** Epoch seconds when `file` stops working; null when it never does. */
+  expiresAt?: number | null;
+  /** Fetches a fresh link and updates `file`. Rejects if that is not possible. */
+  onReload?: () => Promise<void>;
   onClose: () => void;
 };
 
-export default function PDFReader({ file, title, onClose }: PDFReaderProps) {
+export default function PDFReader({
+  file,
+  title,
+  expiresAt = null,
+  onReload,
+  onClose,
+}: PDFReaderProps) {
+  const [expired, setExpired] = useState(false);
+  const [reloading, setReloading] = useState(false);
+  const [reloadError, setReloadError] = useState<string | null>(null);
+  const [docKey, setDocKey] = useState(0);
   const [numPages, setNumPages] = useState<number>(0);
   const [pageNumber, setPageNumber] = useState(1);
   const [zoom, setZoom] = useState(1);
@@ -34,6 +48,43 @@ export default function PDFReader({ file, title, onClose }: PDFReaderProps) {
     },
     [numPages],
   );
+
+  // Flag the link as stale when its time is up. A backgrounded tab throttles
+  // timers, so also re-check the moment the student comes back to it.
+  useEffect(() => {
+    if (!expiresAt) return;
+    const check = () => {
+      if (Date.now() >= expiresAt * 1000) setExpired(true);
+    };
+    const timer = window.setTimeout(
+      check,
+      Math.max(0, expiresAt * 1000 - Date.now()),
+    );
+    document.addEventListener("visibilitychange", check);
+    return () => {
+      window.clearTimeout(timer);
+      document.removeEventListener("visibilitychange", check);
+    };
+  }, [expiresAt]);
+
+  const handleReload = useCallback(async () => {
+    if (!onReload) return;
+    setReloading(true);
+    setReloadError(null);
+    try {
+      await onReload();
+      setExpired(false);
+      setLoadError(false);
+      setLoading(true);
+      setDocKey((key) => key + 1);
+    } catch (cause) {
+      setReloadError(
+        cause instanceof Error ? cause.message : "Could not reload. Try again.",
+      );
+    } finally {
+      setReloading(false);
+    }
+  }, [onReload]);
 
   // Track container width so pages fit-to-width
   useEffect(() => {
@@ -163,6 +214,21 @@ export default function PDFReader({ file, title, onClose }: PDFReaderProps) {
         </div>
       </div>
 
+      {expired && !loadError && onReload && (
+        <div className="flex items-center justify-between gap-3 border-b border-border bg-secondary px-4 py-2">
+          <p className="text-xs text-muted">
+            {reloadError ?? "This session timed out. Reload to keep reading."}
+          </p>
+          <button
+            onClick={handleReload}
+            disabled={reloading}
+            className="flex-shrink-0 text-xs font-medium text-primary hover:underline disabled:opacity-50"
+          >
+            {reloading ? "Reloading…" : "Reload"}
+          </button>
+        </div>
+      )}
+
       {/* Document area — flows naturally with the page, never truncated */}
       <div ref={containerRef} className="bg-[#ecece6]">
         <div
@@ -178,16 +244,33 @@ export default function PDFReader({ file, title, onClose }: PDFReaderProps) {
 
           {loadError ? (
             <div className="py-20 text-center">
-              <p className="text-sm text-muted">Failed to load this PDF.</p>
-              <button
-                onClick={onClose}
-                className="mt-4 text-xs font-medium text-primary hover:underline"
-              >
-                Back to resources
-              </button>
+              <p className="text-sm text-muted">
+                {reloadError ??
+                  (onReload
+                    ? "This PDF could not be loaded. Your session may have timed out."
+                    : "Failed to load this PDF.")}
+              </p>
+              <div className="mt-4 flex items-center justify-center gap-4">
+                {onReload && (
+                  <button
+                    onClick={handleReload}
+                    disabled={reloading}
+                    className="text-xs font-medium text-primary hover:underline disabled:opacity-50"
+                  >
+                    {reloading ? "Reloading…" : "Reload"}
+                  </button>
+                )}
+                <button
+                  onClick={onClose}
+                  className="text-xs font-medium text-muted hover:underline"
+                >
+                  Back to resources
+                </button>
+              </div>
             </div>
           ) : (
             <Document
+              key={docKey}
               file={file}
               onLoadSuccess={({ numPages }) => {
                 setNumPages(numPages);
@@ -203,6 +286,8 @@ export default function PDFReader({ file, title, onClose }: PDFReaderProps) {
                 width={pageWidth * zoom}
                 renderTextLayer={false}
                 renderAnnotationLayer={false}
+                onLoadError={() => setExpired(true)}
+                onRenderError={() => setExpired(true)}
                 className="[&>canvas]:!max-w-none shadow-lg rounded-sm"
               />
             </Document>

@@ -69,6 +69,8 @@ export function MaterialForm({ subjectId, material, onSaved, onCancel }: Props) 
       // Joined with a plain comma, no spaces — the server signed the string
       // this way, and any other delimiter breaks the signature.
       body.append("allowed_formats", signed.allowedFormats.join(","));
+      // Part of the signed string: uploads land as private, signed-URL-only.
+      body.append("type", signed.deliveryType);
       body.append("signature", signed.signature);
 
       // Straight to Cloudinary: a serverless deploy caps request bodies at
@@ -218,9 +220,11 @@ export function MaterialForm({ subjectId, material, onSaved, onCancel }: Props) 
           )}
           {type === "PDF" && (
             <p className="mt-2 text-xs text-muted">
-              Cloudinary blocks PDF delivery by default. If an uploaded PDF will
-              not open, enable Settings → Security → &ldquo;PDF and ZIP files
-              delivery&rdquo; in the Cloudinary dashboard.
+              Uploads are private and only open through signed links issued to
+              entitled students. Cloudinary also blocks PDF delivery by default;
+              if an uploaded PDF will not open, enable Settings → Security →
+              &ldquo;PDF and ZIP files delivery&rdquo; in the Cloudinary
+              dashboard.
             </p>
           )}
         </div>

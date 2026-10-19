@@ -1,6 +1,7 @@
 "use client";
 
 import { queryOptions } from "@tanstack/react-query";
+import { API_URL } from "@/lib/api/config";
 import { endpoints } from "@/lib/api/endpoints";
 import { request } from "@/lib/api/http";
 import { queryKeys } from "@/lib/api/query-keys";
@@ -22,7 +23,13 @@ export function libraryResourcesQuery(subjectId: string) {
         url: endpoints.library,
         params: { subjectId },
       });
-      return Array.isArray(data) ? data : (data.resources ?? []);
+      const rows = Array.isArray(data) ? data : (data.resources ?? []);
+      // Private files come back as a path on the API, not a full URL.
+      return rows.map((row) =>
+        typeof row.url === "string" && row.url.startsWith("/")
+          ? { ...row, url: `${API_URL}${row.url}` }
+          : row,
+      );
     },
   });
 }

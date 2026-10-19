@@ -13,6 +13,8 @@ export type UploadSignature = {
   timestamp: number;
   signature: string;
   folder: string;
+  /** Signed into the upload; "authenticated" assets have no public URL. */
+  deliveryType: "authenticated";
   allowedFormats: string[];
   maxBytes: number;
   resourceType: "image" | "raw";
