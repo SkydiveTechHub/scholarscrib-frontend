@@ -6,6 +6,37 @@ import { useUploadAvatar } from "@/hooks/api/use-user";
 import { Avatar } from "@/components/ui/avatar";
 import { FormMessage, Section, submitClass } from "./section";
 
+const MAX_EDGE = 512;
+
+/**
+ * Scales a picked photo down to avatar size and re-encodes it as JPEG, so a
+ * multi-megabyte phone photo lands well under the server's 2MB limit.
+ */
+async function shrinkImage(file: File): Promise<File> {
+  // "from-image" applies the EXIF rotation, so portrait phone shots stay upright.
+  const bitmap = await createImageBitmap(file, { imageOrientation: "from-image" });
+  try {
+    const scale = Math.min(1, MAX_EDGE / Math.max(bitmap.width, bitmap.height));
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.round(bitmap.width * scale);
+    canvas.height = Math.round(bitmap.height * scale);
+    const ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Could not process this image.");
+    // JPEG has no alpha; paint white so transparent PNGs don't turn black.
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+    const blob = await new Promise<Blob | null>((resolve) =>
+      canvas.toBlob(resolve, "image/jpeg", 0.85),
+    );
+    if (!blob) throw new Error("Could not process this image.");
+    const name = file.name.replace(/\.[^.]+$/, "") || "avatar";
+    return new File([blob], `${name}.jpg`, { type: "image/jpeg" });
+  } finally {
+    bitmap.close();
+  }
+}
+
 export function AvatarUpload({
   image,
   firstName,
@@ -30,11 +61,12 @@ export function AvatarUpload({
 
     setError("");
     setSuccess("");
-    setPreview(URL.createObjectURL(file));
     setLoading(true);
 
     try {
-      await uploadAvatar.mutateAsync(file);
+      const small = await shrinkImage(file);
+      setPreview(URL.createObjectURL(small));
+      await uploadAvatar.mutateAsync(small);
 
       setSuccess("Photo updated.");
       router.refresh();
@@ -51,7 +83,7 @@ export function AvatarUpload({
   }
 
   return (
-    <Section title="Photo" description="JPEG, PNG, or WebP, up to 2MB.">
+    <Section title="Photo" description="JPEG, PNG, or WebP. Large photos are resized automatically.">
       <FormMessage error={error} success={success} />
 
       <div className="flex items-center gap-4">
