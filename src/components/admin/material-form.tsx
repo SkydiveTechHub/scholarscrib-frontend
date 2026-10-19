@@ -70,6 +70,12 @@ export function MaterialForm({ subjectId, material, onSaved, onCancel }: Props) 
       // this way, and any other delimiter breaks the signature.
       body.append("allowed_formats", signed.allowedFormats.join(","));
       // Part of the signed string: uploads land as private, signed-URL-only.
+      // Uploading without it would be signed wrong, so stop on an old backend.
+      if (!signed.deliveryType) {
+        throw new Error(
+          "The server is out of date and did not return a delivery type. Redeploy the backend.",
+        );
+      }
       body.append("type", signed.deliveryType);
       body.append("signature", signed.signature);
 
