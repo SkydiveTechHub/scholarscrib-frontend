@@ -29,6 +29,7 @@ const SIGN_IN_PATHS: readonly string[] = [
   endpoints.auth.login,
   endpoints.auth.register,
   endpoints.auth.google,
+  endpoints.auth.googleTokens,
   endpoints.admin.auth.login,
 ];
 

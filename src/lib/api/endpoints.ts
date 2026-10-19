@@ -12,6 +12,7 @@ export const endpoints = {
     logout: "/api/auth/logout",
     session: "/api/auth/session",
     google: "/api/auth/google",
+    googleTokens: "/api/auth/google/tokens",
   },
   user: {
     profile: "/api/user/profile",

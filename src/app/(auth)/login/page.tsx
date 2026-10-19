@@ -31,7 +31,10 @@ function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const login = useLogin();
-  const [error, setError] = useState("");
+  const [error, setError] = useState(searchParams.get("error") === "google"
+      ? "Google sign-in failed. Please try again."
+      : "",
+  );
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -74,17 +77,22 @@ function LoginForm() {
   }
 
   async function handleGoogleSignIn() {
-    const [{ API_URL }, { endpoints }, { isApiError }] = await Promise.all([
-      import("@/lib/api/config"),
-      import("@/lib/api/endpoints"),
-      import("@/lib/api/errors"),
-    ]);
+    const [{ API_URL }, { endpoints }, { isApiError }, { createGoogleState }] =
+      await Promise.all([
+        import("@/lib/api/config"),
+        import("@/lib/api/endpoints"),
+        import("@/lib/api/errors"),
+        import("@/lib/google-oauth-state"),
+      ]);
     markFreshSignIn();
     try {
-      // The backend owns the OAuth dance. /api/auth/google starts it and the
-      // backend's own /api/auth/google/callback resolves it, redirecting the
-      // browser back to the app with an access token (per the port contract).
-      window.location.assign(`${API_URL}${endpoints.auth.google}`);
+      // /api/auth/google sends the browser to Google, which returns to the
+      // site root with ?code=. <GoogleCallback /> on the landing page trades
+      // that code for an access token via POST /api/auth/google/tokens.
+      const state = createGoogleState();
+      window.location.assign(
+        `${API_URL}${endpoints.auth.google}?state=${encodeURIComponent(state)}`,
+      );
     } catch (err) {
       if (!isApiError(err)) {
         setError("Google sign-in is not configured yet. Use email instead.");

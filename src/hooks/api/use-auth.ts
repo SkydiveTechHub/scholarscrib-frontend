@@ -41,6 +41,18 @@ export function useLogin() {
   });
 }
 
+export function useGoogleTokens() {
+  return useMutation({
+    mutationFn: (input: { code: string; redirectUri: string }) =>
+      request<TokenOut>({
+        method: "POST",
+        url: endpoints.auth.googleTokens,
+        data: input,
+        anonymous: true,
+      }),
+  });
+}
+
 export function useAdminLogin() {
   return useMutation({
     mutationFn: (input: { identifier: string; password: string }) =>
