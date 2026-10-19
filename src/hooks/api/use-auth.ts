@@ -53,6 +53,62 @@ export function useGoogleTokens() {
   });
 }
 
+type MessageOut = { message: string };
+
+export function useForgotPassword() {
+  return useMutation({
+    mutationFn: (input: { email: string }) =>
+      request<MessageOut>({
+        method: "POST",
+        url: endpoints.auth.forgotPassword,
+        data: input,
+        anonymous: true,
+      }),
+  });
+}
+
+export function useResetPassword() {
+  return useMutation({
+    mutationFn: (input: { email: string; token: string; newPassword: string }) =>
+      request<MessageOut>({
+        method: "POST",
+        url: endpoints.auth.resetPassword,
+        data: input,
+        anonymous: true,
+      }),
+  });
+}
+
+export function useAdminForgotPassword() {
+  return useMutation({
+    mutationFn: (input: { identifier: string }) =>
+      request<MessageOut>({
+        method: "POST",
+        url: endpoints.admin.auth.forgotPassword,
+        data: input,
+        anonymous: true,
+        realm: "admin",
+      }),
+  });
+}
+
+export function useAdminResetPassword() {
+  return useMutation({
+    mutationFn: (input: {
+      identifier: string;
+      token: string;
+      newPassword: string;
+    }) =>
+      request<MessageOut>({
+        method: "POST",
+        url: endpoints.admin.auth.resetPassword,
+        data: input,
+        anonymous: true,
+        realm: "admin",
+      }),
+  });
+}
+
 export function useAdminLogin() {
   return useMutation({
     mutationFn: (input: { identifier: string; password: string }) =>

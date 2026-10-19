@@ -13,6 +13,8 @@ export const endpoints = {
     session: "/api/auth/session",
     google: "/api/auth/google",
     googleTokens: "/api/auth/google/tokens",
+    forgotPassword: "/api/auth/forgot-password",
+    resetPassword: "/api/auth/reset-password",
   },
   user: {
     profile: "/api/user/profile",
@@ -102,6 +104,8 @@ export const endpoints = {
       login: "/admin/api/auth/login",
       logout: "/admin/api/auth/logout",
       session: "/admin/api/auth/session",
+      forgotPassword: "/admin/api/auth/forgot-password",
+      resetPassword: "/admin/api/auth/reset-password",
     },
     overview: "/admin/api/overview",
     analytics: "/admin/api/analytics",

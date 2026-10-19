@@ -13,7 +13,13 @@ export type AdminPathKind = "auth" | "login" | "console";
 export function classifyAdminPath(pathname: string): AdminPathKind | null {
   if (pathname !== "/admin" && !pathname.startsWith("/admin/")) return null;
   if (pathname === "/admin/api/auth" || pathname.startsWith("/admin/api/auth/")) return "auth";
-  if (pathname === "/admin/login") return "login";
+  if (
+    pathname === "/admin/login" ||
+    pathname === "/admin/forgot-password" ||
+    pathname === "/admin/reset-password"
+  ) {
+    return "login";
+  }
   return "console";
 }
 

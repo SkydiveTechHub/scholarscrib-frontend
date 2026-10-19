@@ -117,6 +117,16 @@ function LoginForm() {
         </div>
       )}
 
+      {searchParams.get("reset") === "true" && (
+        <div
+          role="status"
+          className="mt-6 flex items-start gap-2 rounded-xl border border-success/25 bg-success-soft p-3.5 text-sm font-medium text-success animate-fade-in"
+        >
+          <LuArrowRight className="mt-0.5 h-4 w-4 flex-shrink-0" />
+          Password reset. Sign in with your new password.
+        </div>
+      )}
+
       {signedOutElsewhere && (
         <div
           role="status"
@@ -235,6 +245,14 @@ function LoginForm() {
                   <LuEye className="h-4 w-4" />
                 )}
               </button>
+            </div>
+            <div className="mt-2 text-right">
+              <Link
+                href="/forgot-password"
+                className="text-sm font-semibold text-primary hover:underline"
+              >
+                Forgot password?
+              </Link>
             </div>
           </div>
 

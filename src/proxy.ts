@@ -6,7 +6,12 @@ import {
   hasStudentTokenCookie,
 } from "@/lib/session-token";
 
-const AUTH_ROUTES = ["/login", "/register"];
+const AUTH_ROUTES = [
+  "/login",
+  "/register",
+  "/forgot-password",
+  "/reset-password",
+];
 
 function isAuthRoute(pathname: string) {
   return AUTH_ROUTES.some(

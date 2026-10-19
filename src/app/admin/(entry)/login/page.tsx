@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 import { LuShield, LuLock, LuUser, LuEye, LuEyeOff } from "react-icons/lu";
@@ -54,6 +55,15 @@ function AdminLoginForm() {
         </div>
         <h1 className="text-xl font-bold tracking-tight">Admin console</h1>
       </div>
+
+      {searchParams.get("reset") === "true" && !error && (
+        <div
+          role="status"
+          className="mb-6 rounded-xl border border-success/25 bg-success-soft p-3.5 text-sm font-medium text-success"
+        >
+          Password reset. Sign in with your new password.
+        </div>
+      )}
 
       {error && (
         <div className="mb-6 rounded-xl border border-danger/25 bg-danger-soft p-3.5 text-sm font-medium text-danger">
@@ -112,6 +122,12 @@ function AdminLoginForm() {
               )}
             </button>
           </div>
+          <Link
+            href="/admin/forgot-password"
+            className="mt-2 block text-right text-sm font-semibold text-primary hover:underline"
+          >
+            Forgot password?
+          </Link>
         </label>
 
         <button

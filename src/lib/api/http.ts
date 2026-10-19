@@ -30,7 +30,11 @@ const SIGN_IN_PATHS: readonly string[] = [
   endpoints.auth.register,
   endpoints.auth.google,
   endpoints.auth.googleTokens,
+  endpoints.auth.forgotPassword,
+  endpoints.auth.resetPassword,
   endpoints.admin.auth.login,
+  endpoints.admin.auth.forgotPassword,
+  endpoints.admin.auth.resetPassword,
 ];
 
 function isAdminRealm(path: string, realm?: "student" | "admin"): boolean {
