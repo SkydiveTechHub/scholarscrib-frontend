@@ -33,7 +33,7 @@ export function Sidebar({ user }: { user: ProfileUser }) {
           href="/dashboard"
           prefetch={prefetch}
           className="min-w-0 flex-1 px-2 py-1"
-          imageClassName="h-20"
+          imageClassName="h-14 w-50"
         />
         <NotificationBell />
       </div>
