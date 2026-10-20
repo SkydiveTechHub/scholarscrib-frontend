@@ -150,3 +150,21 @@ test("rating sets the thumb on one message", () => {
   );
   assert.equal(s.messages[0].rating, "up");
 });
+
+test("retry after a partial reply replaces it instead of stacking a second reply", () => {
+  let s = run(
+    [
+      { type: "start", messageId: "m1", remainingToday: 4 },
+      { type: "delta", text: "Half an ans" },
+      { type: "error", code: "UNAVAILABLE", message: "dropped" },
+    ],
+    sent(),
+  );
+  s = chatReducer(s, { type: "send", request: REQ });
+  assert.equal(s.messages.filter((m) => m.role === "astra").length, 1);
+  assert.equal(s.messages[s.messages.length - 1].text, "");
+  // A replayed server id must not collide with the dropped partial's key.
+  s = run([{ type: "start", messageId: "m1", remainingToday: 4 }], s);
+  const ids = s.messages.map((m) => m.id);
+  assert.equal(new Set(ids).size, ids.length);
+});

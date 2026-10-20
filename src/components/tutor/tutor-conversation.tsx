@@ -1,10 +1,13 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useRef } from "react";
 import { useTutorChat } from "@/hooks/use-tutor-chat";
 import { ladderFor, startersFor, type Chip } from "@/lib/tutor/chips";
+import { describeError, exhaustedMessage } from "@/lib/tutor/messages";
 import type {
   TutorContext,
+  TutorErrorInfo,
   TutorMessage,
   TutorStatus,
 } from "@/lib/tutor/types";
@@ -12,14 +15,6 @@ import { AstraAvatar } from "./astra-avatar";
 import { TutorChips } from "./tutor-chips";
 import { TutorComposer } from "./tutor-composer";
 import { TutorMessageView } from "./tutor-message";
-
-function resetLabel(iso: string | null | undefined): string {
-  if (!iso) return "tomorrow";
-  return new Date(iso).toLocaleTimeString([], {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
 
 export function TutorConversation({
   threadId,
@@ -84,28 +79,15 @@ export function TutorConversation({
         ))}
 
         {state.phase === "error" && state.error && (
-          <div
-            role="alert"
-            className="rounded-xl border border-danger/30 bg-danger-soft px-3.5 py-3 text-sm text-foreground"
+          <ErrorNotice error={state.error} onRetry={retry} />
+        )}
+        {exhausted && state.phase !== "error" && (
+          <p
+            role="status"
+            className="rounded-xl border border-border bg-secondary px-3.5 py-3 text-sm text-foreground"
           >
-            {state.error.code === "RATE_LIMITED" ? (
-              <p>
-                You&apos;ve used today&apos;s questions. Astra is back at{" "}
-                {resetLabel(state.error.resetsAt)}.
-              </p>
-            ) : (
-              <>
-                <p>{state.error.message}</p>
-                <button
-                  type="button"
-                  onClick={retry}
-                  className="mt-2 min-h-11 font-bold text-primary"
-                >
-                  Try again
-                </button>
-              </>
-            )}
-          </div>
+            {exhaustedMessage(status.resetsAt, new Date())}
+          </p>
         )}
         <div ref={endRef} />
       </div>
@@ -127,5 +109,40 @@ export function TutorConversation({
         onStop={stop}
       />
     </>
+  );
+}
+
+function ErrorNotice({
+  error,
+  onRetry,
+}: {
+  error: TutorErrorInfo;
+  onRetry: () => void;
+}) {
+  const view = describeError(error, new Date());
+  return (
+    <div
+      role="alert"
+      className="rounded-xl border border-danger/30 bg-danger-soft px-3.5 py-3 text-sm text-foreground"
+    >
+      <p>{view.message}</p>
+      {view.retry && (
+        <button
+          type="button"
+          onClick={onRetry}
+          className="mt-2 min-h-11 font-bold text-primary"
+        >
+          Try again
+        </button>
+      )}
+      {view.upgrade && (
+        <Link
+          href="/settings/billing"
+          className="mt-2 inline-flex min-h-11 items-center font-bold text-primary"
+        >
+          See Premium
+        </Link>
+      )}
+    </div>
   );
 }

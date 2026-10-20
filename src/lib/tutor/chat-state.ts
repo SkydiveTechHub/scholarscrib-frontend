@@ -44,6 +44,12 @@ function dropEmptyReply(messages: TutorMessage[]): TutorMessage[] {
     : messages;
 }
 
+/** Drops a trailing Astra message whatever it holds. */
+function dropTrailingReply(messages: TutorMessage[]): TutorMessage[] {
+  const last = messages[messages.length - 1];
+  return last && last.role === "astra" ? messages.slice(0, -1) : messages;
+}
+
 function mapLastReply(
   messages: TutorMessage[],
   fn: (m: TutorMessage) => TutorMessage,
@@ -60,7 +66,9 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
       // A retry reuses its clientMessageId (the BE de-duplicates quota on it),
       // so its bubble is already on screen and must not be added twice.
       const isRetry = state.messages.some((m) => m.id === request.clientMessageId);
-      const base = dropEmptyReply(state.messages);
+      // A retry replays the whole reply, so a half-received one is dropped
+      // rather than kept above its own replacement.
+      const base = isRetry ? dropTrailingReply(state.messages) : dropEmptyReply(state.messages);
       const messages: TutorMessage[] = [
         ...(isRetry
           ? base

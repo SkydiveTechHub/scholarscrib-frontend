@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { LuMaximize2, LuMinimize2, LuX } from "react-icons/lu";
 import { useTutorStatus, useTutorThread } from "@/hooks/api/use-tutor";
+import { trapTarget } from "@/lib/tutor/focus-trap";
 import { can, type SubscriptionTier } from "@/lib/subscription";
 import { selectActiveEntry, useTutorStore } from "@/stores/tutor-store";
 import { cn } from "@/lib/utils";
@@ -12,6 +13,20 @@ import { TutorLocked } from "./tutor-locked";
 
 const FOCUSABLE =
   'button, [href], textarea, input, [tabindex]:not([tabindex="-1"])';
+
+const DESKTOP = "(min-width: 1024px)";
+
+function useIsDesktop(): boolean {
+  return useSyncExternalStore(
+    (notify) => {
+      const mq = window.matchMedia(DESKTOP);
+      mq.addEventListener("change", notify);
+      return () => mq.removeEventListener("change", notify);
+    },
+    () => window.matchMedia(DESKTOP).matches,
+    () => false,
+  );
+}
 
 // Default export: loaded through next/dynamic from tutor-shell.
 export default function TutorPanel({ tier }: { tier: SubscriptionTier }) {
@@ -26,32 +41,45 @@ export default function TutorPanel({ tier }: { tier: SubscriptionTier }) {
   const allowed = entitled && status.data?.allowed !== false;
   const thread = useTutorThread(entry.context, allowed);
 
-  // Esc closes; on phones the sheet is modal, so Tab is kept inside it.
+  const desktop = useIsDesktop();
+
+  // Esc closes. On phones the sheet is modal: Tab stays inside it.
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.key === "Escape") closePanel();
-      const modal = !window.matchMedia("(min-width: 1024px)").matches;
-      if (e.key !== "Tab" || !modal || !ref.current) return;
+      if (e.key !== "Tab" || desktop || !ref.current) return;
       const nodes = Array.from(
         ref.current.querySelectorAll<HTMLElement>(FOCUSABLE),
       ).filter((n) => !n.hasAttribute("disabled"));
-      if (nodes.length === 0) return;
-      const first = nodes[0];
-      const last = nodes[nodes.length - 1];
-      if (e.shiftKey && document.activeElement === first) {
+      const target = trapTarget(nodes, document.activeElement, ref.current, e.shiftKey);
+      if (target) {
         e.preventDefault();
-        last.focus();
-      } else if (!e.shiftKey && document.activeElement === last) {
-        e.preventDefault();
-        first.focus();
+        target.focus();
       }
     }
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, [closePanel]);
+  }, [closePanel, desktop]);
 
+  // The sheet covers the page on phones, so the page behind must not scroll.
   useEffect(() => {
-    ref.current?.querySelector<HTMLElement>("textarea, button")?.focus();
+    if (desktop) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previous;
+    };
+  }, [desktop]);
+
+  // Focus moves into the panel on open and back to the trigger on close. The
+  // dialog itself takes focus: the composer is not mounted yet while the
+  // thread loads, and on a phone focusing it would raise the keyboard over the
+  // starter chips.
+  useEffect(() => {
+    ref.current?.focus();
+    return () => {
+      document.querySelector<HTMLElement>("[data-astra-trigger]")?.focus();
+    };
   }, []);
 
   const showContext = entry.context.type !== "general" && entry.label;
@@ -67,9 +95,11 @@ export default function TutorPanel({ tier }: { tier: SubscriptionTier }) {
       <aside
         ref={ref}
         role="dialog"
+        aria-modal={!desktop}
         aria-label="Astra, your study buddy"
+        tabIndex={-1}
         className={cn(
-          "fixed z-50 flex flex-col bg-card shadow-xl",
+          "fixed z-50 flex flex-col bg-card shadow-xl outline-none",
           "inset-x-0 bottom-0 rounded-t-2xl border-t border-border",
           expanded ? "h-[100dvh] rounded-none" : "h-[75dvh]",
           "lg:inset-y-0 lg:left-auto lg:right-0 lg:h-auto lg:w-[400px] lg:rounded-none lg:border-l lg:border-t-0",

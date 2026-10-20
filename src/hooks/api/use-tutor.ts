@@ -25,8 +25,13 @@ export function useTutorStatus(enabled: boolean) {
   return useQuery({ ...tutorStatusQuery(), enabled });
 }
 
-export function useTutorThread(context: TutorContext, enabled: boolean) {
-  return useQuery({
+/**
+ * Never served stale: the live conversation lives in the chat reducer, which is
+ * gone when the panel closes, so a cached thread from before the exchange would
+ * make a reopened panel look like it forgot everything.
+ */
+export function tutorThreadQuery(context: TutorContext) {
+  return queryOptions({
     queryKey: queryKeys.tutor.thread(contextKey(context)),
     queryFn: () =>
       request<TutorThread>({
@@ -34,12 +39,16 @@ export function useTutorThread(context: TutorContext, enabled: boolean) {
         url: endpoints.tutor.currentThread,
         params: threadParams(context),
       }),
-    enabled,
-    // A thread is only read when the panel opens for a context; the chat hook
-    // owns it while the panel is open.
-    staleTime: Infinity,
-    gcTime: 5 * 60_000,
+    staleTime: 0,
+    gcTime: 0,
+    // The open conversation is keyed by thread id and read once at mount, so a
+    // focus refetch would only spend the student's data.
+    refetchOnWindowFocus: false,
   });
+}
+
+export function useTutorThread(context: TutorContext, enabled: boolean) {
+  return useQuery({ ...tutorThreadQuery(context), enabled });
 }
 
 export function useTutorFeedback() {

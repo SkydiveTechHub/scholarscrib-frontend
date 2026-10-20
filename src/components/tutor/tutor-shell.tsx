@@ -39,6 +39,7 @@ export function TutorShell({
       {!visible && !examActive && (
         <button
           type="button"
+          data-astra-trigger
           onClick={() => openPanel()}
           className="fixed bottom-[calc(5.5rem+env(safe-area-inset-bottom))] right-4 z-30 flex min-h-11 items-center gap-2 rounded-full bg-primary px-4 text-sm font-bold text-primary-foreground shadow-lg lg:bottom-6"
         >
