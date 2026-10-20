@@ -4,7 +4,7 @@ import { useCallback } from "react";
 import { endpoints } from "@/lib/api/endpoints";
 import { request } from "@/lib/api/http";
 import type { PastPaperPageOut, QuizOut } from "@/lib/api/types";
-import { SECONDS_PER_QUESTION, toExamQuestion } from "@/lib/past-question-exam";
+import { toExamQuestion } from "@/lib/past-question-exam";
 import { ExamSurface } from "@/components/assessment/exam-surface";
 import {
   useExamSession,
@@ -92,7 +92,6 @@ export function PastPaperExam({
     generate,
     resultHref,
     loadMore,
-    secondsPerExtraQuestion: SECONDS_PER_QUESTION,
   });
 
   return (
