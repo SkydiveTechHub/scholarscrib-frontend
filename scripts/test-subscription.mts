@@ -162,3 +162,11 @@ test("can() is rank-based, so a richer tier never loses a feature", () => {
     }
   }
 });
+
+test("aiTutor is Premium on the paid matrix but open to every tier during the beta", () => {
+  assert.equal(PAID_ENTITLEMENTS.aiTutor, "PREMIUM");
+  assert.equal(BETA_OPEN_FEATURES.includes("aiTutor"), true);
+  for (const tier of SUBSCRIPTION_TIERS) {
+    assert.equal(can(tier, "aiTutor"), true, tier);
+  }
+});

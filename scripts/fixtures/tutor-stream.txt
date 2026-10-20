@@ -1,0 +1,17 @@
+event: start
+data: {"messageId":"m_1","remainingToday":7}
+
+event: delta
+data: {"text":"Chlorophyll is the "}
+
+event: delta
+data: {"text":"green pigment. It costs ₦0 to look at a leaf."}
+
+: heartbeat
+
+event: suggest
+data: {"actions":["example","test_me"]}
+
+event: done
+data: {"messageId":"m_1"}
+

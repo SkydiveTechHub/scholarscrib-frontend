@@ -24,6 +24,7 @@ import { TopicResources } from "@/components/classroom/topic-resources";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { TERM_LABELS } from "@/lib/curriculum-scope";
+import { TutorContextSetter } from "@/components/tutor/tutor-context-setter";
 
 const LEVEL_LABELS: Record<string, string> = {
   STRONG: "Strong",
@@ -107,6 +108,14 @@ export default async function TopicDetailPage({
 
   return (
     <div className="animate-fade-in">
+      {lesson && (
+        <TutorContextSetter
+          entry={{
+            context: { type: "lesson", lessonId: lesson.id },
+            label: `${topic.title} · ${subject.name}`,
+          }}
+        />
+      )}
       <nav
         aria-label="Breadcrumb"
         className="mb-6 flex flex-wrap items-center gap-1.5 text-sm font-medium text-muted"

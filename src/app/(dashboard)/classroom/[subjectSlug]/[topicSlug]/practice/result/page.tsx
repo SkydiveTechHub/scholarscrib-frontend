@@ -15,6 +15,7 @@ import { getTopicPracticeResult } from "@/lib/classroom-topic";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { RichText } from "@/components/ui/rich-text";
+import { AskAstraButton } from "@/components/tutor/ask-astra-button";
 import { PracticeResultActions } from "@/components/lesson/practice-result-actions";
 
 const MASTERY_BADGE: Record<string, "green" | "blue" | "amber" | "red"> = {
@@ -228,6 +229,18 @@ export default async function TopicPracticeResultPage({
                     <p className="mt-3 text-sm leading-relaxed text-foreground/90">
                       <RichText text={q.explanation} />
                     </p>
+                    <AskAstraButton
+                      className="mt-3"
+                      label="Explain this to me"
+                      entry={{
+                        context: {
+                          type: "question",
+                          questionId: q.id,
+                          attemptId,
+                        },
+                        label: `Question ${i + 1}`,
+                      }}
+                    />
                   </div>
                 </div>
               );
