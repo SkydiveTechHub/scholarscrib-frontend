@@ -7,6 +7,7 @@ import { LuMenu, LuX, LuCalendarDays } from "react-icons/lu";
 import { UserMenu, type ProfileUser } from "./user-menu";
 import { NAV_GROUPS, SETTINGS_ITEM } from "@/lib/navigation";
 import { Logo } from "@/components/ui/logo";
+import { NotificationBell } from "@/components/notifications/notification-bell";
 import { cn } from "@/lib/utils";
 import { useExamActive } from "@/stores/exam-store";
 
@@ -63,7 +64,10 @@ export function MobileHeader({
             <Logo href="/dashboard" prefetch={prefetch} imageClassName="h-7" />
           </div>
 
-          <UserMenu user={user} align="right" />
+          <div className="flex items-center gap-1">
+            <NotificationBell />
+            <UserMenu user={user} align="right" />
+          </div>
         </div>
       </header>
 

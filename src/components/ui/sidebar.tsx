@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { UserMenu, type ProfileUser } from "./user-menu";
 import { NAV_GROUPS, SETTINGS_ITEM } from "@/lib/navigation";
 import { Logo } from "@/components/ui/logo";
+import { NotificationBell } from "@/components/notifications/notification-bell";
 import { useExamActive } from "@/stores/exam-store";
 
 export function Sidebar({ user }: { user: ProfileUser }) {
@@ -23,12 +24,15 @@ export function Sidebar({ user }: { user: ProfileUser }) {
   return (
     <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r border-border bg-card lg:flex">
       {/* Brand */}
-      <Logo
-        href="/dashboard"
-        prefetch={prefetch}
-        className="border-b border-border px-2 py-1"
-        imageClassName="h-20"
-      />
+      <div className="flex items-center border-b border-border pr-3">
+        <Logo
+          href="/dashboard"
+          prefetch={prefetch}
+          className="min-w-0 flex-1 px-2 py-1"
+          imageClassName="h-20"
+        />
+        <NotificationBell />
+      </div>
 
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto px-3 py-4">

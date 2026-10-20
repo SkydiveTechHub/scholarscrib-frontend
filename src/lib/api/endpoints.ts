@@ -84,6 +84,12 @@ export const endpoints = {
     list: "/api/announcements",
     dismiss: (id: string) => `/api/announcements/${seg(id)}/dismiss`,
   },
+  notifications: {
+    list: "/api/notifications",
+    unreadCount: "/api/notifications/unread-count",
+    readAll: "/api/notifications/read-all",
+    read: (id: string) => `/api/notifications/${seg(id)}/read`,
+  },
   dashboard: "/api/dashboard",
   performance: "/api/performance",
   classroom: {

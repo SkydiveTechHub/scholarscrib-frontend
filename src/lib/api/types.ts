@@ -35,6 +35,28 @@ export type NotificationPreferences = {
   announcements: boolean;
 };
 
+// ─── Student / Notifications ───────────────────────────────────────────────
+
+export type NotificationType = "ANNOUNCEMENT" | "MORNING" | "STREAK";
+
+export type NotificationItemOut = {
+  id: string;
+  /** Open-ended on the wire: the UI falls back for a type it does not know. */
+  type: NotificationType | (string & {});
+  title: string;
+  body: string;
+  url?: string | null;
+  readAt?: string | null;
+  createdAt?: string | null;
+};
+
+export type NotificationsOut = {
+  notifications: NotificationItemOut[];
+  nextCursor?: string | null;
+};
+
+export type UnreadCountOut = { count: number };
+
 export type SettingsProfileOut = {
   id: string;
   firstName?: string | null;

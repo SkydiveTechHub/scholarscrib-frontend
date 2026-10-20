@@ -220,13 +220,27 @@ self.addEventListener("push", function (event) {
   }
   var title = typeof data.title === "string" && data.title ? data.title : "ScholarsCrib";
   event.waitUntil(
-    self.registration.showNotification(title, {
-      body: typeof data.body === "string" ? data.body : "",
-      icon: "/icon-192.png",
-      badge: "/icon-192.png",
-      tag: typeof data.tag === "string" && data.tag ? data.tag : undefined,
-      data: { url: self.notificationTarget(data.url, self.location.origin) },
-    }),
+    Promise.all([
+      self.registration.showNotification(title, {
+        body: typeof data.body === "string" ? data.body : "",
+        icon: "/icon-192.png",
+        badge: "/icon-192.png",
+        tag: typeof data.tag === "string" && data.tag ? data.tag : undefined,
+        data: { url: self.notificationTarget(data.url, self.location.origin) },
+      }),
+      // Open tabs refresh the bell's unread count instead of waiting for the
+      // next poll. Carries no content: the page re-reads from the API.
+      self.clients
+        .matchAll({ type: "window", includeUncontrolled: true })
+        .then(function (clients) {
+          clients.forEach(function (client) {
+            client.postMessage({ type: "NOTIFICATION_RECEIVED" });
+          });
+        })
+        .catch(function () {
+          return undefined;
+        }),
+    ]),
   );
 });
 

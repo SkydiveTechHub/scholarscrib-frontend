@@ -49,6 +49,11 @@ export const queryKeys = {
   announcements: {
     all: ["announcements"] as const,
   },
+  notifications: {
+    all: ["notifications"] as const,
+    unreadCount: () => [...queryKeys.notifications.all, "unread-count"] as const,
+    list: () => [...queryKeys.notifications.all, "list"] as const,
+  },
   admin: {
     all: ["admin"] as const,
     questions: (params?: Record<string, unknown>) =>
