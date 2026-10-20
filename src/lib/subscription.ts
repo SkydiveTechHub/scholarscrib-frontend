@@ -132,6 +132,7 @@ export const GATED_FEATURES = [
   "studyPlanner",
   "premiumLibrary",
   "advancedAnalytics",
+  "aiTutor",
 ] as const;
 
 export type GatedFeature = (typeof GATED_FEATURES)[number];
@@ -141,6 +142,7 @@ export const PAID_ENTITLEMENTS: Record<GatedFeature, SubscriptionTier> = {
   studyPlanner: "STANDARD",
   premiumLibrary: "PREMIUM",
   advancedAnalytics: "PREMIUM",
+  aiTutor: "PREMIUM",
 };
 
 /**

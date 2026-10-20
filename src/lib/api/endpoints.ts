@@ -66,6 +66,15 @@ export const endpoints = {
     deck: (deckId: string) => `/api/flashcards/decks/${seg(deckId)}`,
     enroll: (deckId: string) => `/api/flashcards/decks/${seg(deckId)}/enroll`,
   },
+  tutor: {
+    status: "/api/tutor/status",
+    currentThread: "/api/tutor/threads/current",
+    thread: (threadId: string) => `/api/tutor/threads/${seg(threadId)}`,
+    messages: (threadId: string) =>
+      `/api/tutor/threads/${seg(threadId)}/messages`,
+    feedback: (messageId: string) =>
+      `/api/tutor/messages/${seg(messageId)}/feedback`,
+  },
   studyPlan: {
     root: "/api/study-plan",
     detail: (planId: string) => `/api/study-plan/${seg(planId)}`,

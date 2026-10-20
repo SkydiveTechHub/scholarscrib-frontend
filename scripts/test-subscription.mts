@@ -162,3 +162,10 @@ test("can() is rank-based, so a richer tier never loses a feature", () => {
     }
   }
 });
+
+test("aiTutor is a Premium-only feature", () => {
+  assert.equal(PAID_ENTITLEMENTS.aiTutor, "PREMIUM");
+  assert.equal(can("PREMIUM", "aiTutor"), true);
+  assert.equal(can("STANDARD", "aiTutor"), false);
+  assert.equal(can("FREEMIUM", "aiTutor"), false);
+});
