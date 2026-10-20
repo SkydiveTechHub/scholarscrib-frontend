@@ -154,13 +154,54 @@ export async function unsubscribeThisDevice(): Promise<void> {
   await Promise.race([work, new Promise((resolve) => setTimeout(resolve, 3000))]);
 }
 
-/** Browsers rotate endpoints; a cheap upsert on load keeps the server current. */
-export async function syncThisDevice(): Promise<void> {
-  try {
-    if (!hasPushApis() || Notification.permission !== "granted") return;
-    const subscription = await currentSubscription();
-    if (subscription) await postSubscription(subscription);
-  } catch {
-    // Offline or signed out mid-request. The next load tries again.
+function sameKey(subscription: PushSubscription, base64: string): boolean {
+  const current = subscription.options.applicationServerKey;
+  if (!current) return true; // Unknown: assume fine rather than churn the endpoint.
+  const a = new Uint8Array(current);
+  const b = urlBase64ToUint8Array(base64);
+  return a.length === b.length && a.every((byte, i) => byte === b[i]);
+}
+
+async function postWithRetry(subscription: PushSubscription): Promise<boolean> {
+  for (const delay of [0, 2000, 8000]) {
+    if (delay) await new Promise((resolve) => setTimeout(resolve, delay));
+    if (await postSubscription(subscription)) return true;
   }
+  return false;
+}
+
+let syncing: Promise<void> | null = null;
+
+/**
+ * Makes the server's record of this device match the browser's. Runs on every
+ * app load for a signed-in student with notification permission, so a device
+ * is registered even when the opt-in POST failed, the browser rotated or
+ * dropped its subscription, or the VAPID key changed. No prompt is shown:
+ * without permission this does nothing.
+ */
+export function syncThisDevice(): Promise<void> {
+  syncing ??= (async () => {
+    try {
+      if (!hasPushApis() || !PUBLIC_KEY || Notification.permission !== "granted") return;
+      if ((await checkWorkerReady()) !== "ready") return;
+      const registration = await navigator.serviceWorker.ready;
+
+      let subscription = await registration.pushManager.getSubscription();
+      if (subscription && !sameKey(subscription, PUBLIC_KEY)) {
+        await subscription.unsubscribe().catch(() => undefined);
+        subscription = null;
+      }
+      subscription ??= await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(PUBLIC_KEY),
+      });
+      await postWithRetry(subscription);
+    } catch (error) {
+      // Offline or signed out mid-request. The next trigger tries again.
+      console.warn("Push sync failed", error);
+    }
+  })().finally(() => {
+    syncing = null;
+  });
+  return syncing;
 }

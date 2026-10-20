@@ -272,8 +272,10 @@ self.addEventListener("notificationclick", function (event) {
   );
 });
 
-// Browsers may rotate a subscription. Re-subscribe with the same key and tell
-// the server; the request carries the session cookie (same-origin).
+// Browsers may rotate a subscription. Re-subscribe with the same key; the
+// worker cannot authenticate to the backend (the bearer token is a page-only
+// cookie, and the API lives on another origin), so the page registers it
+// (src/components/push/push-sync.tsx) on its next load or visibility change.
 self.addEventListener("pushsubscriptionchange", function (event) {
   var old = event.oldSubscription;
   var key = old && old.options && old.options.applicationServerKey;
@@ -281,16 +283,8 @@ self.addEventListener("pushsubscriptionchange", function (event) {
   event.waitUntil(
     self.registration.pushManager
       .subscribe({ userVisibleOnly: true, applicationServerKey: key })
-      .then(function (subscription) {
-        return fetch("/api/push/subscription", {
-          method: "POST",
-          credentials: "same-origin",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(subscription.toJSON()),
-        });
-      })
       .catch(function () {
-        // The next app load re-syncs (src/components/push/push-sync.tsx).
+        // PushSync re-subscribes from the page.
       }),
   );
 });
