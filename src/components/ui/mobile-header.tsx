@@ -3,13 +3,14 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
-import { LuMenu, LuX, LuCalendarDays } from "react-icons/lu";
+import { LuMenu, LuX, LuCalendarDays, LuStar } from "react-icons/lu";
 import { UserMenu, type ProfileUser } from "./user-menu";
 import { NAV_GROUPS, SETTINGS_ITEM } from "@/lib/navigation";
 import { Logo } from "@/components/ui/logo";
 import { NotificationBell } from "@/components/notifications/notification-bell";
 import { cn } from "@/lib/utils";
 import { useExamActive } from "@/stores/exam-store";
+import { useTutorStore } from "@/stores/tutor-store";
 
 export function MobileHeader({
   user,
@@ -31,7 +32,9 @@ export function MobileHeader({
 
   // See `Sidebar` — mid-exam these are all behind a "leave this exam?" prompt,
   // and opening the drawer would otherwise prefetch every one of them.
-  const prefetch = useExamActive() ? false : undefined;
+  const examActive = useExamActive();
+  const prefetch = examActive ? false : undefined;
+  const openPanel = useTutorStore((s) => s.openPanel);
 
   // Keep the page behind the drawer from scrolling, and let Escape close it.
   useEffect(() => {
@@ -135,6 +138,18 @@ export function MobileHeader({
                   </div>
                 </div>
               ))}
+              <button
+                type="button"
+                disabled={examActive}
+                onClick={() => {
+                  setOpen(false);
+                  openPanel();
+                }}
+                className="mb-0.5 flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-muted transition-colors hover:bg-secondary hover:text-foreground disabled:opacity-50"
+              >
+                <LuStar className="h-[18px] w-[18px] text-muted" />
+                Astra
+              </button>
               <Link
                 href={SETTINGS_ITEM.href}
                 prefetch={prefetch}

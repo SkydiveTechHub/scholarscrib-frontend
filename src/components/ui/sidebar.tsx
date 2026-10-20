@@ -7,7 +7,9 @@ import { UserMenu, type ProfileUser } from "./user-menu";
 import { NAV_GROUPS, SETTINGS_ITEM } from "@/lib/navigation";
 import { Logo } from "@/components/ui/logo";
 import { NotificationBell } from "@/components/notifications/notification-bell";
+import { LuStar } from "react-icons/lu";
 import { useExamActive } from "@/stores/exam-store";
+import { useTutorStore } from "@/stores/tutor-store";
 
 export function Sidebar({ user }: { user: ProfileUser }) {
   const pathname = usePathname();
@@ -19,7 +21,9 @@ export function Sidebar({ user }: { user: ProfileUser }) {
   // Mid-exam every one of these sits behind a "leave this exam?" prompt, so
   // prefetching them spends the student's data on a route we are talking them
   // out of. Undefined rather than true off-exam, to keep Next's own default.
-  const prefetch = useExamActive() ? false : undefined;
+  const examActive = useExamActive();
+  const prefetch = examActive ? false : undefined;
+  const openPanel = useTutorStore((s) => s.openPanel);
 
   return (
     <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r border-border bg-card lg:flex">
@@ -75,6 +79,17 @@ export function Sidebar({ user }: { user: ProfileUser }) {
             </div>
           </div>
         ))}
+
+        {/* Astra: opens the tutor panel, so a button rather than a route. */}
+        <button
+          type="button"
+          onClick={() => openPanel()}
+          disabled={examActive}
+          className="group mb-1 flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-muted transition-colors hover:bg-secondary hover:text-foreground disabled:opacity-50"
+        >
+          <LuStar className="h-[18px] w-[18px] text-muted group-hover:text-foreground" />
+          Astra
+        </button>
 
         {/* Settings */}
         <Link

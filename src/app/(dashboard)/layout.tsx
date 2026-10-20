@@ -12,6 +12,8 @@ import type { ProfileUser } from "@/components/ui/user-menu";
 import { daysUntilExam, examTargetFor } from "@/lib/exam-target";
 import { NOINDEX } from "@/lib/seo/metadata";
 import { needsProfileCompletion } from "@/lib/profile-completion";
+import { tierOf } from "@/lib/entitlements";
+import { TutorShell } from "@/components/tutor/tutor-shell";
 
 // Nothing under here is useful in a search result, and an indexed login wall
 // is a ranking liability. Async layouts can still export static metadata.
@@ -54,16 +56,18 @@ export default async function DashboardLayout({
       />
       <MobileNav />
 
-      {/* Main content — offset by sidebar on desktop */}
-      <main className="lg:pl-64 pb-20 lg:pb-0">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8">
-          {/* Streams in: a slow pooler connection must not hold up the page. */}
-          <Suspense fallback={null}>
-            <AnnouncementBanner />
-          </Suspense>
-          {children}
-        </div>
-      </main>
+      <TutorShell tier={tierOf(user.tier)}>
+        {/* Main content — offset by sidebar on desktop */}
+        <main className="lg:pl-64 pb-20 lg:pb-0">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8">
+            {/* Streams in: a slow pooler connection must not hold up the page. */}
+            <Suspense fallback={null}>
+              <AnnouncementBanner />
+            </Suspense>
+            {children}
+          </div>
+        </main>
+      </TutorShell>
     </div>
   );
 }
