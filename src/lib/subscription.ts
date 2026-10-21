@@ -154,6 +154,7 @@ export const BETA_OPEN_FEATURES: readonly GatedFeature[] = [
   "flashcards",
   "studyPlanner",
   "advancedAnalytics",
+  "aiTutor",
 ];
 
 export const ENTITLEMENTS: Record<GatedFeature, SubscriptionTier> = {

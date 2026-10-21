@@ -150,7 +150,6 @@ test("standard gets the standard features but not the premium ones", () => {
   assert.equal(can("STANDARD", "flashcards"), true);
   assert.equal(can("STANDARD", "studyPlanner"), true);
   assert.equal(can("STANDARD", "premiumLibrary"), false);
-  assert.equal(can("STANDARD", "aiTutor"), false);
   if (!BETA_OPEN_FEATURES.includes("advancedAnalytics")) {
     assert.equal(can("STANDARD", "advancedAnalytics"), false);
   }
@@ -169,10 +168,10 @@ test("can() is rank-based, so a richer tier never loses a feature", () => {
   }
 });
 
-test("aiTutor is Premium-only (aligned with the tutor API feature gate)", () => {
+test("aiTutor is Premium-paid but open to every tier during the beta", () => {
   assert.equal(PAID_ENTITLEMENTS.aiTutor, "PREMIUM");
-  assert.equal(BETA_OPEN_FEATURES.includes("aiTutor"), false);
-  assert.equal(can("FREEMIUM", "aiTutor"), false);
-  assert.equal(can("STANDARD", "aiTutor"), false);
+  assert.equal(BETA_OPEN_FEATURES.includes("aiTutor"), true);
+  assert.equal(can("FREEMIUM", "aiTutor"), true);
+  assert.equal(can("STANDARD", "aiTutor"), true);
   assert.equal(can("PREMIUM", "aiTutor"), true);
 });
