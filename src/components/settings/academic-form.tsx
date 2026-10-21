@@ -124,7 +124,7 @@ export function AcademicForm({
           </div>
         </div>
 
-        <button type="submit" disabled={loading} className={submitClass}>
+        <button type="submit" disabled={loading || !changed} className={submitClass}>
           {loading ? "Saving..." : "Save changes"}
         </button>
       </form>

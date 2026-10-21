@@ -37,6 +37,14 @@ export function ProfileForm({
   const updateProfile = useUpdateProfile();
   const [error, setError] = useState("");
 
+  // Compared against the saved values (the props), so saving, which refreshes
+  // them, returns the button to disabled.
+  const changed =
+    form.firstName !== firstName ||
+    form.lastName !== lastName ||
+    form.phone !== (phone ?? "") ||
+    form.state !== (state ?? "");
+
   function update(field: keyof typeof form, value: string) {
     setForm((prev) => ({ ...prev, [field]: value }));
     setError("");
@@ -148,7 +156,7 @@ export function ProfileForm({
           </select>
         </div>
 
-        <button type="submit" disabled={loading} className={submitClass}>
+        <button type="submit" disabled={loading || !changed} className={submitClass}>
           {loading ? "Saving..." : "Save changes"}
         </button>
       </form>

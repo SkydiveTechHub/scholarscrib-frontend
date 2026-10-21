@@ -13,9 +13,58 @@ const MAX_EDGE = 512;
  * Scales a picked photo down to avatar size and re-encodes it as JPEG, so a
  * multi-megabyte phone photo lands well under the server's 2MB limit.
  */
+type Decoded = {
+  source: CanvasImageSource;
+  width: number;
+  height: number;
+  release: () => void;
+};
+
+/**
+ * Decodes a picked photo upright. Safari throws a TypeError for the
+ * `imageOrientation: "from-image"` option (and older versions lack
+ * createImageBitmap altogether), so fall back step by step: bitmap with the
+ * option, bitmap without it, then a plain <img>. Browsers that skip the option
+ * already apply the EXIF rotation by default.
+ */
+async function decodeImage(file: File): Promise<Decoded> {
+  if (typeof createImageBitmap === "function") {
+    for (const options of [{ imageOrientation: "from-image" as const }, undefined]) {
+      try {
+        const bitmap = await (options
+          ? createImageBitmap(file, options)
+          : createImageBitmap(file));
+        return {
+          source: bitmap,
+          width: bitmap.width,
+          height: bitmap.height,
+          release: () => bitmap.close(),
+        };
+      } catch {
+        // Try the next strategy.
+      }
+    }
+  }
+
+  const url = URL.createObjectURL(file);
+  try {
+    const img = new Image();
+    img.src = url;
+    await img.decode();
+    return {
+      source: img,
+      width: img.naturalWidth,
+      height: img.naturalHeight,
+      release: () => URL.revokeObjectURL(url),
+    };
+  } catch {
+    URL.revokeObjectURL(url);
+    throw new Error("This photo format isn't supported. Try a JPEG or PNG.");
+  }
+}
+
 async function shrinkImage(file: File): Promise<File> {
-  // "from-image" applies the EXIF rotation, so portrait phone shots stay upright.
-  const bitmap = await createImageBitmap(file, { imageOrientation: "from-image" });
+  const bitmap = await decodeImage(file);
   try {
     const scale = Math.min(1, MAX_EDGE / Math.max(bitmap.width, bitmap.height));
     const canvas = document.createElement("canvas");
@@ -26,7 +75,7 @@ async function shrinkImage(file: File): Promise<File> {
     // JPEG has no alpha; paint white so transparent PNGs don't turn black.
     ctx.fillStyle = "#fff";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+    ctx.drawImage(bitmap.source, 0, 0, canvas.width, canvas.height);
     const blob = await new Promise<Blob | null>((resolve) =>
       canvas.toBlob(resolve, "image/jpeg", 0.85),
     );
@@ -34,7 +83,7 @@ async function shrinkImage(file: File): Promise<File> {
     const name = file.name.replace(/\.[^.]+$/, "") || "avatar";
     return new File([blob], `${name}.jpg`, { type: "image/jpeg" });
   } finally {
-    bitmap.close();
+    bitmap.release();
   }
 }
 

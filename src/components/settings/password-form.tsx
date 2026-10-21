@@ -21,6 +21,9 @@ export function PasswordForm() {
   const changePassword = useChangePassword();
   const [error, setError] = useState("");
 
+  // The fields start empty, so "modified" means something has been typed.
+  const touched = Object.values(form).some((value) => value !== "");
+
   function update(field: keyof typeof form, value: string) {
     setForm((prev) => ({ ...prev, [field]: value }));
     setError("");
@@ -109,7 +112,7 @@ export function PasswordForm() {
           </div>
         </div>
 
-        <button type="submit" disabled={loading} className={submitClass}>
+        <button type="submit" disabled={loading || !touched} className={submitClass}>
           {loading ? "Changing..." : "Change password"}
         </button>
       </form>
