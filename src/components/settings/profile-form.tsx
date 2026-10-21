@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { toast } from "sonner";
 import { useUpdateProfile } from "@/hooks/api/use-user";
 import { NIGERIAN_STATES } from "@/lib/constants/exam-types";
 import {
@@ -35,24 +36,21 @@ export function ProfileForm({
   const [loading, setLoading] = useState(false);
   const updateProfile = useUpdateProfile();
   const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
 
   function update(field: keyof typeof form, value: string) {
     setForm((prev) => ({ ...prev, [field]: value }));
     setError("");
-    setSuccess("");
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
     setError("");
-    setSuccess("");
 
     try {
       await updateProfile.mutateAsync(form);
 
-      setSuccess("Details saved.");
+      toast.success("Details saved.");
       // Refresh so the sidebar and header pick up the new name.
       router.refresh();
     } catch (error) {
@@ -66,7 +64,7 @@ export function ProfileForm({
 
   return (
     <Section title="Profile" description="Your name and contact details.">
-      <FormMessage error={error} success={success} />
+      <FormMessage error={error} />
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="grid sm:grid-cols-2 gap-3">

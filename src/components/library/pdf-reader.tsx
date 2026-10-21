@@ -10,7 +10,12 @@ import {
   LuArrowLeft,
 } from "react-icons/lu";
 
-pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
+// The legacy worker, bundled and served from our own origin: it runs on older
+// phones, and no third-party CDN sits between a student and their textbook.
+pdfjs.GlobalWorkerOptions.workerSrc = new URL(
+  "pdfjs-dist/legacy/build/pdf.worker.min.mjs",
+  import.meta.url,
+).toString();
 
 type PDFReaderProps = {
   file: string;

@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { toast } from "sonner";
 import { useUpdateProfile } from "@/hooks/api/use-user";
 import { Modal } from "@/components/ui/modal";
 import { buttonClass } from "@/components/ui/button";
@@ -29,7 +30,6 @@ export function AcademicForm({
   const [loading, setLoading] = useState(false);
   const updateProfile = useUpdateProfile();
   const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
   const [confirming, setConfirming] = useState(false);
 
   const changed = form.classLevel !== (classLevel ?? "") || form.track !== (track ?? "");
@@ -37,7 +37,6 @@ export function AcademicForm({
   function update(field: keyof typeof form, value: string) {
     setForm((prev) => ({ ...prev, [field]: value }));
     setError("");
-    setSuccess("");
   }
 
   function handleSubmit(e: React.FormEvent) {
@@ -61,12 +60,11 @@ export function AcademicForm({
     setConfirming(false);
     setLoading(true);
     setError("");
-    setSuccess("");
 
     try {
       await updateProfile.mutateAsync(form);
 
-      setSuccess("Class details saved.");
+      toast.success("Class details saved.");
       router.refresh();
     } catch (error) {
       setError(
@@ -89,7 +87,7 @@ export function AcademicForm({
       title="Class & track"
       description="These decide which subjects and past questions you see."
     >
-      <FormMessage error={error} success={success} />
+      <FormMessage error={error} />
 
       <form onSubmit={handleSubmit} className="space-y-5">
         <div>

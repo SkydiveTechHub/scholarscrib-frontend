@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
+import { toast } from "sonner";
 import { useUploadAvatar } from "@/hooks/api/use-user";
 import { Avatar } from "@/components/ui/avatar";
 import { FormMessage, Section, submitClass } from "./section";
@@ -53,14 +54,12 @@ export function AvatarUpload({
   const [loading, setLoading] = useState(false);
   const uploadAvatar = useUploadAvatar();
   const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
 
   async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
 
     setError("");
-    setSuccess("");
     setLoading(true);
 
     try {
@@ -68,7 +67,7 @@ export function AvatarUpload({
       setPreview(URL.createObjectURL(small));
       await uploadAvatar.mutateAsync(small);
 
-      setSuccess("Photo updated.");
+      toast.success("Photo updated.");
       router.refresh();
     } catch (error) {
       setError(
@@ -84,7 +83,7 @@ export function AvatarUpload({
 
   return (
     <Section title="Photo" description="JPEG, PNG, or WebP. Large photos are resized automatically.">
-      <FormMessage error={error} success={success} />
+      <FormMessage error={error} />
 
       <div className="flex items-center gap-4">
         <Avatar

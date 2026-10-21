@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { toast } from "sonner";
 import { useChangePassword } from "@/hooks/api/use-user";
 import {
   FormMessage,
@@ -19,12 +20,10 @@ export function PasswordForm() {
   const [loading, setLoading] = useState(false);
   const changePassword = useChangePassword();
   const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
 
   function update(field: keyof typeof form, value: string) {
     setForm((prev) => ({ ...prev, [field]: value }));
     setError("");
-    setSuccess("");
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -38,7 +37,6 @@ export function PasswordForm() {
 
     setLoading(true);
     setError("");
-    setSuccess("");
 
     try {
       await changePassword.mutateAsync({
@@ -46,7 +44,7 @@ export function PasswordForm() {
         newPassword: form.newPassword,
       });
 
-      setSuccess("Password changed. Your other devices have been signed out.");
+      toast.success("Password changed. Your other devices have been signed out.");
       setForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
     } catch (error) {
       setError(
@@ -59,7 +57,7 @@ export function PasswordForm() {
 
   return (
     <Section title="Password" description="Change the password you sign in with.">
-      <FormMessage error={error} success={success} />
+      <FormMessage error={error} />
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>

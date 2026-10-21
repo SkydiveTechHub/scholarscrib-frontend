@@ -1,12 +1,11 @@
 import { redirect } from "next/navigation";
-import { Suspense } from "react";
+import { Toaster } from "sonner";
 import { getSessionUser } from "@/lib/session";
 import { Sidebar } from "@/components/ui/sidebar";
 import { MobileNav } from "@/components/ui/mobile-nav";
 import { MobileHeader } from "@/components/ui/mobile-header";
 import { SessionGuard } from "@/components/auth/session-guard";
 import { PushSync } from "@/components/push/push-sync";
-import { AnnouncementBanner } from "@/components/announcements/announcement-banner";
 import { EncouragementModal } from "@/components/ui/encouragement-modal";
 import type { ProfileUser } from "@/components/ui/user-menu";
 import { daysUntilExam, examTargetFor } from "@/lib/exam-target";
@@ -47,6 +46,7 @@ export default async function DashboardLayout({
     <div className="min-h-full">
       <SessionGuard realm="student" />
       <PushSync />
+      <Toaster position="top-center" closeButton />
       <EncouragementModal firstName={user.firstName} />
       <Sidebar user={user as ProfileUser} />
       <MobileHeader
@@ -60,10 +60,6 @@ export default async function DashboardLayout({
         {/* Main content — offset by sidebar on desktop */}
         <main className="lg:pl-64 pb-20 lg:pb-0">
           <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8">
-            {/* Streams in: a slow pooler connection must not hold up the page. */}
-            <Suspense fallback={null}>
-              <AnnouncementBanner />
-            </Suspense>
             {children}
           </div>
         </main>

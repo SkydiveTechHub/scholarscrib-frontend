@@ -1,5 +1,7 @@
+import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import { AnnouncementBanner } from "@/components/announcements/announcement-banner";
 import {
   LuTarget,
   LuBookOpen,
@@ -153,6 +155,10 @@ export default async function DashboardPage({
 
   return (
     <div className="space-y-8">
+      {/* Streams in: a slow pooler connection must not hold up the page. */}
+      <Suspense fallback={null}>
+        <AnnouncementBanner />
+      </Suspense>
       <InstallBanner />
       {/* Hero */}
       <section className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-hero-from via-hero-via to-hero-to p-6 shadow-lift md:p-8">

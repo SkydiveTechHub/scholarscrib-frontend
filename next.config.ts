@@ -22,6 +22,15 @@ const nextConfig: NextConfig = {
   // source maps to the browser.
   productionBrowserSourceMaps: false,
 
+  // react-pdf pulls in PDF.js's modern build, which needs `Promise.withResolvers`
+  // (Safari 17.4+, Chrome 119+) and throws on older phones, taking the page to
+  // the error screen. The legacy build is the same API with those polyfilled.
+  turbopack: {
+    resolveAlias: {
+      "pdfjs-dist": "pdfjs-dist/legacy/build/pdf.mjs",
+    },
+  },
+
   experimental: {
     // These barrel imports pull in the whole icon set unless the compiler is
     // told to tree-shake them per-import.

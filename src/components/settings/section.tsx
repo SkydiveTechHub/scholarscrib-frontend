@@ -1,4 +1,3 @@
-import { cn } from "@/lib/utils";
 import { buttonClass } from "@/components/ui/button";
 
 /** Shared card chrome for each independently-saved settings section. */
@@ -20,26 +19,16 @@ export function Section({
   );
 }
 
-export function FormMessage({
-  error,
-  success,
-}: {
-  error?: string;
-  success?: string;
-}) {
-  if (!error && !success) return null;
+/** Inline error for a section. Successes are toasts, so this never shows one. */
+export function FormMessage({ error }: { error?: string }) {
+  if (!error) return null;
 
   return (
     <div
-      role="status"
-      className={cn(
-        "mb-4 rounded-xl border p-3 text-sm",
-        error
-          ? "border-danger/20 bg-danger-soft text-danger"
-          : "border-success/20 bg-success-soft text-success",
-      )}
+      role="alert"
+      className="mb-4 rounded-xl border border-danger/20 bg-danger-soft p-3 text-sm text-danger"
     >
-      {error ?? success}
+      {error}
     </div>
   );
 }

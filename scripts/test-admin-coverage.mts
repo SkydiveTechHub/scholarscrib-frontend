@@ -6,6 +6,7 @@ import {
   exportParams,
   fillBadge,
   filenameFromDisposition,
+  groupPapersByExam,
   listHref,
   optionEntries,
   paperKey,
@@ -120,4 +121,31 @@ test("a download that never reached the server says so, not axios' wording", () 
     exportErrorMessage("nonsense"),
     "Could not reach the server. Nothing was downloaded.",
   );
+});
+
+test("groupPapersByExam groups by exam in a fixed order and sums counts", () => {
+  const paper = (examType: string, examYear: number, count: number) => ({
+    examType,
+    examYear,
+    count,
+    fetchStatus: null,
+  });
+  const groups = groupPapersByExam([
+    paper("NECO", 2022, 10),
+    paper("ZZEXAM", 2021, 1),
+    paper("JAMB", 2023, 45),
+    paper("WAEC", 2023, 40),
+    paper("JAMB", 2022, 45),
+    paper("WAEC", 2021, 30),
+  ]);
+  assert.deepEqual(
+    groups.map((g) => [g.examType, g.count, g.papers.map((p) => p.examYear)]),
+    [
+      ["WAEC", 70, [2023, 2021]],
+      ["JAMB", 90, [2023, 2022]],
+      ["NECO", 10, [2022]],
+      ["ZZEXAM", 1, [2021]],
+    ],
+  );
+  assert.deepEqual(groupPapersByExam([]), []);
 });
