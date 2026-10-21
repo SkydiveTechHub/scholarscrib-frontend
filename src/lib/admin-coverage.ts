@@ -78,3 +78,15 @@ export function optionEntries(options: unknown): [string, string][] {
     value == null ? "" : String(value),
   ]);
 }
+
+/**
+ * What to tell the admin when a download fails: the backend's own reason when
+ * it refused ("No questions to export"), otherwise a plain network message
+ * rather than axios' "Network Error".
+ */
+export function exportErrorMessage(error: unknown): string {
+  // By name rather than `instanceof`: it holds even if the module is loaded twice.
+  return error instanceof Error && error.name === "ApiError" && error.message
+    ? error.message
+    : "Could not reach the server. Nothing was downloaded.";
+}

@@ -33,16 +33,12 @@ export function PaperPreview({
   subject,
   paper,
   onClose,
-  onError,
 }: {
   subject: AdminCoverageSubjectOut;
   paper: AdminCoveragePaperOut;
   onClose: () => void;
-  onError: (message: string) => void;
 }) {
   const [page, setPage] = useState(1);
-  // The tab behind the overlay also gets the message, but this one is visible.
-  const [downloadError, setDownloadError] = useState<string | null>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
   const query = useAdminQuestions({
     page: String(page),
@@ -98,10 +94,6 @@ export function PaperPreview({
             subjectId={subject.subjectId}
             examType={paper.examType}
             examYear={paper.examYear}
-            onError={(message) => {
-              setDownloadError(message);
-              onError(message);
-            }}
           />
           <Link
             href={listHref({
@@ -114,15 +106,6 @@ export function PaperPreview({
             Open in list
           </Link>
         </div>
-
-        {downloadError && (
-          <StatusBanner
-            tone="error"
-            title="Download failed"
-            message={downloadError}
-            className="mx-4 mt-4"
-          />
-        )}
 
         <div className="flex-1 overflow-y-auto p-4" aria-busy={loading}>
           {query.isError ? (

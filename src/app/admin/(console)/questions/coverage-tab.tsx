@@ -17,7 +17,6 @@ export function CoverageTab() {
     subject: AdminCoverageSubjectOut;
     paper: AdminCoveragePaperOut;
   } | null>(null);
-  const [downloadError, setDownloadError] = useState<string | null>(null);
   const closePreview = useCallback(() => setSelected(null), []);
 
   const subjects = coverage.data?.subjects ?? [];
@@ -55,15 +54,6 @@ export function CoverageTab() {
 
   return (
     <div>
-      {downloadError && (
-        <StatusBanner
-          tone="error"
-          title="Download failed"
-          message={downloadError}
-          className="mb-4"
-        />
-      )}
-
       {subjects.length === 0 ? (
         <div className="rounded-lg border border-border bg-card p-12 text-center">
           <LuCircleAlert className="mx-auto mb-3 h-10 w-10 text-muted" aria-hidden />
@@ -84,11 +74,7 @@ export function CoverageTab() {
                     <span className="tabular-nums">{subject.papers.length}</span> papers
                   </p>
                 </div>
-                <ExportButtons
-                  subjectId={subject.subjectId}
-                  allYears
-                  onError={setDownloadError}
-                />
+                <ExportButtons subjectId={subject.subjectId} allYears />
               </div>
 
               <ul className="mt-3 flex flex-wrap gap-2">
@@ -98,10 +84,7 @@ export function CoverageTab() {
                     <li key={paperKey(subject.subjectId, paper.examType, paper.examYear)}>
                       <button
                         type="button"
-                        onClick={() => {
-                          setDownloadError(null);
-                          setSelected({ subject, paper });
-                        }}
+                        onClick={() => setSelected({ subject, paper })}
                         aria-label={`Preview ${subject.name} ${paper.examType} ${paper.examYear}, ${paper.count} questions`}
                         className="flex items-center gap-2 rounded-lg border border-border bg-secondary/40 px-3 py-1.5 text-sm hover:bg-secondary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
                       >
@@ -141,7 +124,6 @@ export function CoverageTab() {
           subject={selected.subject}
           paper={selected.paper}
           onClose={closePreview}
-          onError={setDownloadError}
         />
       )}
     </div>

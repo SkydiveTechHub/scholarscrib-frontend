@@ -1,6 +1,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { ApiError } from "../src/lib/api/errors";
 import {
+  exportErrorMessage,
   exportParams,
   fillBadge,
   filenameFromDisposition,
@@ -97,4 +99,25 @@ test("optionEntries copes with every shape the options column can hold", () => {
   assert.deepEqual(optionEntries(null), []);
   assert.deepEqual(optionEntries("free text"), []);
   assert.deepEqual(optionEntries(["x", "y"]), []);
+});
+
+test("a refused download shows the reason the backend gave", () => {
+  const refused = new ApiError(400, {
+    error: "Too many questions to export at once. Choose an exam type or year.",
+  });
+  assert.equal(
+    exportErrorMessage(refused),
+    "Too many questions to export at once. Choose an exam type or year.",
+  );
+});
+
+test("a download that never reached the server says so, not axios' wording", () => {
+  assert.equal(
+    exportErrorMessage(new Error("Network Error")),
+    "Could not reach the server. Nothing was downloaded.",
+  );
+  assert.equal(
+    exportErrorMessage("nonsense"),
+    "Could not reach the server. Nothing was downloaded.",
+  );
 });

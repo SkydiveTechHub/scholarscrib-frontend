@@ -1,9 +1,10 @@
 "use client";
 
+import { useState } from "react";
 import { LuDownload } from "react-icons/lu";
 import { Button } from "@/components/ui/button";
 import { useExportQuestions } from "@/hooks/api/use-admin-questions";
-import type { ExportFormat } from "@/lib/admin-coverage";
+import { exportErrorMessage, type ExportFormat } from "@/lib/admin-coverage";
 
 /** CSV and JSON downloads for one paper, or (allYears) a zip of a whole subject. */
 export function ExportButtons({
@@ -11,28 +12,24 @@ export function ExportButtons({
   examType,
   examYear,
   allYears = false,
-  onError,
 }: {
   subjectId: string;
   examType?: string;
   examYear?: number;
   allYears?: boolean;
-  onError: (message: string) => void;
 }) {
   const exportQuestions = useExportQuestions();
+  // Shown beside the buttons that failed, and cleared by the next attempt, so a
+  // refusal is never left behind off-screen or after a later success.
+  const [error, setError] = useState<string | null>(null);
   const busyFormat = exportQuestions.isPending ? exportQuestions.variables?.format : null;
 
   async function download(format: ExportFormat) {
+    setError(null);
     try {
       await exportQuestions.mutateAsync({ subjectId, examType, examYear, format });
-    } catch (error) {
-      // The backend's message ("No questions to export", "Too many questions…")
-      // is more useful than a generic failure.
-      onError(
-        error instanceof Error && error.message
-          ? error.message
-          : "Could not reach the server. Nothing was downloaded.",
-      );
+    } catch (failure) {
+      setError(exportErrorMessage(failure));
     }
   }
 
@@ -42,7 +39,8 @@ export function ExportButtons({
   ];
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    <div className="flex flex-col gap-1">
+      <div className="flex flex-wrap items-center gap-2">
       {formats.map(({ format, label }) => (
         <Button
           key={format}
@@ -56,6 +54,12 @@ export function ExportButtons({
           {busyFormat === format ? "Preparing…" : label}
         </Button>
       ))}
+      </div>
+      {error && (
+        <p role="alert" className="text-sm text-tone-red-ink">
+          {error}
+        </p>
+      )}
     </div>
   );
 }
