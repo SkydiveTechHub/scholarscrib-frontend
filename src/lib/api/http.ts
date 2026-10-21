@@ -13,8 +13,8 @@ import axios, { AxiosError, type AxiosRequestConfig } from "axios";
 import { clearAdminToken, clearStudentToken, getAccessToken } from "./client";
 import { API_URL } from "./config";
 import { endpoints } from "./endpoints";
+import { readErrorBody } from "./error-body";
 import { ApiError } from "./errors";
-import type { ApiErrorBody } from "./types";
 
 declare module "axios" {
   interface AxiosRequestConfig {
@@ -55,14 +55,11 @@ http.interceptors.request.use((config) => {
   return config;
 });
 
-http.interceptors.response.use(undefined, (error: unknown) => {
+http.interceptors.response.use(undefined, async (error: unknown) => {
   if (!(error instanceof AxiosError) || !error.response) throw error;
 
   const { data, status } = error.response;
-  const body: ApiErrorBody =
-    data && typeof data === "object"
-      ? (data as ApiErrorBody)
-      : { error: typeof data === "string" && data ? data : undefined };
+  const body = await readErrorBody(data);
   const apiError = new ApiError(status, body);
 
   const config = error.config;
