@@ -3,6 +3,8 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useUpdateProfile } from "@/hooks/api/use-user";
+import { Modal } from "@/components/ui/modal";
+import { buttonClass } from "@/components/ui/button";
 import { FormMessage, Section, labelClass, submitClass } from "./section";
 
 const LEVELS = ["SS1", "SS2", "SS3"];
@@ -28,6 +30,9 @@ export function AcademicForm({
   const updateProfile = useUpdateProfile();
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [confirming, setConfirming] = useState(false);
+
+  const changed = form.classLevel !== (classLevel ?? "") || form.track !== (track ?? "");
 
   function update(field: keyof typeof form, value: string) {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -35,7 +40,7 @@ export function AcademicForm({
     setSuccess("");
   }
 
-  async function handleSubmit(e: React.FormEvent) {
+  function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
     if (!form.classLevel || !form.track) {
@@ -43,6 +48,17 @@ export function AcademicForm({
       return;
     }
 
+    // A study plan is built for one class level and track, so changing either
+    // deletes it. Say so before it happens.
+    if (changed) {
+      setConfirming(true);
+      return;
+    }
+    void save();
+  }
+
+  async function save() {
+    setConfirming(false);
     setLoading(true);
     setError("");
     setSuccess("");
@@ -114,6 +130,33 @@ export function AcademicForm({
           {loading ? "Saving..." : "Save changes"}
         </button>
       </form>
+
+      <Modal
+        open={confirming}
+        title="Change your class or track?"
+        description="Your current study plan will be deleted, and your library will switch to the subjects for your new track. Sessions you already completed stay in your progress, and you can build a new plan any time."
+        onClose={() => setConfirming(false)}
+        footer={
+          <div className="flex flex-wrap justify-end gap-3">
+            <button
+              type="button"
+              onClick={() => setConfirming(false)}
+              className={buttonClass("secondary", "md")}
+            >
+              Keep current
+            </button>
+            <button
+              type="button"
+              onClick={() => void save()}
+              className={buttonClass("primary", "md")}
+            >
+              Change and delete plan
+            </button>
+          </div>
+        }
+      >
+        {null}
+      </Modal>
     </Section>
   );
 }

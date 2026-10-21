@@ -14,6 +14,9 @@ function useInvalidateProfile() {
     Promise.all([
       queryClient.invalidateQueries({ queryKey: queryKeys.user.all }),
       queryClient.invalidateQueries({ queryKey: queryKeys.session.all }),
+      // Class level and track decide the library shelf and what a plan covers.
+      queryClient.invalidateQueries({ queryKey: queryKeys.library.all }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.studyPlan.all }),
     ]);
 }
 
