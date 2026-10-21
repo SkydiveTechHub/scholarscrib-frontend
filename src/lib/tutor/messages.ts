@@ -44,6 +44,15 @@ export function describeError(error: TutorErrorInfo, now: Date): ErrorView {
         retry: false,
         upgrade: false,
       };
+    case "UNAVAILABLE":
+      return {
+        message:
+          error.message ||
+          "Astra is offline right now. Please try again later.",
+        // Calm offline copy is not a one-tap retry; connection drops are.
+        retry: !/offline/i.test(error.message || ""),
+        upgrade: false,
+      };
     default:
       return { message: error.message, retry: true, upgrade: false };
   }

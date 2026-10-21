@@ -9,46 +9,77 @@ import {
 import { endpoints } from "@/lib/api/endpoints";
 import { request } from "@/lib/api/http";
 import { queryKeys } from "@/lib/api/query-keys";
-import { contextKey, threadParams } from "@/lib/tutor/context";
-import type { TutorContext, TutorStatus, TutorThread } from "@/lib/tutor/types";
+import { contextKey, createBodyFor } from "@/lib/tutor/context";
+import { mapApiThread } from "@/lib/tutor/map";
+import type {
+  TutorApiThread,
+  TutorContext,
+  TutorThread,
+} from "@/lib/tutor/types";
+import { useTutorStore } from "@/stores/tutor-store";
 
-export function tutorStatusQuery() {
-  return queryOptions({
-    queryKey: queryKeys.tutor.status(),
-    queryFn: () =>
-      request<TutorStatus>({ method: "GET", url: endpoints.tutor.status }),
-    staleTime: 30_000,
+async function fetchThread(threadId: string): Promise<TutorThread> {
+  const raw = await request<TutorApiThread>({
+    method: "GET",
+    url: endpoints.tutor.thread(threadId),
   });
+  // Soft-archived threads stay readable; treat them as expired for resume.
+  if (raw.archived) {
+    throw new Error("archived");
+  }
+  return mapApiThread(raw);
 }
 
-export function useTutorStatus(enabled: boolean) {
-  return useQuery({ ...tutorStatusQuery(), enabled });
+async function createThread(context: TutorContext): Promise<TutorThread> {
+  if (context.type === "lesson") {
+    const raw = await request<TutorApiThread>({
+      method: "POST",
+      url: endpoints.lessons.tutor(context.lessonId),
+      data: {},
+    });
+    return mapApiThread(raw);
+  }
+  const raw = await request<TutorApiThread>({
+    method: "POST",
+    url: endpoints.tutor.threads,
+    data: createBodyFor(context),
+  });
+  return mapApiThread(raw);
 }
 
 /**
- * Never served stale: the live conversation lives in the chat reducer, which is
- * gone when the panel closes, so a cached thread from before the exchange would
- * make a reopened panel look like it forgot everything.
+ * Ensure a thread for this context: resume from the session cache, or create.
+ * Never served stale — the live conversation lives in the chat reducer.
  */
-export function tutorThreadQuery(context: TutorContext) {
+export function tutorThreadQuery(
+  context: TutorContext,
+  cachedThreadId: string | undefined,
+) {
+  const key = contextKey(context);
   return queryOptions({
-    queryKey: queryKeys.tutor.thread(contextKey(context)),
-    queryFn: () =>
-      request<TutorThread>({
-        method: "GET",
-        url: endpoints.tutor.currentThread,
-        params: threadParams(context),
-      }),
+    queryKey: queryKeys.tutor.thread(key),
+    queryFn: async () => {
+      if (cachedThreadId) {
+        try {
+          return await fetchThread(cachedThreadId);
+        } catch {
+          // Cached id may be archived or missing — fall through to create.
+        }
+      }
+      const created = await createThread(context);
+      useTutorStore.getState().rememberThread(key, created.threadId);
+      return created;
+    },
     staleTime: 0,
     gcTime: 0,
-    // The open conversation is keyed by thread id and read once at mount, so a
-    // focus refetch would only spend the student's data.
     refetchOnWindowFocus: false,
   });
 }
 
 export function useTutorThread(context: TutorContext, enabled: boolean) {
-  return useQuery({ ...tutorThreadQuery(context), enabled });
+  const key = contextKey(context);
+  const cachedThreadId = useTutorStore((s) => s.threadIds[key]);
+  return useQuery({ ...tutorThreadQuery(context, cachedThreadId), enabled });
 }
 
 export function useTutorFeedback() {
@@ -65,11 +96,24 @@ export function useTutorFeedback() {
 export function useClearTutorThread() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (input: { threadId: string; contextKey: string }) =>
-      request({ method: "DELETE", url: endpoints.tutor.thread(input.threadId) }),
-    onSuccess: (_data, input) =>
-      queryClient.invalidateQueries({
+    mutationFn: async (input: { threadId: string; contextKey: string }) => {
+      await request({
+        method: "DELETE",
+        url: endpoints.tutor.thread(input.threadId),
+      });
+    },
+    onSuccess: async (_data, input) => {
+      useTutorStore.getState().forgetThread(input.contextKey);
+      await queryClient.invalidateQueries({
         queryKey: queryKeys.tutor.thread(input.contextKey),
-      }),
+      });
+    },
   });
+}
+
+/** Reload persisted messages after a dropped stream. */
+export async function reloadTutorThread(
+  threadId: string,
+): Promise<TutorThread> {
+  return fetchThread(threadId);
 }

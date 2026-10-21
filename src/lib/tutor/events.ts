@@ -1,16 +1,40 @@
 import { z } from "zod";
-import type { SseFrame } from "./sse";
-import { TUTOR_ACTIONS, type TutorStreamEvent } from "./types";
+import type { TutorApiMessage, TutorStreamEvent } from "./types";
 
-const start = z.object({ messageId: z.string(), remainingToday: z.number() });
-const delta = z.object({ text: z.string() });
-const suggest = z.object({ actions: z.array(z.enum(TUTOR_ACTIONS)) });
-const done = z.object({ messageId: z.string() });
-const failure = z.object({
-  code: z.string(),
-  message: z.string(),
-  resetsAt: z.string().optional(),
+const groundedOn = z
+  .object({
+    sourceType: z.enum(["lesson", "question", "material"]).optional(),
+    docId: z.string().optional(),
+    subjectId: z.string().optional(),
+    topicId: z.string().optional(),
+    lessonId: z.string().optional(),
+    questionId: z.string().optional(),
+    resourceId: z.string().optional(),
+    title: z.string().optional(),
+    excerpt: z.string().optional(),
+  })
+  .passthrough();
+
+const apiMessage = z.object({
+  id: z.string(),
+  role: z.enum(["user", "assistant", "system"]),
+  content: z.string(),
+  groundedOn: z.array(groundedOn).default([]),
+  createdAt: z.string().nullable().optional(),
 });
+
+const statusPayload = z
+  .object({
+    node: z.string(),
+    route: z.string().optional(),
+    confidence: z.number().optional(),
+    noul: z.number().optional(),
+    source: z.string().optional(),
+  })
+  .passthrough();
+
+const tokenPayload = z.object({ text: z.string().optional() });
+const donePayload = z.object({ ok: z.boolean().optional() }).passthrough();
 
 const MALFORMED: TutorStreamEvent = {
   type: "error",
@@ -18,11 +42,32 @@ const MALFORMED: TutorStreamEvent = {
   message: "Astra's reply got scrambled. Please try again.",
 };
 
-const KNOWN = ["start", "delta", "suggest", "done", "error"];
+const KNOWN = [
+  "userMessage",
+  "status",
+  "token",
+  "assistantMessage",
+  "done",
+] as const;
+
+function toApiMessage(
+  parsed: z.infer<typeof apiMessage>,
+): TutorApiMessage {
+  return {
+    id: parsed.id,
+    role: parsed.role,
+    content: parsed.content,
+    groundedOn: parsed.groundedOn ?? [],
+    createdAt: parsed.createdAt ?? null,
+  };
+}
 
 /** Null for event names this client does not know, so the server can add events without breaking old clients. */
-export function decodeFrame(frame: SseFrame): TutorStreamEvent | null {
-  if (!KNOWN.includes(frame.event)) return null;
+export function decodeFrame(frame: {
+  event: string;
+  data: string;
+}): TutorStreamEvent | null {
+  if (!(KNOWN as readonly string[]).includes(frame.event)) return null;
 
   let json: unknown;
   try {
@@ -32,25 +77,44 @@ export function decodeFrame(frame: SseFrame): TutorStreamEvent | null {
   }
 
   switch (frame.event) {
-    case "start": {
-      const r = start.safeParse(json);
-      return r.success ? { type: "start", ...r.data } : MALFORMED;
+    case "userMessage": {
+      const r = apiMessage.safeParse(json);
+      return r.success
+        ? { type: "userMessage", message: toApiMessage(r.data) }
+        : MALFORMED;
     }
-    case "delta": {
-      const r = delta.safeParse(json);
-      return r.success ? { type: "delta", text: r.data.text } : MALFORMED;
+    case "status": {
+      const r = statusPayload.safeParse(json);
+      return r.success
+        ? {
+            type: "status",
+            status: {
+              node: r.data.node,
+              route: r.data.route,
+              confidence: r.data.confidence,
+              noul: r.data.noul,
+              source: r.data.source,
+            },
+          }
+        : MALFORMED;
     }
-    case "suggest": {
-      const r = suggest.safeParse(json);
-      return r.success ? { type: "suggest", actions: r.data.actions } : MALFORMED;
+    case "token": {
+      const r = tokenPayload.safeParse(json);
+      return r.success
+        ? { type: "token", text: r.data.text ?? "" }
+        : MALFORMED;
+    }
+    case "assistantMessage": {
+      const r = apiMessage.safeParse(json);
+      return r.success
+        ? { type: "assistantMessage", message: toApiMessage(r.data) }
+        : MALFORMED;
     }
     case "done": {
-      const r = done.safeParse(json);
-      return r.success ? { type: "done", messageId: r.data.messageId } : MALFORMED;
+      const r = donePayload.safeParse(json);
+      return r.success ? { type: "done" } : MALFORMED;
     }
-    default: {
-      const r = failure.safeParse(json);
-      return r.success ? { type: "error", ...r.data } : MALFORMED;
-    }
+    default:
+      return null;
   }
 }

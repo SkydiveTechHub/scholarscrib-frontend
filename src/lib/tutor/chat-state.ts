@@ -1,3 +1,4 @@
+import { mapApiMessage } from "./map";
 import type {
   TutorErrorInfo,
   TutorMessage,
@@ -11,85 +12,94 @@ export type ChatState = {
   messages: TutorMessage[];
   phase: ChatPhase;
   error: TutorErrorInfo | null;
-  remainingToday: number | null;
+  statusLine: string | null;
   hintsUsed: number;
   lastRequest: TutorSendRequest | null;
+  pendingUserId: string | null;
+  /** Soft-lock composer after 429 until this epoch ms (from Retry-After). */
+  rateLimitedUntil: number | null;
 };
 
 export type ChatAction =
-  | { type: "send"; request: TutorSendRequest }
+  | { type: "send"; request: TutorSendRequest; pendingUserId: string }
   | { type: "event"; event: TutorStreamEvent }
   | { type: "failed"; error: TutorErrorInfo }
   | { type: "stopped" }
+  | { type: "reconcile"; messages: TutorMessage[] }
   | { type: "rate"; messageId: string; rating: "up" | "down" };
+
+export const DRAFT_ID = "draft-assistant";
 
 export function initialChatState(messages: TutorMessage[]): ChatState {
   return {
     messages,
     phase: "idle",
     error: null,
-    remainingToday: null,
+    statusLine: null,
     hintsUsed: 0,
     lastRequest: null,
+    pendingUserId: null,
+    rateLimitedUntil: null,
   };
 }
 
-const pendingId = (clientMessageId: string) => `pending-${clientMessageId}`;
-
-/** Drops a trailing Astra message that never received any text. */
-function dropEmptyReply(messages: TutorMessage[]): TutorMessage[] {
-  const last = messages[messages.length - 1];
-  return last && last.role === "astra" && last.text === ""
-    ? messages.slice(0, -1)
-    : messages;
+function dropDraft(messages: TutorMessage[]): TutorMessage[] {
+  return messages.filter((m) => m.id !== DRAFT_ID);
 }
 
-/** Drops a trailing Astra message whatever it holds. */
-function dropTrailingReply(messages: TutorMessage[]): TutorMessage[] {
+function dropEmptyDraft(messages: TutorMessage[]): TutorMessage[] {
   const last = messages[messages.length - 1];
-  return last && last.role === "astra" ? messages.slice(0, -1) : messages;
+  if (last?.id === DRAFT_ID && last.text === "") {
+    return messages.slice(0, -1);
+  }
+  return messages;
 }
 
-function mapLastReply(
+function ensureDraft(messages: TutorMessage[]): TutorMessage[] {
+  const last = messages[messages.length - 1];
+  if (last?.id === DRAFT_ID) return messages;
+  return [
+    ...dropDraft(messages),
+    { id: DRAFT_ID, role: "astra", text: "", groundedOn: [] },
+  ];
+}
+
+function appendToken(messages: TutorMessage[], text: string): TutorMessage[] {
+  const withDraft = ensureDraft(messages);
+  const i = withDraft.length - 1;
+  const last = withDraft[i];
+  return [
+    ...withDraft.slice(0, i),
+    { ...last, text: last.text + text },
+  ];
+}
+
+/** Final assistant text always comes from assistantMessage, never token concat. */
+function applyAssistant(
   messages: TutorMessage[],
-  fn: (m: TutorMessage) => TutorMessage,
+  assistant: TutorMessage,
 ): TutorMessage[] {
-  const i = messages.length - 1;
-  if (i < 0 || messages[i].role !== "astra") return messages;
-  return [...messages.slice(0, i), fn(messages[i]), ...messages.slice(i + 1)];
+  const without = dropDraft(messages);
+  return [...without, assistant];
 }
 
 export function chatReducer(state: ChatState, action: ChatAction): ChatState {
   switch (action.type) {
     case "send": {
-      const { request } = action;
-      // A retry reuses its clientMessageId (the BE de-duplicates quota on it),
-      // so its bubble is already on screen and must not be added twice.
-      const isRetry = state.messages.some((m) => m.id === request.clientMessageId);
-      // A retry replays the whole reply, so a half-received one is dropped
-      // rather than kept above its own replacement.
-      const base = isRetry ? dropTrailingReply(state.messages) : dropEmptyReply(state.messages);
-      const messages: TutorMessage[] = [
-        ...(isRetry
-          ? base
-          : [
-              ...base,
-              {
-                id: request.clientMessageId,
-                role: "student" as const,
-                text: request.text,
-              },
-            ]),
-        { id: pendingId(request.clientMessageId), role: "astra", text: "" },
-      ];
+      const { request, pendingUserId } = action;
       return {
         ...state,
-        messages,
+        messages: [
+          ...dropEmptyDraft(state.messages),
+          { id: pendingUserId, role: "student", text: request.text },
+        ],
         phase: "streaming",
         error: null,
+        statusLine: "Understanding your question…",
         lastRequest: request,
+        pendingUserId,
         hintsUsed:
-          request.action === "hint_next" && !isRetry
+          request.action === "hint_next"
             ? state.hintsUsed + 1
             : state.hintsUsed,
       };
@@ -97,33 +107,43 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
     case "event": {
       const { event } = action;
       switch (event.type) {
-        case "start":
+        case "userMessage": {
+          const mapped = mapApiMessage(event.message);
+          const pending = state.pendingUserId;
           return {
             ...state,
-            remainingToday: event.remainingToday,
-            messages: mapLastReply(state.messages, (m) => ({
-              ...m,
-              id: event.messageId,
-            })),
+            pendingUserId: null,
+            messages: pending
+              ? state.messages.map((m) => (m.id === pending ? mapped : m))
+              : [...dropEmptyDraft(state.messages), mapped],
           };
-        case "delta":
+        }
+        case "status":
           return {
             ...state,
-            messages: mapLastReply(state.messages, (m) => ({
-              ...m,
-              text: m.text + event.text,
-            })),
+            statusLine: statusLineFor(event.status.node),
           };
-        case "suggest":
+        case "token":
           return {
             ...state,
-            messages: mapLastReply(state.messages, (m) => ({
-              ...m,
-              suggested: event.actions,
-            })),
+            messages: appendToken(state.messages, event.text),
+          };
+        case "assistantMessage":
+          return {
+            ...state,
+            statusLine: null,
+            messages: applyAssistant(
+              state.messages,
+              mapApiMessage(event.message),
+            ),
           };
         case "done":
-          return { ...state, phase: "idle" };
+          return {
+            ...state,
+            phase: "idle",
+            statusLine: null,
+            messages: dropEmptyDraft(state.messages),
+          };
         case "error":
           return chatReducer(state, {
             type: "failed",
@@ -131,20 +151,46 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
               code: event.code,
               message: event.message,
               resetsAt: event.resetsAt,
+              retryAfterSec: event.retryAfterSec,
             },
           });
       }
       return state;
     }
-    case "failed":
+    case "failed": {
+      const until =
+        action.error.code === "RATE_LIMITED" && action.error.retryAfterSec
+          ? Date.now() + action.error.retryAfterSec * 1000
+          : action.error.code === "RATE_LIMITED"
+            ? Date.now() + 60_000
+            : state.rateLimitedUntil;
       return {
         ...state,
         phase: "error",
         error: action.error,
-        messages: dropEmptyReply(state.messages),
+        statusLine: null,
+        pendingUserId: null,
+        messages: dropEmptyDraft(state.messages),
+        rateLimitedUntil: until,
       };
+    }
     case "stopped":
-      return { ...state, phase: "idle", messages: dropEmptyReply(state.messages) };
+      return {
+        ...state,
+        phase: "idle",
+        statusLine: null,
+        pendingUserId: null,
+        messages: dropEmptyDraft(state.messages),
+      };
+    case "reconcile":
+      return {
+        ...state,
+        phase: "idle",
+        statusLine: null,
+        error: null,
+        pendingUserId: null,
+        messages: action.messages,
+      };
     case "rate":
       return {
         ...state,
@@ -152,5 +198,20 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
           m.id === action.messageId ? { ...m, rating: action.rating } : m,
         ),
       };
+  }
+}
+
+function statusLineFor(node: string): string {
+  switch (node) {
+    case "classify_intent":
+      return "Understanding your question…";
+    case "grade_documents":
+      return "Checking lesson notes…";
+    case "ground_answer":
+      return "Verifying the answer…";
+    case "remember":
+      return "Saving what helps you…";
+    default:
+      return "Thinking…";
   }
 }

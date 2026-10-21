@@ -1,19 +1,16 @@
 "use client";
 
 import { useCallback, useEffect, useReducer, useRef } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { reloadTutorThread, useTutorFeedback } from "@/hooks/api/use-tutor";
 import { clearStudentToken } from "@/lib/api/client";
 import { isApiError } from "@/lib/api/errors";
-import { queryKeys } from "@/lib/api/query-keys";
 import { chatReducer, initialChatState } from "@/lib/tutor/chat-state";
 import { streamTutorReply } from "@/lib/tutor/client";
 import type {
   TutorAction,
-  TutorContext,
   TutorMessage,
   TutorSendRequest,
 } from "@/lib/tutor/types";
-import { useTutorFeedback } from "@/hooks/api/use-tutor";
 
 /**
  * Owns one open conversation. Mount it only once the thread has loaded and
@@ -22,11 +19,9 @@ import { useTutorFeedback } from "@/hooks/api/use-tutor";
  */
 export function useTutorChat({
   threadId,
-  context,
   initialMessages,
 }: {
   threadId: string;
-  context: TutorContext;
   initialMessages: TutorMessage[];
 }) {
   const [state, dispatch] = useReducer(
@@ -35,26 +30,31 @@ export function useTutorChat({
     initialChatState,
   );
   const abortRef = useRef<AbortController | null>(null);
-  const queryClient = useQueryClient();
   const { mutate: sendFeedback } = useTutorFeedback();
 
   useEffect(() => () => abortRef.current?.abort(), []);
 
   const run = useCallback(
     async (request: TutorSendRequest) => {
-      dispatch({ type: "send", request });
+      const pendingUserId = crypto.randomUUID();
+      dispatch({ type: "send", request, pendingUserId });
       const controller = new AbortController();
       abortRef.current = controller;
       try {
         for await (const event of streamTutorReply(
-          { threadId, context, ...request },
+          { threadId, content: request.text },
           { signal: controller.signal },
         )) {
           dispatch({ type: "event", event });
         }
       } catch (err) {
         if (controller.signal.aborted) {
-          dispatch({ type: "stopped" });
+          try {
+            const reloaded = await reloadTutorThread(threadId);
+            dispatch({ type: "reconcile", messages: reloaded.messages });
+          } catch {
+            dispatch({ type: "stopped" });
+          }
         } else if (isApiError(err) && err.isAuthFailure) {
           clearStudentToken();
           window.location.assign("/login?reason=session");
@@ -68,16 +68,14 @@ export function useTutorChat({
             },
           });
         }
-      } finally {
-        void queryClient.invalidateQueries({ queryKey: queryKeys.tutor.status() });
       }
     },
-    [threadId, context, queryClient],
+    [threadId],
   );
 
   const send = useCallback(
     (req: { text: string; action: TutorAction | null }) => {
-      void run({ ...req, clientMessageId: crypto.randomUUID() });
+      void run(req);
     },
     [run],
   );
@@ -86,7 +84,9 @@ export function useTutorChat({
     if (state.lastRequest) void run(state.lastRequest);
   }, [run, state.lastRequest]);
 
-  const stop = useCallback(() => abortRef.current?.abort(), []);
+  const stop = useCallback(() => {
+    abortRef.current?.abort();
+  }, []);
 
   const rate = useCallback(
     (messageId: string, rating: "up" | "down") => {

@@ -1,27 +1,57 @@
-import type { TutorContext } from "./types";
+import type { TutorContext, TutorThreadCreateBody } from "./types";
 
-export function threadParams(c: TutorContext): {
-  type: TutorContext["type"];
-  id: string;
-} {
+/**
+ * One thread per key in the session cache. An `attemptId` is deliberately not
+ * part of it: the thread is per question (or lesson), and the attempt only
+ * informs wrong-answer context when creating.
+ */
+export function contextKey(c: TutorContext): string {
   switch (c.type) {
     case "lesson":
-      return { type: "lesson", id: c.lessonId };
+      return `lesson:${c.lessonId}`;
     case "question":
-      return { type: "question", id: c.questionId };
+      return `question:${c.questionId}`;
     case "topic":
-      return { type: "topic", id: `${c.subjectSlug}/${c.topicSlug}` };
+      return `topic:${c.subjectSlug}/${c.topicSlug}`;
     default:
-      return { type: "general", id: "" };
+      return "general";
   }
 }
 
-/**
- * One thread per key: `(student, context)` on the BE, this string in the
- * cache. An `attemptId` is deliberately not part of it: the thread is per
- * question, and the attempt only tells the BE the question has been answered.
- */
-export function contextKey(c: TutorContext): string {
-  const { type, id } = threadParams(c);
-  return id ? `${type}:${id}` : type;
+/** Body for `POST /api/tutor/threads` when not using the lesson shortcut. */
+export function createBodyFor(c: TutorContext): TutorThreadCreateBody {
+  switch (c.type) {
+    case "lesson":
+      return {
+        lessonId: c.lessonId,
+        ...(c.subjectId ? { subjectId: c.subjectId } : {}),
+        ...(c.topicId ? { topicId: c.topicId } : {}),
+      };
+    case "question":
+      return {
+        questionId: c.questionId,
+        ...(c.subjectId ? { subjectId: c.subjectId } : {}),
+        ...(c.topicId ? { topicId: c.topicId } : {}),
+        ...(c.wrongAnswerContext
+          ? { wrongAnswerContext: c.wrongAnswerContext }
+          : {}),
+      };
+    default:
+      return {};
+  }
+}
+
+export function statusLabel(node: string): string {
+  switch (node) {
+    case "classify_intent":
+      return "Understanding your question…";
+    case "grade_documents":
+      return "Checking lesson notes…";
+    case "ground_answer":
+      return "Verifying the answer…";
+    case "remember":
+      return "Saving what helps you…";
+    default:
+      return "Thinking…";
+  }
 }

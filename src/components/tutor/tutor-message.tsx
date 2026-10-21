@@ -2,7 +2,8 @@
 
 import { LuThumbsDown, LuThumbsUp } from "react-icons/lu";
 import { cn } from "@/lib/utils";
-import type { TutorAction, TutorMessage } from "@/lib/tutor/types";
+import type { GroundedOn, TutorAction, TutorMessage } from "@/lib/tutor/types";
+import { useTutorStore } from "@/stores/tutor-store";
 import { AstraAvatar } from "./astra-avatar";
 import { TutorMarkdown } from "./tutor-markdown";
 
@@ -38,8 +39,11 @@ export function TutorMessageView({
     );
   }
 
+  if (message.role === "system") return null;
+
   const waiting = streaming && message.text === "";
   const finished = !streaming && message.text !== "";
+  const sources = message.groundedOn?.filter(Boolean) ?? [];
 
   return (
     <div className="flex items-start gap-2.5">
@@ -65,6 +69,10 @@ export function TutorMessageView({
           )}
         </div>
 
+        {finished && sources.length > 0 && (
+          <SourcesRow sources={sources} />
+        )}
+
         {finished && (
           <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
             {(["up", "down"] as const).map((rating) => {
@@ -87,31 +95,81 @@ export function TutorMessageView({
               );
             })}
             {isLast && (
-              <>
-                <button
-                  type="button"
-                  onClick={() =>
-                    onAction("explain_differently", "Explain differently")
-                  }
-                  className="min-h-8 rounded-full border border-border px-3 text-xs font-semibold text-muted transition-colors hover:text-foreground"
-                >
-                  Explain differently
-                </button>
-                {message.suggested?.map((action) => (
-                  <button
-                    key={action}
-                    type="button"
-                    onClick={() => onAction(action, SUGGESTION_LABELS[action])}
-                    className="min-h-8 rounded-full border border-border px-3 text-xs font-semibold text-primary transition-colors hover:bg-primary-soft"
-                  >
-                    {SUGGESTION_LABELS[action]}
-                  </button>
-                ))}
-              </>
+              <button
+                type="button"
+                onClick={() =>
+                  onAction("explain_differently", "Explain differently")
+                }
+                className="min-h-8 rounded-full border border-border px-3 text-xs font-semibold text-muted transition-colors hover:text-foreground"
+              >
+                Explain differently
+              </button>
             )}
+            {isLast &&
+              message.suggested?.map((action) => (
+                <button
+                  key={action}
+                  type="button"
+                  onClick={() => onAction(action, SUGGESTION_LABELS[action])}
+                  className="min-h-8 rounded-full border border-border px-3 text-xs font-semibold text-primary transition-colors hover:bg-primary-soft"
+                >
+                  {SUGGESTION_LABELS[action]}
+                </button>
+              ))}
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+function SourcesRow({ sources }: { sources: GroundedOn[] }) {
+  const openPanel = useTutorStore((s) => s.openPanel);
+
+  return (
+    <div className="mt-1.5 flex flex-wrap gap-1.5" aria-label="Sources">
+      <span className="text-[11px] font-semibold uppercase tracking-wide text-muted">
+        Sources
+      </span>
+      {sources.map((src, i) => {
+        const label = src.title?.trim() || src.sourceType || "Source";
+        const title = src.excerpt?.trim() || label;
+        const key = `${src.docId ?? src.lessonId ?? src.questionId ?? src.resourceId ?? i}-${label}`;
+
+        if (src.sourceType === "question" && src.questionId) {
+          return (
+            <button
+              key={key}
+              type="button"
+              title={title}
+              onClick={() =>
+                openPanel({
+                  context: {
+                    type: "question",
+                    questionId: src.questionId!,
+                    subjectId: src.subjectId,
+                    topicId: src.topicId,
+                  },
+                  label,
+                })
+              }
+              className="max-w-full truncate rounded-full border border-border bg-card px-2.5 py-0.5 text-xs font-medium text-primary hover:bg-primary-soft"
+            >
+              {label}
+            </button>
+          );
+        }
+
+        return (
+          <span
+            key={key}
+            title={title}
+            className="max-w-full truncate rounded-full border border-border bg-card px-2.5 py-0.5 text-xs font-medium text-foreground"
+          >
+            {label}
+          </span>
+        );
+      })}
     </div>
   );
 }

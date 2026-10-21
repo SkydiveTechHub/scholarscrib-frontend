@@ -111,7 +111,12 @@ export default async function TopicDetailPage({
       {lesson && (
         <TutorContextSetter
           entry={{
-            context: { type: "lesson", lessonId: lesson.id },
+            context: {
+              type: "lesson",
+              lessonId: lesson.id,
+              subjectId: subject.id || undefined,
+              topicId: topic.id || undefined,
+            },
             label: `${topic.title} · ${subject.name}`,
           }}
         />

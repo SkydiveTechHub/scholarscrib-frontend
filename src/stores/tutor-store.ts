@@ -15,10 +15,14 @@ type TutorStore = {
   pageEntry: TutorEntry | null;
   /** "Explain this" on a specific item, or a detached (general) chat. */
   overrideEntry: TutorEntry | null;
+  /** Session cache: contextKey → threadId so reopen resumes instead of creating. */
+  threadIds: Record<string, string>;
   openPanel: (entry?: TutorEntry) => void;
   closePanel: () => void;
   detach: () => void;
   setPageEntry: (entry: TutorEntry | null) => void;
+  rememberThread: (contextKey: string, threadId: string) => void;
+  forgetThread: (contextKey: string) => void;
 };
 
 const GENERAL: TutorEntry = { context: { type: "general" } };
@@ -27,10 +31,21 @@ export const useTutorStore = create<TutorStore>()((set) => ({
   open: false,
   pageEntry: null,
   overrideEntry: null,
+  threadIds: {},
   openPanel: (entry) => set({ open: true, overrideEntry: entry ?? null }),
   closePanel: () => set({ open: false, overrideEntry: null }),
   detach: () => set({ overrideEntry: GENERAL }),
   setPageEntry: (entry) => set({ pageEntry: entry }),
+  rememberThread: (contextKey, threadId) =>
+    set((s) => ({
+      threadIds: { ...s.threadIds, [contextKey]: threadId },
+    })),
+  forgetThread: (contextKey) =>
+    set((s) => {
+      const next = { ...s.threadIds };
+      delete next[contextKey];
+      return { threadIds: next };
+    }),
 }));
 
 export function selectActiveEntry(
