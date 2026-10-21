@@ -5,7 +5,7 @@ import { ApiError } from "@/lib/api/errors";
 import type { ApiErrorBody } from "@/lib/api/types";
 import { decodeFrame } from "./events";
 import { createSseParser } from "./sse";
-import type { TutorAction, TutorContext, TutorStreamEvent } from "./types";
+import type { TutorStreamEvent } from "./types";
 
 // Axios cannot stream in the browser, so the one streaming call bypasses
 // `request()` and talks to `fetch` with the same bearer token. Everything else
@@ -13,10 +13,7 @@ import type { TutorAction, TutorContext, TutorStreamEvent } from "./types";
 
 export type StreamArgs = {
   threadId: string;
-  text: string;
-  action: TutorAction | null;
-  context: TutorContext;
-  clientMessageId: string;
+  content: string;
 };
 
 export type StreamOptions = {
@@ -45,6 +42,13 @@ async function readErrorBody(res: Response): Promise<ErrorBody> {
   }
 }
 
+function retryAfterSec(res: Response): number | undefined {
+  const raw = res.headers.get("Retry-After");
+  if (!raw) return undefined;
+  const sec = Number(raw);
+  return Number.isFinite(sec) && sec > 0 ? sec : undefined;
+}
+
 export async function* streamTutorReply(
   args: StreamArgs,
   opts: StreamOptions = {},
@@ -60,17 +64,12 @@ export async function* streamTutorReply(
   if (token) headers.Authorization = `Bearer ${token}`;
 
   const res = await doFetch(
-    `${opts.baseUrl ?? API_URL}${endpoints.tutor.messages(args.threadId)}`,
+    `${opts.baseUrl ?? API_URL}${endpoints.tutor.messagesStream(args.threadId)}`,
     {
       method: "POST",
       headers,
       signal: opts.signal,
-      body: JSON.stringify({
-        text: args.text,
-        action: args.action,
-        context: args.context,
-        clientMessageId: args.clientMessageId,
-      }),
+      body: JSON.stringify({ content: args.content }),
     },
   );
 
@@ -80,8 +79,13 @@ export async function* streamTutorReply(
     yield {
       type: "error",
       code: body.code ?? errorCodeForStatus(res.status),
-      message: body.error ?? "Astra isn't available right now.",
+      message:
+        body.error ??
+        (res.status === 503
+          ? "Astra is offline right now."
+          : "Astra isn't available right now."),
       resetsAt: body.resetsAt,
+      retryAfterSec: retryAfterSec(res),
     };
     return;
   }
@@ -103,8 +107,6 @@ export async function* streamTutorReply(
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
-      // `stream: true` holds back a half-received character until its
-      // remaining bytes arrive.
       for (const frame of parser.push(decoder.decode(value, { stream: true }))) {
         const event = decodeFrame(frame);
         if (!event) continue;

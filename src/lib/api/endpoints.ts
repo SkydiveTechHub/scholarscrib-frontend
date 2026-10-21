@@ -67,11 +67,12 @@ export const endpoints = {
     enroll: (deckId: string) => `/api/flashcards/decks/${seg(deckId)}/enroll`,
   },
   tutor: {
-    status: "/api/tutor/status",
-    currentThread: "/api/tutor/threads/current",
+    threads: "/api/tutor/threads",
     thread: (threadId: string) => `/api/tutor/threads/${seg(threadId)}`,
     messages: (threadId: string) =>
       `/api/tutor/threads/${seg(threadId)}/messages`,
+    messagesStream: (threadId: string) =>
+      `/api/tutor/threads/${seg(threadId)}/messages/stream`,
     feedback: (messageId: string) =>
       `/api/tutor/messages/${seg(messageId)}/feedback`,
   },
@@ -83,6 +84,7 @@ export const endpoints = {
   },
   lessons: {
     progress: (lessonId: string) => `/api/lessons/${seg(lessonId)}/progress`,
+    tutor: (lessonId: string) => `/api/lessons/${seg(lessonId)}/tutor`,
   },
   learningPath: {
     pretest: (topicId: string) => `/api/learning-path/topics/${seg(topicId)}/pretest`,

@@ -6,10 +6,7 @@ import type { TutorStreamEvent } from "../src/lib/tutor/types";
 
 const ARGS = {
   threadId: "t1",
-  text: "hi",
-  action: null,
-  context: { type: "general" } as const,
-  clientMessageId: "c1",
+  content: "hi",
 };
 
 function streamOf(text: string, splitAt: number[] = []): Response {
@@ -36,9 +33,10 @@ async function collect(gen: AsyncGenerator<TutorStreamEvent>) {
 }
 
 const FRAMES =
-  'event: start\ndata: {"messageId":"m","remainingToday":3}\n\n' +
-  'event: delta\ndata: {"text":"₦500"}\n\n' +
-  'event: done\ndata: {"messageId":"m"}\n\n';
+  'event: userMessage\ndata: {"id":"u","role":"user","content":"hi","groundedOn":[]}\n\n' +
+  'event: token\ndata: {"text":"₦500"}\n\n' +
+  'event: assistantMessage\ndata: {"id":"a","role":"assistant","content":"₦500","groundedOn":[]}\n\n' +
+  'event: done\ndata: {"ok":true}\n\n';
 
 test("decodes a multibyte character split across network chunks", async () => {
   const bytes = new TextEncoder().encode(FRAMES);
@@ -49,8 +47,13 @@ test("decodes a multibyte character split across network chunks", async () => {
       fetchImpl: async () => streamOf(FRAMES, [mid]),
     }),
   );
-  assert.deepEqual(events.map((e) => e.type), ["start", "delta", "done"]);
-  assert.equal(events[1].type === "delta" && events[1].text, "₦500");
+  assert.deepEqual(events.map((e) => e.type), [
+    "userMessage",
+    "token",
+    "assistantMessage",
+    "done",
+  ]);
+  assert.equal(events[1].type === "token" && events[1].text, "₦500");
 });
 
 test("sends bearer token, JSON body and an SSE accept header", async () => {
@@ -67,20 +70,16 @@ test("sends bearer token, JSON body and an SSE accept header", async () => {
   );
   assert.ok(seen);
   const { url, init } = seen as { url: string; init: RequestInit };
-  assert.equal(url, "http://api.test/api/tutor/threads/t1/messages");
+  assert.equal(url, "http://api.test/api/tutor/threads/t1/messages/stream");
   const headers = init.headers as Record<string, string>;
   assert.equal(headers.Authorization, "Bearer tok");
   assert.equal(headers.Accept, "text/event-stream");
-  assert.deepEqual(JSON.parse(String(init.body)), {
-    text: "hi",
-    action: null,
-    context: { type: "general" },
-    clientMessageId: "c1",
-  });
+  assert.deepEqual(JSON.parse(String(init.body)), { content: "hi" });
 });
 
 test("a stream that ends without done yields a retryable error", async () => {
-  const cut = 'event: start\ndata: {"messageId":"m","remainingToday":3}\n\n';
+  const cut =
+    'event: userMessage\ndata: {"id":"u","role":"user","content":"hi","groundedOn":[]}\n\n';
   const events = await collect(
     streamTutorReply(ARGS, { token: "t", fetchImpl: async () => streamOf(cut) }),
   );
@@ -100,7 +99,7 @@ test("429 yields RATE_LIMITED with resetsAt from the body", async () => {
             code: "RATE_LIMITED",
             resetsAt: "2026-10-21T00:00:00Z",
           }),
-          { status: 429 },
+          { status: 429, headers: { "Retry-After": "45" } },
         ),
     }),
   );
@@ -110,8 +109,26 @@ test("429 yields RATE_LIMITED with resetsAt from the body", async () => {
       code: "RATE_LIMITED",
       message: "Used up",
       resetsAt: "2026-10-21T00:00:00Z",
+      retryAfterSec: 45,
     },
   ]);
+});
+
+test("503 yields calm unavailable copy", async () => {
+  const events = await collect(
+    streamTutorReply(ARGS, {
+      token: "t",
+      fetchImpl: async () =>
+        new Response(JSON.stringify({ error: "AI tutor is disabled" }), {
+          status: 503,
+        }),
+    }),
+  );
+  assert.equal(events[0]?.type, "error");
+  if (events[0]?.type === "error") {
+    assert.equal(events[0].code, "UNAVAILABLE");
+    assert.match(events[0].message, /offline|disabled/i);
+  }
 });
 
 test("401 throws ApiError so the caller can sign out", async () => {
@@ -123,8 +140,6 @@ test("401 throws ApiError so the caller can sign out", async () => {
           new Response(JSON.stringify({ error: "no" }), { status: 401 }),
       }),
     ),
-    // Shape, not instanceof: tsx loads "@/lib/api/errors" and the relative path
-    // as two module instances, so instanceof is false here only.
     (err: unknown) =>
       (err as ApiError).name === "ApiError" && (err as ApiError).isAuthFailure,
   );

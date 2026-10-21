@@ -60,6 +60,8 @@ export default async function TopicPracticeResultPage({
   if (outcome.status === "no-attempt") redirect(studyHref);
 
   const {
+    subjectId,
+    topicId,
     topicTitle,
     passMarkPercent,
     percentage,
@@ -237,6 +239,9 @@ export default async function TopicPracticeResultPage({
                           type: "question",
                           questionId: q.id,
                           attemptId,
+                          subjectId: subjectId ?? undefined,
+                          topicId: q.topicId ?? topicId ?? undefined,
+                          wrongAnswerContext: q.selectedAnswer ?? undefined,
                         },
                         label: `Question ${i + 1}`,
                       }}

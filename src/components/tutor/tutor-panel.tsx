@@ -1,8 +1,14 @@
 "use client";
 
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
-import { LuMaximize2, LuMinimize2, LuX } from "react-icons/lu";
-import { useTutorStatus, useTutorThread } from "@/hooks/api/use-tutor";
+import Link from "next/link";
+import { LuMaximize2, LuMinimize2, LuTrash2, LuX } from "react-icons/lu";
+import {
+  useClearTutorThread,
+  useTutorThread,
+} from "@/hooks/api/use-tutor";
+import { isApiError } from "@/lib/api/errors";
+import { contextKey } from "@/lib/tutor/context";
 import { trapTarget } from "@/lib/tutor/focus-trap";
 import { can, type SubscriptionTier } from "@/lib/subscription";
 import { selectActiveEntry, useTutorStore } from "@/stores/tutor-store";
@@ -37,13 +43,12 @@ export default function TutorPanel({ tier }: { tier: SubscriptionTier }) {
   const ref = useRef<HTMLElement>(null);
 
   const entitled = can(tier, "aiTutor");
-  const status = useTutorStatus(entitled);
-  const allowed = entitled && status.data?.allowed !== false;
-  const thread = useTutorThread(entry.context, allowed);
+  const thread = useTutorThread(entry.context, entitled);
+  const clearThread = useClearTutorThread();
+  const key = contextKey(entry.context);
 
   const desktop = useIsDesktop();
 
-  // Esc closes. On phones the sheet is modal: Tab stays inside it.
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.key === "Escape") closePanel();
@@ -61,7 +66,6 @@ export default function TutorPanel({ tier }: { tier: SubscriptionTier }) {
     return () => document.removeEventListener("keydown", onKey);
   }, [closePanel, desktop]);
 
-  // The sheet covers the page on phones, so the page behind must not scroll.
   useEffect(() => {
     if (desktop) return;
     const previous = document.body.style.overflow;
@@ -71,10 +75,6 @@ export default function TutorPanel({ tier }: { tier: SubscriptionTier }) {
     };
   }, [desktop]);
 
-  // Focus moves into the panel on open and back to the trigger on close. The
-  // dialog itself takes focus: the composer is not mounted yet while the
-  // thread loads, and on a phone focusing it would raise the keyboard over the
-  // starter chips.
   useEffect(() => {
     ref.current?.focus();
     return () => {
@@ -83,10 +83,13 @@ export default function TutorPanel({ tier }: { tier: SubscriptionTier }) {
   }, []);
 
   const showContext = entry.context.type !== "general" && entry.label;
+  const err = thread.error;
+  const forbidden = isApiError(err) && err.isForbidden;
+  const unavailable =
+    isApiError(err) && (err.status === 503 || err.status === 502);
 
   return (
     <>
-      {/* Phones only: the sheet is modal, the desktop dock is not. */}
       <div
         className="fixed inset-0 z-40 bg-black/40 lg:hidden"
         onClick={closePanel}
@@ -117,6 +120,22 @@ export default function TutorPanel({ tier }: { tier: SubscriptionTier }) {
             </h2>
             <p className="text-xs text-muted">Your study buddy</p>
           </div>
+          {thread.data && entitled && (
+            <button
+              type="button"
+              onClick={() =>
+                clearThread.mutate({
+                  threadId: thread.data.threadId,
+                  contextKey: key,
+                })
+              }
+              disabled={clearThread.isPending}
+              aria-label="Clear chat"
+              className="flex h-11 w-11 items-center justify-center rounded-full text-muted hover:bg-secondary"
+            >
+              <LuTrash2 className="h-4 w-4" />
+            </button>
+          )}
           <button
             type="button"
             onClick={() => setExpanded((v) => !v)}
@@ -155,31 +174,36 @@ export default function TutorPanel({ tier }: { tier: SubscriptionTier }) {
           </div>
         )}
 
-        {!allowed ? (
+        {!entitled || forbidden ? (
           <div className="flex-1 overflow-y-auto">
-            {entitled && status.data?.reason ? (
-              <p className="p-4 text-sm text-muted">{status.data.reason}</p>
-            ) : (
-              <TutorLocked />
-            )}
+            <TutorLocked />
           </div>
-        ) : thread.isPending || status.isPending ? (
+        ) : thread.isPending ? (
           <div className="flex-1 p-4 text-sm text-muted" role="status">
             Getting Astra ready…
           </div>
-        ) : thread.isError || status.isError || !thread.data || !status.data ? (
+        ) : unavailable ? (
+          <div className="flex-1 p-4 text-sm text-foreground" role="status">
+            <p>Astra is offline right now. Please try again later.</p>
+          </div>
+        ) : thread.isError || !thread.data ? (
           <div className="flex-1 p-4 text-sm text-foreground" role="alert">
             Couldn&apos;t reach Astra.{" "}
             <button
               type="button"
-              onClick={() => {
-                void thread.refetch();
-                void status.refetch();
-              }}
+              onClick={() => void thread.refetch()}
               className="min-h-11 font-bold text-primary"
             >
               Try again
             </button>
+            {forbidden && (
+              <Link
+                href="/settings/billing"
+                className="mt-2 block min-h-11 font-bold text-primary"
+              >
+                See Premium
+              </Link>
+            )}
           </div>
         ) : (
           <TutorConversation
@@ -187,7 +211,13 @@ export default function TutorPanel({ tier }: { tier: SubscriptionTier }) {
             threadId={thread.data.threadId}
             context={entry.context}
             initialMessages={thread.data.messages}
-            status={status.data}
+            systemBanner={
+              thread.data.systemBanner ??
+              (entry.context.type === "question" &&
+              entry.context.wrongAnswerContext
+                ? `Reviewing your answer: ${entry.context.wrongAnswerContext}`
+                : null)
+            }
           />
         )}
       </aside>

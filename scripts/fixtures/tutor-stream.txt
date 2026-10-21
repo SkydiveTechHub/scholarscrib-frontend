@@ -1,17 +1,20 @@
-event: start
-data: {"messageId":"m_1","remainingToday":7}
+event: userMessage
+data: {"id":"u_1","role":"user","content":"What is chlorophyll?","groundedOn":[],"createdAt":"2026-10-21T12:00:00Z"}
 
-event: delta
+event: status
+data: {"node":"classify_intent","route":"rag","confidence":0.91,"source":"jev"}
+
+event: token
 data: {"text":"Chlorophyll is the "}
 
-event: delta
+event: token
 data: {"text":"green pigment. It costs ₦0 to look at a leaf."}
 
 : heartbeat
 
-event: suggest
-data: {"actions":["example","test_me"]}
+event: assistantMessage
+data: {"id":"a_1","role":"assistant","content":"Chlorophyll is the green pigment in leaves.","groundedOn":[{"sourceType":"lesson","lessonId":"L1","title":"Photosynthesis","excerpt":"Chlorophyll absorbs light…"}],"createdAt":"2026-10-21T12:00:01Z"}
 
 event: done
-data: {"messageId":"m_1"}
+data: {"ok":true}
 

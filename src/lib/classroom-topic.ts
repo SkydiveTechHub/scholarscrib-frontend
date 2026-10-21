@@ -514,9 +514,13 @@ export type PracticeMissedQuestion = {
   options: Record<string, string> | null;
   correctAnswer: string;
   explanation: string | null;
+  selectedAnswer: string | null;
+  topicId: string | null;
 };
 
 export type TopicPracticeResult = {
+  subjectId: string | null;
+  topicId: string | null;
   topicTitle: string;
   passMarkPercent: number;
   percentage: number;
@@ -569,6 +573,8 @@ export async function getTopicPracticeResult(
   return {
     status: "ok",
     result: {
+      subjectId: result.subjectId ? str(result.subjectId) : null,
+      topicId: result.topicId ? str(result.topicId) : null,
       topicTitle: str(result.topicTitle) || titleFromSlug(topicSlug),
       passMarkPercent,
       percentage,
@@ -623,5 +629,7 @@ function asMissedQuestion(raw: unknown): PracticeMissedQuestion {
       row.explanation !== null && row.explanation !== undefined
         ? str(row.explanation)
         : null,
+    selectedAnswer: row.selectedAnswer != null ? str(row.selectedAnswer) : null,
+    topicId: row.topicId != null ? str(row.topicId) : null,
   };
 }

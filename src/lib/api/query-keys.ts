@@ -44,7 +44,6 @@ export const queryKeys = {
   },
   tutor: {
     all: ["tutor"] as const,
-    status: () => [...queryKeys.tutor.all, "status"] as const,
     thread: (contextKey: string) =>
       [...queryKeys.tutor.all, "thread", contextKey] as const,
   },

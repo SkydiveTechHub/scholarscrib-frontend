@@ -9,7 +9,6 @@ import type {
   TutorContext,
   TutorErrorInfo,
   TutorMessage,
-  TutorStatus,
 } from "@/lib/tutor/types";
 import { AstraAvatar } from "./astra-avatar";
 import { TutorChips } from "./tutor-chips";
@@ -20,34 +19,33 @@ export function TutorConversation({
   threadId,
   context,
   initialMessages,
-  status,
+  systemBanner,
 }: {
   threadId: string;
   context: TutorContext;
   initialMessages: TutorMessage[];
-  status: TutorStatus;
+  systemBanner?: string | null;
 }) {
   const { state, send, retry, stop, rate } = useTutorChat({
     threadId,
-    context,
     initialMessages,
   });
   const endRef = useRef<HTMLDivElement>(null);
   const streaming = state.phase === "streaming";
-  const remaining = state.remainingToday ?? status.remainingToday;
-  const exhausted = remaining <= 0 || state.error?.code === "RATE_LIMITED";
+  const rateLimited =
+    state.error?.code === "RATE_LIMITED" ||
+    (state.rateLimitedUntil != null && state.rateLimitedUntil > Date.now());
   const empty = state.messages.length === 0;
   const chips =
     ladderFor(context, state.hintsUsed) ?? (empty ? startersFor(context) : []);
 
-  // Follow the reply as it grows; reduced-motion users get an instant jump.
   useEffect(() => {
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     endRef.current?.scrollIntoView({
       block: "end",
       behavior: reduce ? "auto" : "smooth",
     });
-  }, [state.messages, state.phase]);
+  }, [state.messages, state.phase, state.statusLine]);
 
   const pick = (chip: Chip) => send({ text: chip.text, action: chip.action });
   const lastIndex = state.messages.length - 1;
@@ -59,6 +57,14 @@ export function TutorConversation({
         aria-live="polite"
         aria-busy={streaming}
       >
+        {systemBanner && (
+          <p
+            role="status"
+            className="rounded-xl border border-border bg-secondary px-3.5 py-2 text-xs text-muted"
+          >
+            {systemBanner}
+          </p>
+        )}
         {empty && (
           <div className="flex items-start gap-2.5">
             <AstraAvatar />
@@ -81,30 +87,30 @@ export function TutorConversation({
         {state.phase === "error" && state.error && (
           <ErrorNotice error={state.error} onRetry={retry} />
         )}
-        {exhausted && state.phase !== "error" && (
+        {rateLimited && state.phase !== "error" && (
           <p
             role="status"
             className="rounded-xl border border-border bg-secondary px-3.5 py-3 text-sm text-foreground"
           >
-            {exhaustedMessage(status.resetsAt, new Date())}
+            {exhaustedMessage(state.error?.resetsAt, new Date())}
           </p>
         )}
         <div ref={endRef} />
       </div>
 
-      {chips.length > 0 && !streaming && !exhausted && (
+      {chips.length > 0 && !streaming && !rateLimited && (
         <TutorChips chips={chips} onPick={pick} />
       )}
 
-      {remaining > 0 && remaining <= 3 && !exhausted && (
-        <p className="px-4 pb-2 text-xs text-muted">
-          {remaining} question{remaining === 1 ? "" : "s"} left today
+      {streaming && state.statusLine && (
+        <p className="px-4 pb-1 text-xs text-muted" role="status">
+          {state.statusLine}
         </p>
       )}
 
       <TutorComposer
         streaming={streaming}
-        disabled={exhausted}
+        disabled={rateLimited}
         onSend={(text) => send({ text, action: null })}
         onStop={stop}
       />
