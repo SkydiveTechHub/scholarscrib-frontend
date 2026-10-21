@@ -8,9 +8,12 @@ import {
 } from "@tanstack/react-query";
 import { useCallback } from "react";
 import { endpoints } from "@/lib/api/endpoints";
-import { request } from "@/lib/api/http";
+import { exportParams, filenameFromDisposition, type ExportFormat } from "@/lib/admin-coverage";
+import { http, request } from "@/lib/api/http";
 import { queryKeys } from "@/lib/api/query-keys";
+import { saveBlob } from "@/lib/save-blob";
 import type {
+  AdminQuestionCoverageOut,
   AdminQuestionsOut,
   DeleteQuestionsOut,
   IdOut,
@@ -49,6 +52,50 @@ export function useAdminQuestions(params: Record<string, string>) {
         signal,
       }),
     placeholderData: keepPreviousData,
+  });
+}
+
+/** What is populated: question counts per subject, exam type and year. */
+export function useQuestionCoverage() {
+  return useQuery({
+    queryKey: queryKeys.admin.questionCoverage(),
+    queryFn: ({ signal }) =>
+      request<AdminQuestionCoverageOut>({
+        method: "GET",
+        url: endpoints.admin.questions.coverage,
+        realm: "admin",
+        signal,
+      }),
+  });
+}
+
+/**
+ * Downloads one paper (exam type + year) or, without a year, a subject as a
+ * zip. A plain link cannot carry the admin bearer token, so the file is
+ * fetched as a blob and saved from memory.
+ */
+export function useExportQuestions() {
+  return useMutation({
+    mutationFn: async (input: {
+      subjectId: string;
+      examType?: string;
+      examYear?: number;
+      format: ExportFormat;
+    }) => {
+      const res = await http.request<Blob>({
+        method: "GET",
+        url: endpoints.admin.questions.export,
+        params: exportParams(input),
+        responseType: "blob",
+        realm: "admin",
+      });
+      const filename = filenameFromDisposition(
+        res.headers["content-disposition"] as string | undefined,
+        `questions.${input.format}`,
+      );
+      saveBlob(res.data, filename);
+      return filename;
+    },
   });
 }
 
