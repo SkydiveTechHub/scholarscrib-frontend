@@ -142,6 +142,8 @@ export const endpoints = {
       usage: (questionId: string) => `/admin/api/questions/${seg(questionId)}/usage`,
       import: "/admin/api/questions/import",
       formOptions: "/admin/api/questions/form-options",
+      coverage: "/admin/api/questions/coverage",
+      export: "/admin/api/questions/export",
     },
     materials: {
       list: "/admin/api/materials",

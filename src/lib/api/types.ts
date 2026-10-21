@@ -521,6 +521,28 @@ export type AdminQuestionsOut = {
   pagination: Record<string, unknown>;
 };
 
+export type CoverageFetchStatus = "PENDING" | "SATURATED" | "FAILED";
+
+/** One populated paper in `GET /admin/api/questions/coverage`. */
+export type AdminCoveragePaperOut = {
+  examType: string;
+  examYear: number;
+  count: number;
+  /** Provider fill status; null for papers added by hand or imported. */
+  fetchStatus: CoverageFetchStatus | null;
+};
+
+export type AdminCoverageSubjectOut = {
+  subjectId: string;
+  name: string;
+  code: string;
+  total: number;
+  /** Newest year first. */
+  papers: AdminCoveragePaperOut[];
+};
+
+export type AdminQuestionCoverageOut = { subjects: AdminCoverageSubjectOut[] };
+
 export type IdOut = { id: string };
 export type UsageOut = { responseCount: number; assessmentCount: number; deletable: boolean };
 
