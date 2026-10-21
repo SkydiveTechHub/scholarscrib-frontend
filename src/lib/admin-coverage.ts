@@ -1,4 +1,4 @@
-import type { CoverageFetchStatus } from "@/lib/api/types";
+import type { AdminCoveragePaperOut, CoverageFetchStatus } from "@/lib/api/types";
 
 export type ExportFormat = "csv" | "json";
 export type QuestionsTab = "coverage" | "all";
@@ -33,6 +33,35 @@ export function listHref(filters: {
 
 export function paperKey(subjectId: string, examType: string, examYear: number): string {
   return `${subjectId}|${examType}|${examYear}`;
+}
+
+const EXAM_ORDER = ["WAEC", "JAMB", "NECO", "CUSTOM"];
+
+export type ExamGroup = {
+  examType: string;
+  count: number;
+  papers: AdminCoveragePaperOut[];
+};
+
+/**
+ * A subject's papers grouped by exam type: known exams first in a fixed order,
+ * then any others alphabetically. Papers keep their incoming (newest-first) order.
+ */
+export function groupPapersByExam(papers: AdminCoveragePaperOut[]): ExamGroup[] {
+  const groups = new Map<string, ExamGroup>();
+  for (const paper of papers) {
+    const group = groups.get(paper.examType) ?? { examType: paper.examType, count: 0, papers: [] };
+    group.count += paper.count;
+    group.papers.push(paper);
+    groups.set(paper.examType, group);
+  }
+  const rank = (type: string) => {
+    const i = EXAM_ORDER.indexOf(type);
+    return i === -1 ? EXAM_ORDER.length : i;
+  };
+  return [...groups.values()].sort(
+    (a, b) => rank(a.examType) - rank(b.examType) || a.examType.localeCompare(b.examType),
+  );
 }
 
 /** A badge for a paper the provider is still filling or failed to fill; none when complete or manual. */

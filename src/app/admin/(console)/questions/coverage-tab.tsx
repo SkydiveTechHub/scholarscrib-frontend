@@ -1,15 +1,90 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { LuCircleAlert } from "react-icons/lu";
+import { LuChevronDown, LuChevronRight, LuCircleAlert } from "react-icons/lu";
 import { StatusBanner } from "@/components/admin/status-banner";
 import { Button } from "@/components/ui/button";
 import { useQuestionCoverage } from "@/hooks/api/use-admin-questions";
-import { fillBadge, paperKey } from "@/lib/admin-coverage";
+import { fillBadge, groupPapersByExam, paperKey, type ExamGroup } from "@/lib/admin-coverage";
 import type { AdminCoveragePaperOut, AdminCoverageSubjectOut } from "@/lib/api/types";
 import { cn } from "@/lib/utils";
 import { ExportButtons } from "./export-buttons";
 import { PaperPreview } from "./paper-preview";
+
+function ExamGroupSection({
+  subject,
+  group,
+  onSelect,
+}: {
+  subject: AdminCoverageSubjectOut;
+  group: ExamGroup;
+  onSelect: (paper: AdminCoveragePaperOut) => void;
+}) {
+  const [open, setOpen] = useState(true);
+  const listId = `${subject.subjectId}-${group.examType}-papers`;
+
+  return (
+    <section
+      aria-label={`${group.examType} papers`}
+      className="rounded-lg border border-border bg-secondary/20 p-3"
+    >
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          aria-expanded={open}
+          aria-controls={listId}
+          className="flex items-center gap-1.5 rounded text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
+        >
+          {open ? (
+            <LuChevronDown className="h-4 w-4 text-muted" aria-hidden />
+          ) : (
+            <LuChevronRight className="h-4 w-4 text-muted" aria-hidden />
+          )}
+          <span className="text-sm font-semibold text-foreground">{group.examType}</span>
+          <span className="text-sm text-muted">
+            <span className="tabular-nums">{group.count}</span> questions ·{" "}
+            <span className="tabular-nums">{group.papers.length}</span> papers
+          </span>
+        </button>
+        <ExportButtons subjectId={subject.subjectId} examType={group.examType} allYears />
+      </div>
+
+      {open && (
+        <ul id={listId} className="mt-2 flex flex-wrap gap-2">
+          {group.papers.map((paper) => {
+            const badge = fillBadge(paper.fetchStatus);
+            return (
+              <li key={paperKey(subject.subjectId, paper.examType, paper.examYear)}>
+                <button
+                  type="button"
+                  onClick={() => onSelect(paper)}
+                  aria-label={`Preview ${subject.name} ${paper.examType} ${paper.examYear}, ${paper.count} questions`}
+                  className="flex items-center gap-2 rounded-lg border border-border bg-secondary/40 px-3 py-1.5 text-sm hover:bg-secondary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
+                >
+                  <span className="font-medium text-foreground">{paper.examYear}</span>
+                  <span className="tabular-nums text-muted">{paper.count}</span>
+                  {badge && (
+                    <span
+                      className={cn(
+                        "rounded px-1.5 py-0.5 text-[11px] font-medium",
+                        badge.tone === "amber"
+                          ? "bg-tone-amber-soft text-tone-amber-ink"
+                          : "bg-tone-red-soft text-tone-red-ink",
+                      )}
+                    >
+                      {badge.label}
+                    </span>
+                  )}
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </section>
+  );
+}
 
 export function CoverageTab() {
   const coverage = useQuestionCoverage();
@@ -77,38 +152,16 @@ export function CoverageTab() {
                 <ExportButtons subjectId={subject.subjectId} allYears />
               </div>
 
-              <ul className="mt-3 flex flex-wrap gap-2">
-                {subject.papers.map((paper) => {
-                  const badge = fillBadge(paper.fetchStatus);
-                  return (
-                    <li key={paperKey(subject.subjectId, paper.examType, paper.examYear)}>
-                      <button
-                        type="button"
-                        onClick={() => setSelected({ subject, paper })}
-                        aria-label={`Preview ${subject.name} ${paper.examType} ${paper.examYear}, ${paper.count} questions`}
-                        className="flex items-center gap-2 rounded-lg border border-border bg-secondary/40 px-3 py-1.5 text-sm hover:bg-secondary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
-                      >
-                        <span className="font-medium text-foreground">
-                          {paper.examType} {paper.examYear}
-                        </span>
-                        <span className="tabular-nums text-muted">{paper.count}</span>
-                        {badge && (
-                          <span
-                            className={cn(
-                              "rounded px-1.5 py-0.5 text-[11px] font-medium",
-                              badge.tone === "amber"
-                                ? "bg-tone-amber-soft text-tone-amber-ink"
-                                : "bg-tone-red-soft text-tone-red-ink",
-                            )}
-                          >
-                            {badge.label}
-                          </span>
-                        )}
-                      </button>
-                    </li>
-                  );
-                })}
-              </ul>
+              <div className="mt-3 space-y-3">
+                {groupPapersByExam(subject.papers).map((group) => (
+                  <ExamGroupSection
+                    key={group.examType}
+                    subject={subject}
+                    group={group}
+                    onSelect={(paper) => setSelected({ subject, paper })}
+                  />
+                ))}
+              </div>
             </li>
           ))}
         </ul>
