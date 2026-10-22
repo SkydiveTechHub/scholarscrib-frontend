@@ -1,7 +1,9 @@
 "use client";
 
+import { useState } from "react";
 import { LuPencil, LuThumbsDown, LuThumbsUp } from "react-icons/lu";
 import { buttonClass } from "@/components/ui/button";
+import { Modal } from "@/components/ui/modal";
 import { cn } from "@/lib/utils";
 import {
   actionConfirmLabel,
@@ -104,6 +106,9 @@ export function TutorMessageView({
 
   // An empty draft is covered by the conversation's typing bubble.
   if (message.text === "" && !message.actionProposal) return null;
+  const plan = message.actionProposal?.summary.trim() ?? "";
+  // The stored reply is the plan itself. Keep it out of the bubble; the card opens it.
+  const showText = message.text.trim() !== "" && message.text.trim() !== plan;
   const awaiting = Boolean(message.actionProposal);
   const finished =
     !streaming && message.text !== "" && !message.stopped && !awaiting;
@@ -113,7 +118,7 @@ export function TutorMessageView({
     <div className="flex items-start gap-2.5">
       <AstraAvatar />
       <div className="min-w-0 max-w-[85%]">
-        {message.text !== "" && (
+        {showText && (
           <div className="rounded-2xl rounded-tl-md bg-secondary px-3.5 py-2.5 text-sm leading-relaxed text-foreground">
             <TutorMarkdown content={message.text} streaming={streaming} />
           </div>
@@ -123,7 +128,7 @@ export function TutorMessageView({
           <ActionCard
             proposal={message.actionProposal}
             busy={resolving || streaming}
-            className={message.text !== "" ? "mt-2" : undefined}
+            className={showText ? "mt-2" : undefined}
             onResolve={onResolve}
           />
         )}
@@ -199,6 +204,7 @@ function ActionCard({
 }) {
   const title = actionTitle(proposal.tool);
   const danger = actionIsDanger(proposal);
+  const [open, setOpen] = useState(false);
   return (
     <div
       role="region"
@@ -212,18 +218,21 @@ function ActionCard({
       <p className="text-xs font-semibold uppercase tracking-wide text-muted">
         {title}
       </p>
-      <p className="mt-1 text-sm leading-relaxed text-foreground">
-        {proposal.summary}
-      </p>
-      <div className="mt-3 flex flex-wrap gap-2">
-        <button
-          type="button"
-          disabled={busy}
-          onClick={() => onResolve(true)}
-          className={buttonClass(danger ? "danger" : "primary", "lg")}
-        >
-          {actionConfirmLabel(proposal)}
-        </button>
+      <button
+        type="button"
+        disabled={busy}
+        onClick={() => setOpen(true)}
+        aria-haspopup="dialog"
+        className="mt-1 block w-full rounded-lg text-left disabled:opacity-50"
+      >
+        <span className="line-clamp-4 whitespace-pre-wrap text-sm leading-relaxed text-foreground">
+          {proposal.summary}
+        </span>
+        <span className="mt-1.5 block text-xs font-semibold text-primary">
+          Review plan
+        </span>
+      </button>
+      <div className="mt-3">
         <button
           type="button"
           disabled={busy}
@@ -233,6 +242,36 @@ function ActionCard({
           Not now
         </button>
       </div>
+      <Modal
+        open={open}
+        title={title}
+        busy={busy}
+        onClose={() => setOpen(false)}
+        className="max-w-2xl"
+        overlayClassName="z-[80]"
+        footer={
+          <div className="flex flex-wrap justify-end gap-2">
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => onResolve(false)}
+              className={buttonClass("outline", "lg")}
+            >
+              Not now
+            </button>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => onResolve(true)}
+              className={buttonClass(danger ? "danger" : "primary", "lg")}
+            >
+              {actionConfirmLabel(proposal)}
+            </button>
+          </div>
+        }
+      >
+        <TutorMarkdown content={proposal.summary} />
+      </Modal>
     </div>
   );
 }

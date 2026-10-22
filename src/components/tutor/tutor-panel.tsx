@@ -83,6 +83,11 @@ export default function TutorPanel({ tier }: { tier: SubscriptionTier }) {
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
+      // A plan review dialog is portalled outside this panel. Leave its keys alone.
+      const nested = Array.from(
+        document.querySelectorAll("[role=dialog][aria-modal=true]"),
+      ).some((el) => el !== ref.current && !ref.current?.contains(el));
+      if (nested) return;
       if (e.key === "Escape") closePanel();
       if (e.key !== "Tab" || docked || !ref.current) return;
       const nodes = Array.from(

@@ -22,6 +22,7 @@ export function Modal({
   children,
   footer,
   className,
+  overlayClassName,
 }: {
   open: boolean;
   title: string;
@@ -34,6 +35,8 @@ export function Modal({
   children: React.ReactNode;
   footer?: React.ReactNode;
   className?: string;
+  /** The tutor panel is also `z-50`; a review opened from it has to sit above that. */
+  overlayClassName?: string;
 }) {
   const panelRef = useRef<HTMLDivElement>(null);
   const restoreRef = useRef<HTMLElement | null>(null);
@@ -102,7 +105,10 @@ export function Modal({
   // which is how the desktop sidebar ended up painting over it.
   return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm"
+      className={cn(
+        "fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm",
+        overlayClassName,
+      )}
       onMouseDown={(e) => {
         if (e.target === e.currentTarget && !busy && dismissible) onClose();
       }}
