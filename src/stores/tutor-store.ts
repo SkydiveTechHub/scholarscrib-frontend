@@ -2,13 +2,15 @@
 
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
-import type { TutorContext } from "@/lib/tutor/types";
+import type { TutorAction, TutorContext } from "@/lib/tutor/types";
 
 // Panel state shared by the layout (which mounts the panel) and the entry
 // points scattered through pages. The server always renders the initial state
 // -- nothing on the server may write to this store (see ./README.md).
 
 export type TutorEntry = { context: TutorContext; label?: string };
+export type TutorAutoSend = { text: string; action: TutorAction | null };
+export type TutorAutoSend = { text: string; action: TutorAction | null };
 
 type TutorStore = {
   open: boolean;
@@ -18,8 +20,11 @@ type TutorStore = {
   overrideEntry: TutorEntry | null;
   /** Tab-session cache: contextKey → threadId so reopen resumes the chat. */
   threadIds: Record<string, string>;
-  openPanel: (entry?: TutorEntry) => void;
+  /** A question to send as soon as the opened conversation is ready. Not persisted. */
+  autoSend: TutorAutoSend | null;
+  openPanel: (entry?: TutorEntry, autoSend?: TutorAutoSend) => void;
   closePanel: () => void;
+  clearAutoSend: () => void;
   detach: () => void;
   setPageEntry: (entry: TutorEntry | null) => void;
   rememberThread: (contextKey: string, threadId: string) => void;
@@ -39,9 +44,15 @@ export const useTutorStore = create<TutorStore>()(
       overrideEntry: null,
       threadIds: {},
       // Opening without a specific item keeps whatever conversation was open.
-      openPanel: (entry) =>
-        set(entry ? { open: true, overrideEntry: entry } : { open: true }),
-      closePanel: () => set({ open: false }),
+      autoSend: null,
+      openPanel: (entry, autoSend) =>
+        set({
+          open: true,
+          autoSend: autoSend ?? null,
+          ...(entry ? { overrideEntry: entry } : {}),
+        }),
+      closePanel: () => set({ open: false, autoSend: null }),
+      clearAutoSend: () => set({ autoSend: null }),
       detach: () => set({ overrideEntry: GENERAL }),
       setPageEntry: (entry) => set({ pageEntry: entry }),
       rememberThread: (contextKey, threadId) =>

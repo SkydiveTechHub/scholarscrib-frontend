@@ -16,6 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { RichText } from "@/components/ui/rich-text";
 import { AskAstraButton } from "@/components/tutor/ask-astra-button";
+import { reviewPrompt } from "@/lib/tutor/review-prompt";
 import { PracticeResultActions } from "@/components/lesson/practice-result-actions";
 
 const MASTERY_BADGE: Record<string, "green" | "blue" | "amber" | "red"> = {
@@ -234,6 +235,7 @@ export default async function TopicPracticeResultPage({
                     <AskAstraButton
                       className="mt-3"
                       label="Explain this to me"
+                      autoSend={{ text: reviewPrompt(q), action: null }}
                       entry={{
                         context: {
                           type: "question",

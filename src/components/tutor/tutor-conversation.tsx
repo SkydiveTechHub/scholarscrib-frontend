@@ -11,6 +11,7 @@ import type {
   TutorErrorInfo,
   TutorMessage,
 } from "@/lib/tutor/types";
+import { useTutorStore } from "@/stores/tutor-store";
 import { AstraAvatar } from "./astra-avatar";
 import { TutorChips } from "./tutor-chips";
 import { TutorComposer } from "./tutor-composer";
@@ -49,6 +50,24 @@ export function TutorConversation({
   const empty = state.messages.length === 0;
   const chips =
     ladderFor(context, state.hintsUsed) ?? (empty ? startersFor(context) : []);
+
+  // "Explain this" arrives with a ready-made question. Take it once, on the
+  // conversation it was meant for; a thread that already has messages is
+  // resumed as-is rather than asked the same thing again.
+  const sendRef = useRef(send);
+  sendRef.current = send;
+  const startedEmpty = useRef(initialMessages.length === 0);
+  useEffect(() => {
+    // Deferred so React's dev-only mount/unmount/mount cycle cancels the first
+    // attempt instead of aborting a stream that has already started.
+    const timer = setTimeout(() => {
+      const { autoSend, clearAutoSend } = useTutorStore.getState();
+      if (!autoSend) return;
+      clearAutoSend();
+      if (startedEmpty.current) sendRef.current(autoSend);
+    }, 0);
+    return () => clearTimeout(timer);
+  }, []);
 
   useEffect(() => {
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
