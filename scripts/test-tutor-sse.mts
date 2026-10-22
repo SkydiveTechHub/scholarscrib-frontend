@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs";
 import { createSseParser } from "../src/lib/tutor/sse";
 import { decodeFrame } from "../src/lib/tutor/events";
 import { errorCodeForStatus } from "../src/lib/tutor/client";
+import { createEventCursor } from "../src/lib/tutor/event-cursor";
 
 const FIXTURE = readFileSync(
   new URL("./fixtures/tutor-stream.txt", import.meta.url),
@@ -173,4 +174,94 @@ test("only a pending actionProposal grounding redraws the card", () => {
 test("a malformed action proposal is an error, not a dropped frame", () => {
   const event = decodeFrame({ event: "actionProposal", data: "{}" });
   assert.equal(event?.type, "error");
+});
+
+test("keeps the SSE id and stamps it on the decoded event", () => {
+  const frames = parseAll(['id: 7\nevent: token\ndata: {"text":"a"}\n\n']);
+  assert.equal(frames[0]?.id, "7");
+  assert.deepEqual(decodeFrame(frames[0]), {
+    type: "token",
+    text: "a",
+    eventId: "7",
+  });
+});
+
+test("a broken tool or unknown study card is ignored", () => {
+  assert.equal(decodeFrame({ event: "tool", data: "{}" }), null);
+  assert.equal(
+    decodeFrame({
+      event: "ui",
+      data: JSON.stringify({ id: "u1", component: "dashboard", props: {} }),
+    }),
+    null,
+  );
+  assert.equal(
+    decodeFrame({
+      event: "ui",
+      data: JSON.stringify({
+        id: "u2",
+        component: "worked_example",
+        props: { problem: "x", steps: [] },
+      }),
+    }),
+    null,
+  );
+});
+
+test("decodes a tool and a practice question without its answer", () => {
+  const tool = decodeFrame({
+    event: "tool",
+    data: JSON.stringify({
+      id: "t1",
+      name: "grade_documents",
+      phase: "running",
+      summary: "Checking lesson notes…",
+    }),
+  });
+  assert.deepEqual(tool, {
+    type: "tool",
+    tool: {
+      id: "t1",
+      name: "grade_documents",
+      phase: "running",
+      summary: "Checking lesson notes…",
+    },
+  });
+  const card = decodeFrame({
+    event: "ui",
+    data: JSON.stringify({
+      id: "q1",
+      component: "practice_question",
+      props: { prompt: "What is 2+2?", choices: ["4"], answer: "4" },
+    }),
+  });
+  assert.equal(card?.type, "ui");
+  if (card?.type === "ui" && card.block.component === "practice_question") {
+    assert.deepEqual(card.block.props, { prompt: "What is 2+2?", choices: ["4"] });
+    assert.equal("answer" in card.block.props, false);
+  } else {
+    assert.fail("expected a practice question");
+  }
+});
+
+test("event cursor skips ids it has already applied", () => {
+  const store = new Map<string, string>();
+  const storage = {
+    getItem: (key: string) => store.get(key) ?? null,
+    setItem: (key: string, value: string) => {
+      store.set(key, value);
+    },
+    removeItem: (key: string) => {
+      store.delete(key);
+    },
+  } as Storage;
+  const cursor = createEventCursor("t1", storage);
+  assert.equal(cursor.accept("1"), true);
+  assert.equal(cursor.accept("1"), false);
+  assert.equal(cursor.lastId(), "1");
+  const again = createEventCursor("t1", storage);
+  assert.equal(again.accept("1"), false);
+  assert.equal(again.accept("2"), true);
+  again.clear();
+  assert.equal(createEventCursor("t1", storage).lastId(), null);
 });

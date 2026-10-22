@@ -1,5 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { proposalEdits } from "../src/lib/tutor/actions";
 import { mapApiMessage } from "../src/lib/tutor/map";
 import { contextKey, createBodyFor } from "../src/lib/tutor/context";
 import { ladderFor, startersFor } from "../src/lib/tutor/chips";
@@ -7,6 +8,8 @@ import {
   chatReducer,
   DRAFT_ID,
   initialChatState,
+  storedReplyIsNew,
+  turnLanded,
 } from "../src/lib/tutor/chat-state";
 import type {
   ActionProposal,
@@ -468,6 +471,145 @@ test("a dropped resume keeps the card and does not approve again", () => {
   assert.equal(s.error?.code, "ACTION_RESUME");
   assert.match(s.error?.message ?? "", /try again/i);
   assert.equal(s.messages.filter((m) => m.role === "student").length, 1);
+});
+
+test("status steps advance and clear once the reply is done", () => {
+  let s = run(
+    [
+      { type: "status", status: { node: "classify_intent" } },
+      { type: "status", status: { node: "classify_intent" } },
+      { type: "status", status: { node: "grade_documents" }, eventId: "3" },
+    ],
+    sent(),
+  );
+  assert.equal(s.steps.length, 2);
+  assert.equal(s.steps[0]?.phase, "done");
+  assert.equal(s.steps[0]?.label, "Understanding your question…");
+  assert.equal(s.steps[1]?.phase, "active");
+  assert.equal(s.steps[1]?.label, "Checking lesson notes…");
+  assert.equal(s.lastEventId, "3");
+  s = run(
+    [
+      { type: "assistantMessage", message: apiAssistant("Green.") },
+      { type: "done" },
+    ],
+    s,
+  );
+  assert.equal(s.steps.length, 0);
+  assert.equal(s.phase, "idle");
+});
+
+test("tool phases update in place and stay on the final reply", () => {
+  const tool = {
+    id: "t1",
+    name: "grade_documents",
+    phase: "running" as const,
+    summary: "Checking lesson notes…",
+  };
+  let s = run(
+    [
+      { type: "tool", tool },
+      { type: "tool", tool: { ...tool, phase: "done" } },
+      { type: "assistantMessage", message: apiAssistant("Green.") },
+    ],
+    sent(),
+  );
+  assert.equal(s.messages.filter((m) => m.role === "astra").length, 1);
+  assert.equal(s.messages[1]?.tools?.length, 1);
+  assert.equal(s.messages[1]?.tools?.[0]?.phase, "done");
+  s = run(
+    [{ type: "tool", tool: { ...tool, id: "t2", phase: "failed", name: "grade_documents" } }],
+    sent(),
+  );
+  s = chatReducer(s, {
+    type: "event",
+    event: { type: "status", status: { node: "grade_documents" } },
+  });
+  s = chatReducer(s, {
+    type: "event",
+    event: {
+      type: "tool",
+      tool: { ...tool, phase: "failed" },
+    },
+  });
+  assert.equal(s.steps[0]?.phase, "failed");
+});
+
+test("a study card sticks to the draft and a replay does not duplicate it", () => {
+  const block = {
+    id: "ex1",
+    component: "worked_example" as const,
+    props: { problem: "2+2", steps: ["Add them."] },
+  };
+  let s = run([{ type: "ui", block }, { type: "ui", block }], sent());
+  assert.equal(s.messages[1]?.blocks?.length, 1);
+  s = run(
+    [{ type: "assistantMessage", message: apiAssistant("See the example.") }],
+    s,
+  );
+  assert.equal(s.messages[1]?.blocks?.[0]?.component, "worked_example");
+});
+
+test("rejoin continues the stored reply instead of starting a second one", () => {
+  let s = chatReducer(
+    initialChatState([{ id: "a1", role: "astra", text: "Half" }]),
+    { type: "reconnecting" },
+  );
+  assert.equal(s.reconnecting, true);
+  assert.equal(s.accumulateId, "a1");
+  s = chatReducer(s, { type: "event", event: { type: "token", text: " more" } });
+  assert.equal(s.messages.length, 1);
+  assert.equal(s.messages[0]?.text, "Half more");
+  s = chatReducer(s, { type: "stopped" });
+  assert.equal(s.reconnecting, false);
+  assert.equal(s.steps.length, 0);
+});
+
+test("a repeated user message is not added twice", () => {
+  const s = run(
+    [
+      { type: "userMessage", message: apiUser("u1") },
+      { type: "userMessage", message: apiUser("u1") },
+    ],
+    sent("u-local"),
+  );
+  assert.equal(s.messages.filter((m) => m.role === "student").length, 1);
+});
+
+test("reconcile replaces a dropped turn when the server has a new reply", () => {
+  const local = sent().messages;
+  const remote = [
+    { id: "u1", role: "student" as const, text: REQ.text },
+    { id: "a9", role: "astra" as const, text: "Stored." },
+  ];
+  assert.equal(storedReplyIsNew(local, remote), true);
+  assert.equal(turnLanded(remote), true);
+  assert.equal(turnLanded(local), false);
+  const s = chatReducer(sent(), { type: "reconcile", messages: remote });
+  assert.equal(s.phase, "idle");
+  assert.equal(s.reconnecting, false);
+  assert.equal(s.messages[1]?.text, "Stored.");
+  assert.equal(s.messages.some((m) => m.stopped), false);
+});
+
+test("proposal edits keep the listed fields and reject a blank required one", () => {
+  const editable = {
+    ...proposal,
+    args: { dueOn: "2026-10-23", itemId: "item-1" },
+    fields: [
+      { key: "dueOn", label: "Due date", type: "string" as const, required: true, maxLength: 40 },
+    ],
+  };
+  assert.deepEqual(proposalEdits(editable, { dueOn: "2026-10-24" }), {
+    ok: true,
+    args: { dueOn: "2026-10-24" },
+  });
+  const blank = proposalEdits(editable, { dueOn: "  " });
+  assert.equal(blank.ok, false);
+  const mapped = mapApiMessage(
+    apiAssistant("Shall I?", "a9", [{ kind: "actionProposal", ...editable }]),
+  );
+  assert.equal(mapped.actionProposal?.fields?.[0]?.key, "dueOn");
 });
 
 test("rating sets the thumb on one message", () => {

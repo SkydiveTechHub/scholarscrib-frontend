@@ -259,6 +259,7 @@ export default function TutorPanel({ tier }: { tier: SubscriptionTier }) {
             threadId={active?.threadId ?? null}
             context={entry.context}
             initialMessages={active?.messages ?? []}
+            activeRun={active?.activeRun ?? null}
             onThreadStarted={onThreadStarted}
             systemBanner={
               active?.systemBanner ??

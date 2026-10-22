@@ -43,6 +43,15 @@ export type GroundedOn = {
   excerpt?: string;
 };
 
+/** One editable input on a study-plan proposal. Keys outside this list stay put. */
+export type ProposalField = {
+  key: string;
+  label: string;
+  type: "string" | "number";
+  required?: boolean;
+  maxLength?: number;
+};
+
 /** A study-plan change Astra will not run until the student approves it. */
 export type ActionProposal = {
   actionId: string;
@@ -52,6 +61,8 @@ export type ActionProposal = {
   summary: string;
   destructive: boolean;
   status: "pending";
+  /** Present when the student may change the payload before approving. */
+  fields?: ProposalField[];
 };
 
 /**
@@ -67,6 +78,46 @@ export type TutorGrounding = GroundedOn | ActionProposalGrounding;
 
 export type TutorApiRole = "user" | "assistant" | "system";
 
+export type TutorToolPhase = "running" | "done" | "failed";
+
+/** A graph tool the student can see. `summary` is the only line we show. */
+export type TutorToolCall = {
+  id: string;
+  name: string;
+  phase: TutorToolPhase;
+  summary: string;
+};
+
+export type WorkedExampleProps = {
+  problem: string;
+  steps: string[];
+};
+
+export type PracticeQuestionProps = {
+  prompt: string;
+  choices?: string[];
+};
+
+/** Fixed study cards. Anything else in the stream is dropped. */
+export type TutorUiBlock =
+  | { id: string; component: "worked_example"; props: WorkedExampleProps }
+  | { id: string; component: "practice_question"; props: PracticeQuestionProps };
+
+export type TutorStepPhase = "active" | "done" | "failed";
+
+export type TutorStep = {
+  id: string;
+  node: string;
+  label: string;
+  phase: TutorStepPhase;
+};
+
+/** A graph run that is still going after the socket drops. */
+export type ActiveRun = {
+  runId: string;
+  status: "running" | "paused";
+};
+
 /** Wire shape from the tutor API. */
 export type TutorApiMessage = {
   id: string;
@@ -74,6 +125,8 @@ export type TutorApiMessage = {
   content: string;
   groundedOn: TutorGrounding[];
   createdAt: string | null;
+  tools?: TutorToolCall[];
+  blocks?: TutorUiBlock[];
 };
 
 export type TutorApiThread = {
@@ -88,6 +141,8 @@ export type TutorApiThread = {
   updatedAt: string | null;
   messages?: TutorApiMessage[];
   assistantMessage?: TutorApiMessage;
+  /** Null when the last turn is already stored on the messages. */
+  activeRun?: ActiveRun | null;
 };
 
 export type TutorThreadCreateBody = {
@@ -131,6 +186,8 @@ export type TutorMessage = {
   suggested?: TutorAction[];
   /** Set locally when the student stopped this turn mid-reply. */
   stopped?: boolean;
+  tools?: TutorToolCall[];
+  blocks?: TutorUiBlock[];
 };
 
 export type TutorThread = {
@@ -138,6 +195,7 @@ export type TutorThread = {
   messages: TutorMessage[];
   /** Wrong-answer seed shown as a banner, not a chat bubble. */
   systemBanner?: string | null;
+  activeRun?: ActiveRun | null;
 };
 
 /** One row in the chat history list (no messages; those load on resume). */
@@ -153,9 +211,11 @@ export type TutorErrorInfo = {
   message: string;
   resetsAt?: string;
   retryAfterSec?: number;
+  /** The socket closed before `done`. The hook may rejoin instead of showing this. */
+  dropped?: boolean;
 };
 
-export type TutorStreamEvent =
+export type TutorStreamEvent = (
   | {
       type: "streamStarted";
       threadId: string;
@@ -164,6 +224,8 @@ export type TutorStreamEvent =
   | { type: "userMessage"; message: TutorApiMessage }
   | { type: "status"; status: TutorStatusEvent }
   | { type: "token"; text: string }
+  | { type: "tool"; tool: TutorToolCall }
+  | { type: "ui"; block: TutorUiBlock }
   | { type: "assistantMessage"; message: TutorApiMessage }
   | { type: "actionProposal"; proposal: ActionProposal }
   | { type: "actionExecuted"; actionId?: string }
@@ -175,7 +237,11 @@ export type TutorStreamEvent =
       paused?: boolean;
       pendingAction?: ActionProposal | null;
     }
-  | ({ type: "error" } & TutorErrorInfo);
+  | ({ type: "error" } & TutorErrorInfo)
+) & {
+  /** SSE `id`, when the server sent one. Used to rejoin after that frame. */
+  eventId?: string;
+};
 
 export type TutorSendRequest = {
   text: string;

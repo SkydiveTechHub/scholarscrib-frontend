@@ -63,13 +63,21 @@ function fallbackErrorMessage(status: number): string {
   return "Astra isn't available right now.";
 }
 
+type OpenStream = {
+  method: "POST" | "GET";
+  body?: unknown;
+  headers?: Record<string, string>;
+  /** 404 means the run already finished and the thread GET has the reply. */
+  finishedOn404?: boolean;
+};
+
 /**
- * POST JSON and read the SSE body. Shared by a chat turn and an action resume,
- * which is not a new message.
+ * Read an SSE body. Chat turns and action resumes POST JSON. A rejoin GETs
+ * the run that is still going.
  */
-async function* postEventStream(
+async function* openEventStream(
   path: string,
-  body: unknown,
+  req: OpenStream,
   opts: StreamOptions,
 ): AsyncGenerator<TutorStreamEvent> {
   const doFetch = opts.fetchImpl ?? fetch;
@@ -77,17 +85,27 @@ async function* postEventStream(
     opts.token === undefined ? getAccessToken("", "student") : opts.token;
 
   const headers: Record<string, string> = {
-    "Content-Type": "application/json",
     Accept: "text/event-stream",
+    ...req.headers,
   };
+  if (req.method === "POST") headers["Content-Type"] = "application/json";
   if (token) headers.Authorization = `Bearer ${token}`;
 
   const res = await doFetch(`${opts.baseUrl ?? API_URL}${path}`, {
-    method: "POST",
+    method: req.method,
     headers,
     signal: opts.signal,
-    body: JSON.stringify(body),
+    body: req.method === "POST" ? JSON.stringify(req.body) : undefined,
   });
+
+  if (res.status === 404 && req.finishedOn404) {
+    yield {
+      type: "error",
+      code: "RUN_FINISHED",
+      message: "Astra finished this reply.",
+    };
+    return;
+  }
 
   if (!res.ok) {
     const errorBody = await readErrorBody(res);
@@ -134,6 +152,7 @@ async function* postEventStream(
     type: "error",
     code: "UNAVAILABLE",
     message: "The connection dropped before Astra finished.",
+    dropped: true,
   };
 }
 
@@ -147,7 +166,27 @@ export async function* streamTutorReply(
   const body = args.threadId
     ? { content: args.content }
     : { ...args.create, firstMessage: args.content };
-  yield* postEventStream(path, body, opts);
+  yield* openEventStream(path, { method: "POST", body }, opts);
+}
+
+export type RunStreamArgs = {
+  threadId: string;
+  runId: string;
+  lastEventId?: string | null;
+};
+
+/** Attach to a run that outlived the previous socket. */
+export async function* streamTutorRun(
+  args: RunStreamArgs,
+  opts: StreamOptions = {},
+): AsyncGenerator<TutorStreamEvent> {
+  const headers: Record<string, string> = {};
+  if (args.lastEventId) headers["Last-Event-ID"] = args.lastEventId;
+  yield* openEventStream(
+    endpoints.tutor.runStream(args.threadId, args.runId),
+    { method: "GET", headers, finishedOn404: true },
+    opts,
+  );
 }
 
 export type ResumeActionArgs = {
@@ -163,13 +202,16 @@ export async function* streamTutorAction(
   args: ResumeActionArgs,
   opts: StreamOptions = {},
 ): AsyncGenerator<TutorStreamEvent> {
-  yield* postEventStream(
+  yield* openEventStream(
     endpoints.tutor.actionsResume(args.threadId),
     {
-      approved: args.approved,
-      actionId: args.actionId,
-      args: args.args === undefined ? null : args.args,
-      stream: true,
+      method: "POST",
+      body: {
+        approved: args.approved,
+        actionId: args.actionId,
+        args: args.args === undefined ? null : args.args,
+        stream: true,
+      },
     },
     opts,
   );

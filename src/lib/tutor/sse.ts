@@ -1,7 +1,8 @@
-export type SseFrame = { event: string; data: string };
+export type SseFrame = { event: string; data: string; id?: string };
 
 function parseFrame(raw: string): SseFrame | null {
   let event = "message";
+  let id: string | undefined;
   const data: string[] = [];
   for (const line of raw.split("\n")) {
     if (!line || line.startsWith(":")) continue;
@@ -11,8 +12,10 @@ function parseFrame(raw: string): SseFrame | null {
     if (value.startsWith(" ")) value = value.slice(1);
     if (field === "event") event = value;
     else if (field === "data") data.push(value);
+    else if (field === "id" && value !== "") id = value;
   }
-  return data.length === 0 ? null : { event, data: data.join("\n") };
+  if (data.length === 0) return null;
+  return id ? { event, data: data.join("\n"), id } : { event, data: data.join("\n") };
 }
 
 /**
