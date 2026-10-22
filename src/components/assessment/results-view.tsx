@@ -24,6 +24,7 @@ import {
   ExplanationModal,
   type ExplainedQuestion,
 } from "@/components/assessment/explanation-modal";
+import { AskAstraButton } from "@/components/tutor/ask-astra-button";
 import { AchievementUnlockBanner } from "@/components/achievements/unlock-banner";
 
 type QuestionResult = {
@@ -531,26 +532,40 @@ export function ResultsView({
                       </div>
                     )}
 
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setExplaining({
-                          questionId: q.questionId,
-                          questionNumber: questionIndex + 1,
-                          questionText: q.questionText,
-                          questionImageUrl: q.questionImageUrl,
-                          options: q.options,
-                          selectedAnswer: q.selectedAnswer,
-                          correctAnswer: q.correctAnswer,
-                          explanation: q.explanation,
-                          explanationImageUrl: q.explanationImageUrl,
-                        })
-                      }
-                      className="mt-4 inline-flex items-center gap-2 rounded-xl border border-tone-blue-line bg-tone-blue-soft px-4 py-2.5 text-sm font-bold text-tone-blue-ink transition-opacity hover:opacity-80"
-                    >
-                      <LuLightbulb className="h-4 w-4" />
-                      See Explanation
-                    </button>
+                    <div className="mt-4 flex flex-wrap items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setExplaining({
+                            questionId: q.questionId,
+                            questionNumber: questionIndex + 1,
+                            questionText: q.questionText,
+                            questionImageUrl: q.questionImageUrl,
+                            options: q.options,
+                            selectedAnswer: q.selectedAnswer,
+                            correctAnswer: q.correctAnswer,
+                            explanation: q.explanation,
+                            explanationImageUrl: q.explanationImageUrl,
+                          })
+                        }
+                        className="inline-flex items-center gap-2 rounded-xl border border-tone-blue-line bg-tone-blue-soft px-4 py-2.5 text-sm font-bold text-tone-blue-ink transition-opacity hover:opacity-80"
+                      >
+                        <LuLightbulb className="h-4 w-4" />
+                        See Explanation
+                      </button>
+                      <AskAstraButton
+                        label="Explain this to me"
+                        entry={{
+                          context: {
+                            type: "question",
+                            questionId: q.questionId,
+                            attemptId: result.attemptId,
+                            wrongAnswerContext: q.selectedAnswer ?? undefined,
+                          },
+                          label: `Question ${questionIndex + 1}`,
+                        }}
+                      />
+                    </div>
 
                     <div className="mt-3 flex flex-wrap gap-4 text-xs text-muted">
                       <span>
