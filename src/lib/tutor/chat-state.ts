@@ -93,6 +93,32 @@ function attachProposal(
   ];
 }
 
+/** The paused row is updated in place; the follow-up reply is a separate message. */
+function replaceSettled(
+  messages: TutorMessage[],
+  settled: TutorMessage,
+): TutorMessage[] {
+  const next = { ...settled, actionProposal: undefined };
+  const index = messages.findIndex((m) => m.id === settled.id);
+  if (index !== -1) {
+    const previous = messages[index];
+    return messages.map((m, i) =>
+      i === index
+        ? { ...next, rating: previous.rating, stopped: previous.stopped }
+        : m,
+    );
+  }
+  let pendingAt = -1;
+  for (let i = messages.length - 1; i >= 0; i--) {
+    if (messages[i].actionProposal) {
+      pendingAt = i;
+      break;
+    }
+  }
+  if (pendingAt === -1) return messages;
+  return messages.map((m, i) => (i === pendingAt ? next : m));
+}
+
 function clearProposals(messages: TutorMessage[]): TutorMessage[] {
   return dropEmptyDraft(
     messages.map((m) =>
@@ -213,6 +239,16 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
             pendingAction: event.proposal,
             statusLine: null,
             messages: attachProposal(state.messages, event.proposal),
+          };
+        case "proposalSettled":
+          return {
+            ...state,
+            pendingAction: null,
+            statusLine: null,
+            messages: replaceSettled(
+              state.messages,
+              mapApiMessage(event.message),
+            ),
           };
         case "actionExecuted":
         case "actionRejected":

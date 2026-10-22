@@ -25,11 +25,22 @@ export function actionIsDanger(proposal: ActionProposal): boolean {
   return proposal.destructive || proposal.tool === "delete_study_plan";
 }
 
-/** Accepts the SSE payload or a `groundedOn` entry. Missing `kind` is allowed. */
+/** True for a grounding row whose action already finished. `kind` has been removed. */
+export function isSettledAction(raw: unknown): boolean {
+  if (!raw || typeof raw !== "object") return false;
+  const status = (raw as { status?: unknown }).status;
+  return status === "executed" || status === "rejected";
+}
+
+/**
+ * Accepts the live `actionProposal` event or a pending `groundedOn` entry.
+ * A status other than `pending` is not a card.
+ */
 export function toActionProposal(raw: unknown): ActionProposal | null {
   if (!raw || typeof raw !== "object") return null;
   const g = raw as Record<string, unknown>;
   if (g.kind != null && g.kind !== "actionProposal") return null;
+  if (g.status != null && g.status !== "pending") return null;
   if (
     typeof g.actionId !== "string" ||
     g.actionId === "" ||
@@ -48,13 +59,18 @@ export function toActionProposal(raw: unknown): ActionProposal | null {
     args: "args" in g ? (g.args ?? null) : null,
     summary: g.summary,
     destructive: g.destructive === true,
+    status: "pending",
   };
 }
 
 export function isActionProposalGrounding(
   item: TutorGrounding,
 ): item is ActionProposalGrounding {
-  return "kind" in item && item.kind === "actionProposal";
+  return (
+    "kind" in item &&
+    item.kind === "actionProposal" &&
+    item.status === "pending"
+  );
 }
 
 export function proposalFromGrounding(
@@ -69,13 +85,16 @@ export function proposalFromGrounding(
     args: hit.args ?? null,
     summary: hit.summary,
     destructive: hit.destructive,
+    status: "pending",
   };
 }
 
 export function citationsOnly(
   items: readonly TutorGrounding[] | undefined,
 ): GroundedOn[] {
-  return (items ?? []).filter(
-    (item): item is GroundedOn => !isActionProposalGrounding(item),
-  );
+  return (items ?? []).filter((item): item is GroundedOn => {
+    if (isSettledAction(item)) return false;
+    if ("kind" in item && item.kind === "actionProposal") return false;
+    return true;
+  });
 }

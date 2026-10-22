@@ -290,6 +290,7 @@ const proposal: ActionProposal = {
   args: { hours: 2 },
   summary: "Create a term plan for Biology.",
   destructive: false,
+  status: "pending",
 };
 
 function paused(start = sent()) {
@@ -354,6 +355,24 @@ test("grounding on the assistant message redraws the card without a source chip"
   assert.equal(s.messages[1].text, "Shall I?");
 });
 
+test("a settled message reloads as text without a card", () => {
+  const mapped = mapApiMessage(
+    apiAssistant("Create a term plan for Biology.", "a9", [
+      {
+        status: "executed",
+        actionId: "act-1",
+        tool: "create_study_plan",
+        summary: "Create a term plan for Biology.",
+      },
+      { kind: "actionProposal", actionId: "act-1", checkpointId: "cp-1", tool: "create_study_plan", args: null, summary: "nope", destructive: false },
+    ]),
+  );
+  assert.equal(mapped.actionProposal, undefined);
+  assert.equal(mapped.text, "Create a term plan for Biology.");
+  assert.equal(mapped.groundedOn?.length, 0);
+  assert.equal(initialChatState([mapped]).pendingAction, null);
+});
+
 test("approve clears the card without a new student message", () => {
   let s = paused();
   const before = s.messages.length;
@@ -364,6 +383,12 @@ test("approve clears the card without a new student message", () => {
   s = run(
     [
       { type: "actionExecuted", actionId: "act-1" },
+      {
+        type: "proposalSettled",
+        message: apiAssistant(proposal.summary, "a1", [
+          { status: "executed", actionId: "act-1" },
+        ]),
+      },
       {
         type: "assistantMessage",
         message: apiAssistant("Done. Your plan is ready.", "a2"),
@@ -376,6 +401,9 @@ test("approve clears the card without a new student message", () => {
   assert.equal(s.resuming, false);
   assert.equal(s.phase, "idle");
   assert.equal(s.messages.filter((m) => m.role === "student").length, 1);
+  assert.equal(s.messages[1].id, "a1");
+  assert.equal(s.messages[1].text, proposal.summary);
+  assert.equal(s.messages[1].actionProposal, undefined);
   assert.equal(s.messages.at(-1)?.text, "Done. Your plan is ready.");
   assert.equal(s.messages.some((m) => m.actionProposal), false);
 });
@@ -385,6 +413,12 @@ test("reject clears the card without a new student message", () => {
   s = run(
     [
       { type: "actionRejected" },
+      {
+        type: "proposalSettled",
+        message: apiAssistant(proposal.summary, "a1", [
+          { status: "rejected", actionId: "act-1" },
+        ]),
+      },
       { type: "assistantMessage", message: apiAssistant("Okay, leaving it.", "a2") },
       { type: "done" },
     ],

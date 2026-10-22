@@ -85,6 +85,7 @@ const proposal = {
   args: null,
   summary: "Delete your study plan.",
   destructive: true,
+  status: "pending" as const,
 };
 
 test("decodes a paused action proposal and its done payload", () => {
@@ -132,6 +133,41 @@ test("action results decode with or without an id", () => {
     }),
     { type: "actionRejected", actionId: "act-1" },
   );
+});
+
+test("a settled proposal is kept as text and is not a card", () => {
+  const event = decodeFrame({
+    event: "proposalSettled",
+    data: JSON.stringify({
+      id: "a",
+      role: "assistant",
+      content: "Delete your study plan.",
+      groundedOn: [{ status: "executed", actionId: "act-1" }],
+    }),
+  });
+  assert.equal(event?.type, "proposalSettled");
+  if (event?.type !== "proposalSettled") return;
+  assert.equal(event.message.content, "Delete your study plan.");
+  assert.equal(event.message.groundedOn.length, 0);
+});
+
+test("only a pending actionProposal grounding redraws the card", () => {
+  const settled = decodeFrame({
+    event: "assistantMessage",
+    data: JSON.stringify({
+      id: "a",
+      role: "assistant",
+      content: "Delete your study plan.",
+      groundedOn: [
+        { status: "rejected", actionId: "act-1" },
+        { kind: "actionProposal", actionId: "act-1", status: "executed" },
+      ],
+    }),
+  });
+  assert.equal(settled?.type, "assistantMessage");
+  if (settled?.type === "assistantMessage") {
+    assert.equal(settled.message.groundedOn.length, 0);
+  }
 });
 
 test("a malformed action proposal is an error, not a dropped frame", () => {

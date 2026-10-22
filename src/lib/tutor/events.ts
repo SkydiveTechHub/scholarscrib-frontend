@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { toActionProposal } from "./actions";
+import { isSettledAction, toActionProposal } from "./actions";
 import type {
   GroundedOn,
   TutorApiMessage,
@@ -70,15 +70,19 @@ const KNOWN = [
   "actionProposal",
   "actionExecuted",
   "actionRejected",
+  "proposalSettled",
   "done",
 ] as const;
 
-function parseGrounding(raw: unknown): TutorGrounding | null {
+function parseGrounding(raw: unknown): TutorGrounding | "skip" | null {
+  if (isSettledAction(raw)) return "skip";
   if (
     raw &&
     typeof raw === "object" &&
     (raw as { kind?: unknown }).kind === "actionProposal"
   ) {
+    // The card is only for the pending shape. Anything else is history.
+    if ((raw as { status?: unknown }).status !== "pending") return "skip";
     const proposal = toActionProposal(raw);
     return proposal ? { kind: "actionProposal", ...proposal } : null;
   }
@@ -104,6 +108,7 @@ function toApiMessage(
   const groundedOn: TutorGrounding[] = [];
   for (const item of parsed.groundedOn ?? []) {
     const grounding = parseGrounding(item);
+    if (grounding === "skip") continue;
     if (!grounding) return null;
     groundedOn.push(grounding);
   }
@@ -183,6 +188,19 @@ export function decodeFrame(frame: {
     case "actionProposal": {
       const proposal = toActionProposal(json);
       return proposal ? { type: "actionProposal", proposal } : MALFORMED;
+    }
+    case "proposalSettled": {
+      const payload =
+        json &&
+        typeof json === "object" &&
+        "proposalMessage" in json &&
+        (json as { proposalMessage?: unknown }).proposalMessage
+          ? (json as { proposalMessage: unknown }).proposalMessage
+          : json;
+      const r = apiMessage.safeParse(payload);
+      if (!r.success) return MALFORMED;
+      const message = toApiMessage(r.data);
+      return message ? { type: "proposalSettled", message } : MALFORMED;
     }
     case "actionExecuted":
     case "actionRejected": {

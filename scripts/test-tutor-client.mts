@@ -163,6 +163,7 @@ test("resume posts the approval and streams the follow-up", async () => {
   let seen: { url: string; init: RequestInit } | null = null;
   const frames =
     'event: actionExecuted\ndata: {"actionId":"act-1"}\n\n' +
+    'event: proposalSettled\ndata: {"id":"a0","role":"assistant","content":"Create a term plan.","groundedOn":[{"status":"executed"}]}\n\n' +
     'event: assistantMessage\ndata: {"id":"a","role":"assistant","content":"Updated.","groundedOn":[]}\n\n' +
     'event: done\ndata: {"ok":true}\n\n';
   const events = await collect(
@@ -189,7 +190,7 @@ test("resume posts the approval and streams the follow-up", async () => {
   });
   assert.deepEqual(
     events.map((e) => e.type),
-    ["actionExecuted", "assistantMessage", "done"],
+    ["actionExecuted", "proposalSettled", "assistantMessage", "done"],
   );
 });
 

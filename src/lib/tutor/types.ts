@@ -51,9 +51,14 @@ export type ActionProposal = {
   args: unknown;
   summary: string;
   destructive: boolean;
+  status: "pending";
 };
 
-/** Same proposal, stored on the assistant message so a reload can redraw the card. */
+/**
+ * Stored on the paused assistant message. A reload redraws the card only
+ * while `status` is `pending`. After resume, `kind` is gone and `status`
+ * is `executed` or `rejected`.
+ */
 export type ActionProposalGrounding = ActionProposal & {
   kind: "actionProposal";
 };
@@ -163,6 +168,7 @@ export type TutorStreamEvent =
   | { type: "actionProposal"; proposal: ActionProposal }
   | { type: "actionExecuted"; actionId?: string }
   | { type: "actionRejected"; actionId?: string }
+  | { type: "proposalSettled"; message: TutorApiMessage }
   | {
       type: "done";
       /** True when the turn is parked on a confirmation card. */
