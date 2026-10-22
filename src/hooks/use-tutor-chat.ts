@@ -143,6 +143,7 @@ export function useTutorChat({
               threadId,
               approved,
               actionId: proposal.actionId,
+              // The plan text lives in `summary`. `null` runs the stored payload.
               args: null,
             },
             { signal: controller.signal },

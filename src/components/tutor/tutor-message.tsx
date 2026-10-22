@@ -117,7 +117,12 @@ export function TutorMessageView({
   return (
     <div className="flex items-start gap-2.5">
       <AstraAvatar />
-      <div className="min-w-0 max-w-[85%]">
+      <div
+        className={cn(
+          "min-w-0",
+          message.actionProposal ? "max-w-full" : "max-w-[85%]",
+        )}
+      >
         {showText && (
           <div className="rounded-2xl rounded-tl-md bg-secondary px-3.5 py-2.5 text-sm leading-relaxed text-foreground">
             <TutorMarkdown content={message.text} streaming={streaming} />
@@ -218,19 +223,17 @@ function ActionCard({
       <p className="text-xs font-semibold uppercase tracking-wide text-muted">
         {title}
       </p>
+      <div className="mt-2 text-sm leading-relaxed text-foreground">
+        <TutorMarkdown content={proposal.summary} />
+      </div>
       <button
         type="button"
         disabled={busy}
         onClick={() => setOpen(true)}
         aria-haspopup="dialog"
-        className="mt-1 block w-full rounded-lg text-left disabled:opacity-50"
+        className="mt-2 text-xs font-semibold text-primary disabled:opacity-50"
       >
-        <span className="line-clamp-4 whitespace-pre-wrap text-sm leading-relaxed text-foreground">
-          {proposal.summary}
-        </span>
-        <span className="mt-1.5 block text-xs font-semibold text-primary">
-          Review plan
-        </span>
+        Review plan
       </button>
       <div className="mt-3">
         <button
