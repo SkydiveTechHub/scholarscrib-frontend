@@ -44,6 +44,21 @@ export function describeError(error: TutorErrorInfo, now: Date): ErrorView {
         retry: false,
         upgrade: false,
       };
+    case "ACTION_PENDING":
+      return {
+        message:
+          "Approve or dismiss Astra's suggestion before sending another message.",
+        retry: false,
+        upgrade: false,
+      };
+    case "ACTION_RESUME":
+      return {
+        message:
+          error.message ||
+          "Couldn't confirm that change. You can try again.",
+        retry: false,
+        upgrade: false,
+      };
     case "UNAVAILABLE":
       return {
         message:

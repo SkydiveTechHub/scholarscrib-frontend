@@ -1,8 +1,19 @@
 "use client";
 
 import { LuPencil, LuThumbsDown, LuThumbsUp } from "react-icons/lu";
+import { buttonClass } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import type { GroundedOn, TutorAction, TutorMessage } from "@/lib/tutor/types";
+import {
+  actionConfirmLabel,
+  actionIsDanger,
+  actionTitle,
+} from "@/lib/tutor/actions";
+import type {
+  ActionProposal,
+  GroundedOn,
+  TutorAction,
+  TutorMessage,
+} from "@/lib/tutor/types";
 import { useTutorStore } from "@/stores/tutor-store";
 import { AstraAvatar } from "./astra-avatar";
 import { TutorMarkdown } from "./tutor-markdown";
@@ -51,17 +62,22 @@ export function TutorMessageView({
   message,
   streaming,
   isLast,
+  resolving = false,
   onRate,
   onEdit,
   onAction,
+  onResolve,
 }: {
   message: TutorMessage;
   streaming: boolean;
   isLast: boolean;
+  /** True while approve or dismiss is in flight. */
+  resolving?: boolean;
   onRate: (id: string, rating: "up" | "down") => void;
   /** Present only on a stopped prompt that can be pulled back into the composer. */
   onEdit?: () => void;
   onAction: (action: TutorAction, label: string) => void;
+  onResolve?: (approved: boolean) => void;
 }) {
   if (message.role === "student") {
     return (
@@ -87,17 +103,30 @@ export function TutorMessageView({
   if (message.role === "system") return null;
 
   // An empty draft is covered by the conversation's typing bubble.
-  if (streaming && message.text === "") return null;
-  const finished = !streaming && message.text !== "" && !message.stopped;
+  if (message.text === "" && !message.actionProposal) return null;
+  const awaiting = Boolean(message.actionProposal);
+  const finished =
+    !streaming && message.text !== "" && !message.stopped && !awaiting;
   const sources = message.groundedOn?.filter(Boolean) ?? [];
 
   return (
     <div className="flex items-start gap-2.5">
       <AstraAvatar />
       <div className="min-w-0 max-w-[85%]">
-        <div className="rounded-2xl rounded-tl-md bg-secondary px-3.5 py-2.5 text-sm leading-relaxed text-foreground">
-          <TutorMarkdown content={message.text} streaming={streaming} />
-        </div>
+        {message.text !== "" && (
+          <div className="rounded-2xl rounded-tl-md bg-secondary px-3.5 py-2.5 text-sm leading-relaxed text-foreground">
+            <TutorMarkdown content={message.text} streaming={streaming} />
+          </div>
+        )}
+
+        {message.actionProposal && onResolve && (
+          <ActionCard
+            proposal={message.actionProposal}
+            busy={resolving || streaming}
+            className={message.text !== "" ? "mt-2" : undefined}
+            onResolve={onResolve}
+          />
+        )}
 
         {message.stopped && (
           <p className="mt-1 px-1 text-xs text-muted">Stopped</p>
@@ -152,6 +181,57 @@ export function TutorMessageView({
               ))}
           </div>
         )}
+      </div>
+    </div>
+  );
+}
+
+function ActionCard({
+  proposal,
+  busy,
+  className,
+  onResolve,
+}: {
+  proposal: ActionProposal;
+  busy: boolean;
+  className?: string;
+  onResolve: (approved: boolean) => void;
+}) {
+  const title = actionTitle(proposal.tool);
+  const danger = actionIsDanger(proposal);
+  return (
+    <div
+      role="region"
+      aria-label={title}
+      aria-busy={busy}
+      className={cn(
+        "rounded-xl border border-border bg-card px-3.5 py-3",
+        className,
+      )}
+    >
+      <p className="text-xs font-semibold uppercase tracking-wide text-muted">
+        {title}
+      </p>
+      <p className="mt-1 text-sm leading-relaxed text-foreground">
+        {proposal.summary}
+      </p>
+      <div className="mt-3 flex flex-wrap gap-2">
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() => onResolve(true)}
+          className={buttonClass(danger ? "danger" : "primary", "lg")}
+        >
+          {actionConfirmLabel(proposal)}
+        </button>
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() => onResolve(false)}
+          className={buttonClass("outline", "lg")}
+        >
+          Not now
+        </button>
       </div>
     </div>
   );

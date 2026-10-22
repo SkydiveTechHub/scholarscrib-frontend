@@ -76,6 +76,8 @@ export const endpoints = {
       `/api/tutor/threads/${seg(threadId)}/messages/stream`,
     messagesStop: (threadId: string) =>
       `/api/tutor/threads/${seg(threadId)}/messages/stream/stop`,
+    actionsResume: (threadId: string) =>
+      `/api/tutor/threads/${seg(threadId)}/actions/resume`,
     feedback: (messageId: string) =>
       `/api/tutor/messages/${seg(messageId)}/feedback`,
   },

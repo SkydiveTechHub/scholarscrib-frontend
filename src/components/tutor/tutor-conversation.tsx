@@ -30,7 +30,7 @@ export function TutorConversation({
   onThreadStarted: (threadId: string) => void;
 }) {
   const createBody = useMemo(() => createBodyFor(context), [context]);
-  const { state, send, retry, stop, edit, rate } = useTutorChat({
+  const { state, send, retry, stop, edit, rate, resolve } = useTutorChat({
     threadId,
     initialMessages,
     createBody,
@@ -42,6 +42,7 @@ export function TutorConversation({
   } | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
   const streaming = state.phase === "streaming";
+  const pending = state.pendingAction != null;
   const rateLimited =
     state.error?.code === "RATE_LIMITED" ||
     (state.rateLimitedUntil != null && state.rateLimitedUntil > Date.now());
@@ -63,7 +64,12 @@ export function TutorConversation({
   // draws its own message).
   const lastMessage = state.messages[lastIndex];
   const showTyping =
-    streaming && !(lastMessage?.role === "astra" && lastMessage.text !== "");
+    streaming &&
+    !state.resuming &&
+    !(
+      lastMessage?.role === "astra" &&
+      (lastMessage.text !== "" || lastMessage.actionProposal)
+    );
 
   return (
     <>
@@ -94,7 +100,11 @@ export function TutorConversation({
             message={m}
             streaming={streaming && i === lastIndex && m.role === "astra"}
             isLast={i === lastIndex}
+            resolving={state.resuming}
             onRate={rate}
+            onResolve={
+              m.actionProposal ? (approved) => resolve(approved) : undefined
+            }
             onEdit={
               !streaming && m.stopped && m.role === "student"
                 ? () => {
@@ -124,13 +134,16 @@ export function TutorConversation({
         <div ref={endRef} />
       </div>
 
-      {chips.length > 0 && !streaming && !rateLimited && (
+      {chips.length > 0 && !streaming && !rateLimited && !pending && (
         <TutorChips chips={chips} onPick={pick} />
       )}
 
       <TutorComposer
-        streaming={streaming}
-        disabled={rateLimited}
+        streaming={streaming && !state.resuming}
+        disabled={rateLimited || pending || state.resuming}
+        placeholder={
+          pending ? "Approve or dismiss the suggestion above" : undefined
+        }
         prefill={prefill}
         onSend={(text) => send({ text, action: null })}
         onStop={stop}

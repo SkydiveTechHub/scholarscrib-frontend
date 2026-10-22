@@ -1,5 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { mapApiMessage } from "../src/lib/tutor/map";
 import { contextKey, createBodyFor } from "../src/lib/tutor/context";
 import { ladderFor, startersFor } from "../src/lib/tutor/chips";
 import {
@@ -8,6 +9,7 @@ import {
   initialChatState,
 } from "../src/lib/tutor/chat-state";
 import type {
+  ActionProposal,
   TutorApiMessage,
   TutorSendRequest,
   TutorStreamEvent,
@@ -279,6 +281,159 @@ test("reconcile replaces the transcript after abort", () => {
   assert.equal(s.phase, "idle");
   assert.equal(s.messages.length, 2);
   assert.equal(s.pendingUserId, null);
+});
+
+const proposal: ActionProposal = {
+  actionId: "act-1",
+  checkpointId: "cp-1",
+  tool: "create_study_plan",
+  args: { hours: 2 },
+  summary: "Create a term plan for Biology.",
+  destructive: false,
+};
+
+function paused(start = sent()) {
+  return run(
+    [
+      { type: "assistantMessage", message: apiAssistant("Shall I set that up?") },
+      { type: "actionProposal", proposal },
+      { type: "done", paused: true, pendingAction: proposal },
+    ],
+    start,
+  );
+}
+
+test("a paused proposal leaves the card and blocks another send", () => {
+  const s = paused();
+  assert.equal(s.phase, "idle");
+  assert.equal(s.resuming, false);
+  assert.deepEqual(s.pendingAction, proposal);
+  assert.equal(s.messages[1].actionProposal?.actionId, "act-1");
+  assert.equal(s.messages.filter((m) => m.role === "student").length, 1);
+  const blocked = chatReducer(s, {
+    type: "send",
+    request: REQ,
+    pendingUserId: "p2",
+  });
+  assert.equal(blocked, s);
+});
+
+test("reload restores a pending card from the stored message", () => {
+  const s = initialChatState([
+    { id: "u", role: "student", text: "Make a plan" },
+    { id: "a", role: "astra", text: "Shall I?", actionProposal: proposal },
+  ]);
+  assert.deepEqual(s.pendingAction, proposal);
+  assert.equal(
+    chatReducer(s, { type: "send", request: REQ, pendingUserId: "x" }),
+    s,
+  );
+});
+
+test("grounding on the assistant message redraws the card without a source chip", () => {
+  const mapped = mapApiMessage(
+    apiAssistant("Shall I?", "a9", [
+      { kind: "actionProposal", ...proposal },
+      { sourceType: "lesson", title: "Keep me" },
+    ]),
+  );
+  assert.deepEqual(mapped.actionProposal, proposal);
+  assert.equal(mapped.groundedOn?.length, 1);
+  assert.equal(mapped.groundedOn?.[0]?.title, "Keep me");
+
+  const s = run(
+    [
+      { type: "assistantMessage", message: apiAssistant("Shall I?", "a9", [
+        { kind: "actionProposal", ...proposal },
+      ]) },
+      { type: "done", paused: true, pendingAction: null },
+    ],
+    sent(),
+  );
+  assert.equal(s.pendingAction?.actionId, "act-1");
+  assert.equal(s.messages[1].text, "Shall I?");
+});
+
+test("approve clears the card without a new student message", () => {
+  let s = paused();
+  const before = s.messages.length;
+  s = chatReducer(s, { type: "resume" });
+  assert.equal(s.phase, "streaming");
+  assert.equal(s.resuming, true);
+  assert.equal(s.messages.length, before);
+  s = run(
+    [
+      { type: "actionExecuted", actionId: "act-1" },
+      {
+        type: "assistantMessage",
+        message: apiAssistant("Done. Your plan is ready.", "a2"),
+      },
+      { type: "done" },
+    ],
+    s,
+  );
+  assert.equal(s.pendingAction, null);
+  assert.equal(s.resuming, false);
+  assert.equal(s.phase, "idle");
+  assert.equal(s.messages.filter((m) => m.role === "student").length, 1);
+  assert.equal(s.messages.at(-1)?.text, "Done. Your plan is ready.");
+  assert.equal(s.messages.some((m) => m.actionProposal), false);
+});
+
+test("reject clears the card without a new student message", () => {
+  let s = chatReducer(paused(), { type: "resume" });
+  s = run(
+    [
+      { type: "actionRejected" },
+      { type: "assistantMessage", message: apiAssistant("Okay, leaving it.", "a2") },
+      { type: "done" },
+    ],
+    s,
+  );
+  assert.equal(s.pendingAction, null);
+  assert.equal(s.messages.filter((m) => m.role === "student").length, 1);
+  assert.equal(s.messages.at(-1)?.text, "Okay, leaving it.");
+});
+
+test("a 409 keeps the card and drops the rejected message", () => {
+  let s = paused();
+  s = {
+    ...s,
+    phase: "streaming",
+    pendingUserId: "extra",
+    messages: [
+      ...s.messages,
+      { id: "extra", role: "student", text: "another" },
+    ],
+  };
+  s = chatReducer(s, {
+    type: "failed",
+    error: {
+      code: "ACTION_PENDING",
+      message: "busy",
+    },
+  });
+  assert.equal(s.pendingAction?.actionId, "act-1");
+  assert.equal(s.messages.some((m) => m.id === "extra"), false);
+  assert.equal(s.messages[1].actionProposal?.actionId, "act-1");
+  assert.equal(s.phase, "error");
+  assert.equal(s.error?.code, "ACTION_PENDING");
+});
+
+test("a dropped resume keeps the card and does not approve again", () => {
+  let s = chatReducer(paused(), { type: "resume" });
+  s = chatReducer(s, {
+    type: "failed",
+    error: {
+      code: "UNAVAILABLE",
+      message: "The connection dropped before Astra finished.",
+    },
+  });
+  assert.equal(s.pendingAction?.actionId, "act-1");
+  assert.equal(s.resuming, false);
+  assert.equal(s.error?.code, "ACTION_RESUME");
+  assert.match(s.error?.message ?? "", /try again/i);
+  assert.equal(s.messages.filter((m) => m.role === "student").length, 1);
 });
 
 test("rating sets the thumb on one message", () => {

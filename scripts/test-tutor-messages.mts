@@ -52,6 +52,21 @@ test("tier required offers an upgrade, not a retry", () => {
   assert.equal(view.upgrade, true);
 });
 
+test("a pending action is not a retry, it asks for the card", () => {
+  const view = describeError({ code: "ACTION_PENDING", message: "x" }, NOW);
+  assert.equal(view.retry, false);
+  assert.match(view.message, /approve or dismiss/i);
+});
+
+test("a failed confirmation stays on the card instead of resending", () => {
+  const view = describeError(
+    { code: "ACTION_RESUME", message: "Couldn't confirm that change. You can try again." },
+    NOW,
+  );
+  assert.equal(view.retry, false);
+  assert.match(view.message, /try again/i);
+});
+
 test("context not found is not retryable", () => {
   const view = describeError({ code: "CONTEXT_NOT_FOUND", message: "x" }, NOW);
   assert.equal(view.retry, false);

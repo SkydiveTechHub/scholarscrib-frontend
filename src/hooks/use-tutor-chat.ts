@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useReducer, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTutorFeedback } from "@/hooks/api/use-tutor";
 import { queryKeys } from "@/lib/api/query-keys";
@@ -9,7 +10,7 @@ import { endpoints } from "@/lib/api/endpoints";
 import { isApiError } from "@/lib/api/errors";
 import { request } from "@/lib/api/http";
 import { chatReducer, initialChatState } from "@/lib/tutor/chat-state";
-import { streamTutorReply } from "@/lib/tutor/client";
+import { streamTutorAction, streamTutorReply } from "@/lib/tutor/client";
 import type {
   TutorAction,
   TutorMessage,
@@ -43,13 +44,22 @@ export function useTutorChat({
   );
   const abortRef = useRef<AbortController | null>(null);
   const threadIdRef = useRef(initialThreadId);
+  const pendingRef = useRef(state.pendingAction);
+  const phaseRef = useRef(state.phase);
+  const resumingRef = useRef(state.resuming);
+  const resumeLock = useRef(false);
+  pendingRef.current = state.pendingAction;
+  phaseRef.current = state.phase;
+  resumingRef.current = state.resuming;
   const { mutate: sendFeedback } = useTutorFeedback();
   const queryClient = useQueryClient();
+  const router = useRouter();
 
   useEffect(() => () => abortRef.current?.abort(), []);
 
   const run = useCallback(
     async (request: TutorSendRequest) => {
+      if (pendingRef.current || resumeLock.current) return;
       const pendingUserId = crypto.randomUUID();
       dispatch({ type: "send", request, pendingUserId });
       const controller = new AbortController();
@@ -106,10 +116,69 @@ export function useTutorChat({
   );
 
   const retry = useCallback(() => {
+    if (pendingRef.current || resumeLock.current) return;
     if (state.lastRequest) void run(state.lastRequest);
   }, [run, state.lastRequest]);
 
+  const resolve = useCallback(
+    (approved: boolean) => {
+      const proposal = pendingRef.current;
+      const threadId = threadIdRef.current;
+      if (
+        !proposal ||
+        !threadId ||
+        resumeLock.current ||
+        phaseRef.current === "streaming"
+      ) {
+        return;
+      }
+      resumeLock.current = true;
+      dispatch({ type: "resume" });
+      const controller = new AbortController();
+      abortRef.current = controller;
+      void (async () => {
+        try {
+          for await (const event of streamTutorAction(
+            {
+              threadId,
+              approved,
+              actionId: proposal.actionId,
+              args: null,
+            },
+            { signal: controller.signal },
+          )) {
+            if (event.type === "actionExecuted") {
+              router.refresh();
+              void queryClient.invalidateQueries({
+                queryKey: queryKeys.studyPlan.all,
+              });
+            }
+            dispatch({ type: "event", event });
+          }
+        } catch (err) {
+          if (isApiError(err) && err.isAuthFailure) {
+            clearStudentToken();
+            window.location.assign("/login?reason=session");
+            return;
+          }
+          dispatch({
+            type: "failed",
+            error: {
+              code: "ACTION_RESUME",
+              message: "Couldn't confirm that change. You can try again.",
+            },
+          });
+        } finally {
+          resumeLock.current = false;
+        }
+      })();
+    },
+    [queryClient, router],
+  );
+
   const stop = useCallback(() => {
+    // A resume already sent the choice; aborting it would not undo the write.
+    if (resumingRef.current || resumeLock.current) return;
     // Tell the server to cancel generation, and close our end of the stream.
     const threadId = threadIdRef.current;
     if (threadId) {
@@ -140,5 +209,5 @@ export function useTutorChat({
     [sendFeedback],
   );
 
-  return { state, send, retry, stop, edit, rate };
+  return { state, send, retry, stop, edit, rate, resolve };
 }

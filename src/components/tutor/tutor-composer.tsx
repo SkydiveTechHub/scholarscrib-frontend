@@ -8,12 +8,14 @@ import { cn } from "@/lib/utils";
 export function TutorComposer({
   streaming,
   disabled,
+  placeholder = "Ask Astra anything…",
   prefill,
   onSend,
   onStop,
 }: {
   streaming: boolean;
   disabled?: boolean;
+  placeholder?: string;
   /** Loads text into the box (e.g. editing a stopped prompt); `nonce` re-fires. */
   prefill?: { text: string; nonce: number } | null;
   onSend: (text: string) => void;
@@ -58,7 +60,7 @@ export function TutorComposer({
           rows={1}
           maxLength={TUTOR_MAX_CHARS}
           disabled={disabled}
-          placeholder="Ask Astra anything…"
+          placeholder={placeholder}
           aria-label="Message Astra"
           onChange={(e) => {
             setText(e.target.value);

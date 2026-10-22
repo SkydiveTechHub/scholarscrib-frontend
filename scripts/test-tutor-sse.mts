@@ -75,4 +75,66 @@ test("HTTP status maps to tutor error codes", () => {
   assert.equal(errorCodeForStatus(429), "RATE_LIMITED");
   assert.equal(errorCodeForStatus(503), "UNAVAILABLE");
   assert.equal(errorCodeForStatus(404), "CONTEXT_NOT_FOUND");
+  assert.equal(errorCodeForStatus(409), "ACTION_PENDING");
+});
+
+const proposal = {
+  actionId: "act-1",
+  checkpointId: "cp-1",
+  tool: "delete_study_plan",
+  args: null,
+  summary: "Delete your study plan.",
+  destructive: true,
+};
+
+test("decodes a paused action proposal and its done payload", () => {
+  assert.deepEqual(
+    decodeFrame({ event: "actionProposal", data: JSON.stringify(proposal) }),
+    { type: "actionProposal", proposal },
+  );
+  assert.deepEqual(
+    decodeFrame({
+      event: "done",
+      data: JSON.stringify({ ok: true, paused: true, pendingAction: proposal }),
+    }),
+    { type: "done", paused: true, pendingAction: proposal },
+  );
+});
+
+test("an assistant message keeps an action proposal in groundedOn", () => {
+  const event = decodeFrame({
+    event: "assistantMessage",
+    data: JSON.stringify({
+      id: "a",
+      role: "assistant",
+      content: "Shall I delete it?",
+      groundedOn: [
+        { kind: "actionProposal", ...proposal },
+        { sourceType: "lesson", lessonId: "L1", title: "Photosynthesis" },
+      ],
+    }),
+  });
+  assert.equal(event?.type, "assistantMessage");
+  if (event?.type !== "assistantMessage") return;
+  const [card, source] = event.message.groundedOn;
+  assert.equal("kind" in card && card.kind, "actionProposal");
+  assert.equal("title" in source && source.title, "Photosynthesis");
+});
+
+test("action results decode with or without an id", () => {
+  assert.deepEqual(decodeFrame({ event: "actionExecuted", data: "{}" }), {
+    type: "actionExecuted",
+  });
+  assert.deepEqual(
+    decodeFrame({
+      event: "actionRejected",
+      data: JSON.stringify({ actionId: "act-1" }),
+    }),
+    { type: "actionRejected", actionId: "act-1" },
+  );
+});
+
+test("a malformed action proposal is an error, not a dropped frame", () => {
+  const event = decodeFrame({ event: "actionProposal", data: "{}" });
+  assert.equal(event?.type, "error");
 });

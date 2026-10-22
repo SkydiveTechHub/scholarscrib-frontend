@@ -34,6 +34,7 @@ type ErrorBody = ApiErrorBody & { resetsAt?: string };
 export function errorCodeForStatus(status: number): string {
   if (status === 402 || status === 403) return "TIER_REQUIRED";
   if (status === 404) return "CONTEXT_NOT_FOUND";
+  if (status === 409) return "ACTION_PENDING";
   if (status === 429) return "RATE_LIMITED";
   return "UNAVAILABLE";
 }
@@ -54,9 +55,22 @@ function retryAfterSec(res: Response): number | undefined {
   return Number.isFinite(sec) && sec > 0 ? sec : undefined;
 }
 
-export async function* streamTutorReply(
-  args: StreamArgs,
-  opts: StreamOptions = {},
+function fallbackErrorMessage(status: number): string {
+  if (status === 409) {
+    return "Approve or dismiss Astra's suggestion before sending another message.";
+  }
+  if (status === 503) return "Astra is offline right now.";
+  return "Astra isn't available right now.";
+}
+
+/**
+ * POST JSON and read the SSE body. Shared by a chat turn and an action resume,
+ * which is not a new message.
+ */
+async function* postEventStream(
+  path: string,
+  body: unknown,
+  opts: StreamOptions,
 ): AsyncGenerator<TutorStreamEvent> {
   const doFetch = opts.fetchImpl ?? fetch;
   const token =
@@ -68,13 +82,6 @@ export async function* streamTutorReply(
   };
   if (token) headers.Authorization = `Bearer ${token}`;
 
-  const path = args.threadId
-    ? endpoints.tutor.messagesStream(args.threadId)
-    : endpoints.tutor.threadsStream;
-  const body = args.threadId
-    ? { content: args.content }
-    : { ...args.create, firstMessage: args.content };
-
   const res = await doFetch(`${opts.baseUrl ?? API_URL}${path}`, {
     method: "POST",
     headers,
@@ -83,17 +90,13 @@ export async function* streamTutorReply(
   });
 
   if (!res.ok) {
-    const body = await readErrorBody(res);
-    if (res.status === 401) throw new ApiError(401, body);
+    const errorBody = await readErrorBody(res);
+    if (res.status === 401) throw new ApiError(401, errorBody);
     yield {
       type: "error",
-      code: body.code ?? errorCodeForStatus(res.status),
-      message:
-        body.error ??
-        (res.status === 503
-          ? "Astra is offline right now."
-          : "Astra isn't available right now."),
-      resetsAt: body.resetsAt,
+      code: errorBody.code ?? errorCodeForStatus(res.status),
+      message: errorBody.error ?? fallbackErrorMessage(res.status),
+      resetsAt: errorBody.resetsAt,
       retryAfterSec: retryAfterSec(res),
     };
     return;
@@ -132,4 +135,42 @@ export async function* streamTutorReply(
     code: "UNAVAILABLE",
     message: "The connection dropped before Astra finished.",
   };
+}
+
+export async function* streamTutorReply(
+  args: StreamArgs,
+  opts: StreamOptions = {},
+): AsyncGenerator<TutorStreamEvent> {
+  const path = args.threadId
+    ? endpoints.tutor.messagesStream(args.threadId)
+    : endpoints.tutor.threadsStream;
+  const body = args.threadId
+    ? { content: args.content }
+    : { ...args.create, firstMessage: args.content };
+  yield* postEventStream(path, body, opts);
+}
+
+export type ResumeActionArgs = {
+  threadId: string;
+  approved: boolean;
+  actionId: string;
+  /** Replaces the proposed payload. Omit to run what Astra proposed. */
+  args?: unknown;
+};
+
+/** Approve or dismiss a paused card. `stream: true` so the follow-up arrives as SSE. */
+export async function* streamTutorAction(
+  args: ResumeActionArgs,
+  opts: StreamOptions = {},
+): AsyncGenerator<TutorStreamEvent> {
+  yield* postEventStream(
+    endpoints.tutor.actionsResume(args.threadId),
+    {
+      approved: args.approved,
+      actionId: args.actionId,
+      args: args.args === undefined ? null : args.args,
+      stream: true,
+    },
+    opts,
+  );
 }

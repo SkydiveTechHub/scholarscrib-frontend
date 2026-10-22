@@ -1,6 +1,10 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { errorCodeForStatus, streamTutorReply } from "../src/lib/tutor/client";
+import {
+  errorCodeForStatus,
+  streamTutorAction,
+  streamTutorReply,
+} from "../src/lib/tutor/client";
 import type { ApiError } from "../src/lib/api/errors";
 import type { TutorStreamEvent } from "../src/lib/tutor/types";
 
@@ -149,7 +153,82 @@ test("status → code mapping", () => {
   assert.equal(errorCodeForStatus(402), "TIER_REQUIRED");
   assert.equal(errorCodeForStatus(403), "TIER_REQUIRED");
   assert.equal(errorCodeForStatus(404), "CONTEXT_NOT_FOUND");
+  assert.equal(errorCodeForStatus(409), "ACTION_PENDING");
   assert.equal(errorCodeForStatus(429), "RATE_LIMITED");
   assert.equal(errorCodeForStatus(503), "UNAVAILABLE");
   assert.equal(errorCodeForStatus(500), "UNAVAILABLE");
+});
+
+test("resume posts the approval and streams the follow-up", async () => {
+  let seen: { url: string; init: RequestInit } | null = null;
+  const frames =
+    'event: actionExecuted\ndata: {"actionId":"act-1"}\n\n' +
+    'event: assistantMessage\ndata: {"id":"a","role":"assistant","content":"Updated.","groundedOn":[]}\n\n' +
+    'event: done\ndata: {"ok":true}\n\n';
+  const events = await collect(
+    streamTutorAction(
+      { threadId: "t1", approved: true, actionId: "act-1" },
+      {
+        token: "tok",
+        baseUrl: "http://api.test",
+        fetchImpl: async (url, init) => {
+          seen = { url: String(url), init: init as RequestInit };
+          return streamOf(frames);
+        },
+      },
+    ),
+  );
+  assert.ok(seen);
+  const { url, init } = seen as { url: string; init: RequestInit };
+  assert.equal(url, "http://api.test/api/tutor/threads/t1/actions/resume");
+  assert.deepEqual(JSON.parse(String(init.body)), {
+    approved: true,
+    actionId: "act-1",
+    args: null,
+    stream: true,
+  });
+  assert.deepEqual(
+    events.map((e) => e.type),
+    ["actionExecuted", "assistantMessage", "done"],
+  );
+});
+
+test("resume can replace the proposed args", async () => {
+  let body = "";
+  await collect(
+    streamTutorAction(
+      {
+        threadId: "t1",
+        approved: true,
+        actionId: "act-1",
+        args: { dailyHours: 2 },
+      },
+      {
+        token: "t",
+        fetchImpl: async (_url, init) => {
+          body = String(init?.body ?? "");
+          return streamOf('event: done\ndata: {"ok":true}\n\n');
+        },
+      },
+    ),
+  );
+  assert.deepEqual(JSON.parse(body).args, { dailyHours: 2 });
+});
+
+test("409 on resume is ACTION_PENDING", async () => {
+  const events = await collect(
+    streamTutorAction(
+      { threadId: "t1", approved: false, actionId: "act-1" },
+      {
+        token: "t",
+        fetchImpl: async () =>
+          new Response(JSON.stringify({ error: "Pending" }), { status: 409 }),
+      },
+    ),
+  );
+  assert.equal(events[0]?.type, "error");
+  if (events[0]?.type === "error") {
+    assert.equal(events[0].code, "ACTION_PENDING");
+    assert.equal(events[0].message, "Pending");
+  }
 });

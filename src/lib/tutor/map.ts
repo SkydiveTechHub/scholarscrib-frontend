@@ -1,3 +1,4 @@
+import { citationsOnly, proposalFromGrounding } from "./actions";
 import type {
   TutorApiMessage,
   TutorApiThread,
@@ -14,11 +15,13 @@ function uiRole(role: TutorApiMessage["role"]): TutorRole {
 }
 
 export function mapApiMessage(m: TutorApiMessage): TutorMessage {
+  const actionProposal = proposalFromGrounding(m.groundedOn);
   return {
     id: m.id,
     role: uiRole(m.role),
     text: m.content,
-    groundedOn: m.groundedOn ?? [],
+    groundedOn: citationsOnly(m.groundedOn),
+    ...(actionProposal ? { actionProposal } : {}),
   };
 }
 

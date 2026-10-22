@@ -1,5 +1,6 @@
 import { mapApiMessage } from "./map";
 import type {
+  ActionProposal,
   TutorErrorInfo,
   TutorMessage,
   TutorSendRequest,
@@ -18,10 +19,15 @@ export type ChatState = {
   pendingUserId: string | null;
   /** Soft-lock composer after 429 until this epoch ms (from Retry-After). */
   rateLimitedUntil: number | null;
+  /** Set while a confirmation card is waiting. Another message would 409. */
+  pendingAction: ActionProposal | null;
+  /** True from resume until that stream finishes. Not a student message. */
+  resuming: boolean;
 };
 
 export type ChatAction =
   | { type: "send"; request: TutorSendRequest; pendingUserId: string }
+  | { type: "resume" }
   | { type: "event"; event: TutorStreamEvent }
   | { type: "failed"; error: TutorErrorInfo }
   | { type: "stopped" }
@@ -41,7 +47,17 @@ export function initialChatState(messages: TutorMessage[]): ChatState {
     lastRequest: null,
     pendingUserId: null,
     rateLimitedUntil: null,
+    pendingAction: pendingFrom(messages),
+    resuming: false,
   };
+}
+
+function pendingFrom(messages: TutorMessage[]): ActionProposal | null {
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const proposal = messages[i].actionProposal;
+    if (proposal) return proposal;
+  }
+  return null;
 }
 
 function dropDraft(messages: TutorMessage[]): TutorMessage[] {
@@ -50,10 +66,39 @@ function dropDraft(messages: TutorMessage[]): TutorMessage[] {
 
 function dropEmptyDraft(messages: TutorMessage[]): TutorMessage[] {
   const last = messages[messages.length - 1];
-  if (last?.id === DRAFT_ID && last.text === "") {
+  if (last?.id === DRAFT_ID && last.text === "" && !last.actionProposal) {
     return messages.slice(0, -1);
   }
   return messages;
+}
+
+function attachProposal(
+  messages: TutorMessage[],
+  proposal: ActionProposal | null,
+): TutorMessage[] {
+  if (!proposal) return messages;
+  let index = -1;
+  for (let i = messages.length - 1; i >= 0; i--) {
+    if (messages[i].role === "astra") {
+      index = i;
+      break;
+    }
+  }
+  const next = index === -1 ? ensureDraft(messages) : messages;
+  const at = index === -1 ? next.length - 1 : index;
+  return [
+    ...next.slice(0, at),
+    { ...next[at], actionProposal: proposal },
+    ...next.slice(at + 1),
+  ];
+}
+
+function clearProposals(messages: TutorMessage[]): TutorMessage[] {
+  return dropEmptyDraft(
+    messages.map((m) =>
+      m.actionProposal ? { ...m, actionProposal: undefined } : m,
+    ),
+  );
 }
 
 function ensureDraft(messages: TutorMessage[]): TutorMessage[] {
@@ -87,6 +132,7 @@ function applyAssistant(
 export function chatReducer(state: ChatState, action: ChatAction): ChatState {
   switch (action.type) {
     case "send": {
+      if (state.pendingAction || state.resuming) return state;
       const { request, pendingUserId } = action;
       return {
         ...state,
@@ -105,6 +151,14 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
             : state.hintsUsed,
       };
     }
+    case "resume":
+      return {
+        ...state,
+        phase: "streaming",
+        error: null,
+        statusLine: null,
+        resuming: true,
+      };
     case "event": {
       const { event } = action;
       switch (event.type) {
@@ -129,22 +183,65 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
             ...state,
             messages: appendToken(state.messages, event.text),
           };
-        case "assistantMessage":
+        case "assistantMessage": {
+          const mapped = mapApiMessage(event.message);
+          if (state.resuming) {
+            return {
+              ...state,
+              statusLine: null,
+              pendingAction: null,
+              messages: applyAssistant(clearProposals(state.messages), {
+                ...mapped,
+                actionProposal: undefined,
+              }),
+            };
+          }
+          const proposal = mapped.actionProposal ?? state.pendingAction;
           return {
             ...state,
             statusLine: null,
+            pendingAction: proposal,
             messages: applyAssistant(
               state.messages,
-              mapApiMessage(event.message),
+              proposal ? { ...mapped, actionProposal: proposal } : mapped,
             ),
           };
-        case "done":
+        }
+        case "actionProposal":
+          return {
+            ...state,
+            pendingAction: event.proposal,
+            statusLine: null,
+            messages: attachProposal(state.messages, event.proposal),
+          };
+        case "actionExecuted":
+        case "actionRejected":
+          return {
+            ...state,
+            pendingAction: null,
+            statusLine: null,
+            messages: clearProposals(state.messages),
+          };
+        case "done": {
+          if (event.paused) {
+            const proposal = event.pendingAction ?? state.pendingAction;
+            return {
+              ...state,
+              phase: "idle",
+              statusLine: null,
+              resuming: false,
+              pendingAction: proposal,
+              messages: attachProposal(dropEmptyDraft(state.messages), proposal),
+            };
+          }
           return {
             ...state,
             phase: "idle",
             statusLine: null,
+            resuming: false,
             messages: dropEmptyDraft(state.messages),
           };
+        }
         case "error":
           return chatReducer(state, {
             type: "failed",
@@ -159,6 +256,35 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
       return state;
     }
     case "failed": {
+      if (state.resuming) {
+        const settled = state.pendingAction == null;
+        return {
+          ...state,
+          phase: "error",
+          resuming: false,
+          error: {
+            code: "ACTION_RESUME",
+            message: settled
+              ? "Astra's reply was cut off. Your choice was already sent."
+              : "Couldn't confirm that change. You can try again.",
+          },
+          statusLine: null,
+          pendingUserId: null,
+        };
+      }
+      if (action.error.code === "ACTION_PENDING") {
+        const messages = state.pendingUserId
+          ? state.messages.filter((m) => m.id !== state.pendingUserId)
+          : state.messages;
+        return {
+          ...state,
+          phase: "error",
+          error: action.error,
+          statusLine: null,
+          pendingUserId: null,
+          messages: dropEmptyDraft(messages),
+        };
+      }
       const until =
         action.error.code === "RATE_LIMITED" && action.error.retryAfterSec
           ? Date.now() + action.error.retryAfterSec * 1000
@@ -168,6 +294,7 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
       return {
         ...state,
         phase: "error",
+        resuming: false,
         error: action.error,
         statusLine: null,
         pendingUserId: null,
@@ -189,6 +316,7 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
         ...state,
         phase: "idle",
         statusLine: null,
+        resuming: false,
         pendingUserId: null,
         messages: [
           ...kept.map((m, i) =>
@@ -212,6 +340,8 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
         statusLine: null,
         error: null,
         pendingUserId: null,
+        resuming: false,
+        pendingAction: pendingFrom(action.messages),
         messages: action.messages,
       };
     case "rate":

@@ -43,6 +43,23 @@ export type GroundedOn = {
   excerpt?: string;
 };
 
+/** A study-plan change Astra will not run until the student approves it. */
+export type ActionProposal = {
+  actionId: string;
+  checkpointId: string;
+  tool: string;
+  args: unknown;
+  summary: string;
+  destructive: boolean;
+};
+
+/** Same proposal, stored on the assistant message so a reload can redraw the card. */
+export type ActionProposalGrounding = ActionProposal & {
+  kind: "actionProposal";
+};
+
+export type TutorGrounding = GroundedOn | ActionProposalGrounding;
+
 export type TutorApiRole = "user" | "assistant" | "system";
 
 /** Wire shape from the tutor API. */
@@ -50,7 +67,7 @@ export type TutorApiMessage = {
   id: string;
   role: TutorApiRole;
   content: string;
-  groundedOn: GroundedOn[];
+  groundedOn: TutorGrounding[];
   createdAt: string | null;
 };
 
@@ -103,6 +120,8 @@ export type TutorMessage = {
   role: TutorRole;
   text: string;
   groundedOn?: GroundedOn[];
+  /** Set while Astra is waiting for approve or dismiss. Not a new chat turn. */
+  actionProposal?: ActionProposal;
   rating?: "up" | "down" | null;
   suggested?: TutorAction[];
   /** Set locally when the student stopped this turn mid-reply. */
@@ -141,7 +160,15 @@ export type TutorStreamEvent =
   | { type: "status"; status: TutorStatusEvent }
   | { type: "token"; text: string }
   | { type: "assistantMessage"; message: TutorApiMessage }
-  | { type: "done" }
+  | { type: "actionProposal"; proposal: ActionProposal }
+  | { type: "actionExecuted"; actionId?: string }
+  | { type: "actionRejected"; actionId?: string }
+  | {
+      type: "done";
+      /** True when the turn is parked on a confirmation card. */
+      paused?: boolean;
+      pendingAction?: ActionProposal | null;
+    }
   | ({ type: "error" } & TutorErrorInfo);
 
 export type TutorSendRequest = {
