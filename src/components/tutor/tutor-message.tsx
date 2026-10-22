@@ -16,6 +16,37 @@ const SUGGESTION_LABELS: Record<TutorAction, string> = {
   explain_differently: "Explain differently",
 };
 
+/** Three bouncing dots, like a chat app's "typing…". */
+function TypingDots() {
+  return (
+    <span
+      className="flex h-5 items-center gap-1"
+      role="status"
+      aria-label="Astra is typing"
+    >
+      {[0, 1, 2].map((i) => (
+        <span
+          key={i}
+          className="h-2 w-2 rounded-full bg-muted motion-safe:animate-bounce motion-reduce:opacity-60"
+          style={{ animationDelay: `${i * 160}ms`, animationDuration: "1s" }}
+        />
+      ))}
+    </span>
+  );
+}
+
+/** Standalone typing bubble, shown before Astra's first word arrives. */
+export function TypingBubble() {
+  return (
+    <div className="flex items-start gap-2.5">
+      <AstraAvatar />
+      <div className="rounded-2xl rounded-tl-md bg-secondary px-4 py-3">
+        <TypingDots />
+      </div>
+    </div>
+  );
+}
+
 export function TutorMessageView({
   message,
   streaming,
@@ -55,7 +86,8 @@ export function TutorMessageView({
 
   if (message.role === "system") return null;
 
-  const waiting = streaming && message.text === "";
+  // An empty draft is covered by the conversation's typing bubble.
+  if (streaming && message.text === "") return null;
   const finished = !streaming && message.text !== "" && !message.stopped;
   const sources = message.groundedOn?.filter(Boolean) ?? [];
 
@@ -64,23 +96,7 @@ export function TutorMessageView({
       <AstraAvatar />
       <div className="min-w-0 max-w-[85%]">
         <div className="rounded-2xl rounded-tl-md bg-secondary px-3.5 py-2.5 text-sm leading-relaxed text-foreground">
-          {waiting ? (
-            <span
-              className="flex items-center gap-1 py-1"
-              role="status"
-              aria-label="Astra is typing"
-            >
-              {[0, 1, 2].map((i) => (
-                <span
-                  key={i}
-                  className="h-1.5 w-1.5 rounded-full bg-muted motion-safe:animate-pulse"
-                  style={{ animationDelay: `${i * 150}ms` }}
-                />
-              ))}
-            </span>
-          ) : (
-            <TutorMarkdown content={message.text} />
-          )}
+          <TutorMarkdown content={message.text} streaming={streaming} />
         </div>
 
         {message.stopped && (

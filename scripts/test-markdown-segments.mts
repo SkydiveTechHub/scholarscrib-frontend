@@ -144,3 +144,26 @@ test("a formula beside a label is still prose, not display maths", () => {
   assert.equal(segments.length, 1);
   assert.equal(segments[0].kind, "p");
 });
+
+test("any heading level becomes a heading", () => {
+  for (const hashes of ["#", "##", "###", "####", "#####"]) {
+    const segments = segmentMarkdown(`${hashes} Key points`);
+    assert.deepEqual(segments, [{ kind: "heading", text: "Key points" }]);
+  }
+});
+
+test("a standalone image line becomes an image segment", () => {
+  assert.deepEqual(segmentMarkdown("![Cell diagram](https://cdn.example.com/cell.png)"), [
+    { kind: "image", alt: "Cell diagram", src: "https://cdn.example.com/cell.png" },
+  ]);
+  assert.deepEqual(segmentMarkdown('![x](/media/a.png "title")'), [
+    { kind: "image", alt: "x", src: "/media/a.png" },
+  ]);
+});
+
+test("unsafe image URLs stay as plain text", () => {
+  for (const src of ["javascript:alert(1)", "data:image/png;base64,AAAA", "//evil.example/x.png"]) {
+    const segments = segmentMarkdown(`![x](${src})`);
+    assert.equal(segments[0].kind, "p");
+  }
+});

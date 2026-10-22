@@ -31,12 +31,15 @@ function when(iso: string | null): string {
 export function TutorHistory({
   currentThreadId,
   resumingId,
+  failed,
   onResume,
   onNew,
 }: {
   currentThreadId: string | null;
   /** Thread being loaded right now, so its row can show progress. */
   resumingId: string | null;
+  /** The last open/new attempt failed. */
+  failed?: boolean;
   onResume: (threadId: string) => void;
   onNew: () => void;
 }) {
@@ -54,6 +57,15 @@ export function TutorHistory({
           New chat
         </button>
       </div>
+
+      {failed && (
+        <p
+          role="alert"
+          className="border-b border-danger/30 bg-danger-soft px-4 py-2 text-sm text-foreground"
+        >
+          Couldn&apos;t open that chat. Check your connection and try again.
+        </p>
+      )}
 
       <div className="flex-1 overflow-y-auto">
         {history.isPending ? (

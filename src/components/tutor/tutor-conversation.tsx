@@ -13,7 +13,7 @@ import type {
 import { AstraAvatar } from "./astra-avatar";
 import { TutorChips } from "./tutor-chips";
 import { TutorComposer } from "./tutor-composer";
-import { TutorMessageView } from "./tutor-message";
+import { TutorMessageView, TypingBubble } from "./tutor-message";
 
 export function TutorConversation({
   threadId,
@@ -53,6 +53,11 @@ export function TutorConversation({
 
   const pick = (chip: Chip) => send({ text: chip.text, action: chip.action });
   const lastIndex = state.messages.length - 1;
+  // Until Astra's first word lands, show a typing bubble (a draft with text
+  // draws its own message).
+  const lastMessage = state.messages[lastIndex];
+  const showTyping =
+    streaming && !(lastMessage?.role === "astra" && lastMessage.text !== "");
 
   return (
     <>
@@ -97,6 +102,8 @@ export function TutorConversation({
           />
         ))}
 
+        {showTyping && <TypingBubble />}
+
         {state.phase === "error" && state.error && (
           <ErrorNotice error={state.error} onRetry={retry} />
         )}
@@ -113,12 +120,6 @@ export function TutorConversation({
 
       {chips.length > 0 && !streaming && !rateLimited && (
         <TutorChips chips={chips} onPick={pick} />
-      )}
-
-      {streaming && state.statusLine && (
-        <p className="px-4 pb-1 text-xs text-muted" role="status">
-          {state.statusLine}
-        </p>
       )}
 
       <TutorComposer

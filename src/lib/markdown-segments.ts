@@ -12,11 +12,17 @@ export type Segment =
   | { kind: "ol"; items: string[] }
   | { kind: "table"; header: string[]; rows: string[][] }
   | { kind: "math"; tex: string }
+  | { kind: "image"; alt: string; src: string }
   | { kind: "rule" };
 
 const RULE_RE = /^\s*(-{3,}|\*{3,}|_{3,})\s*$/;
 const UL_RE = /^\s*[-*]\s+(.*)$/;
 const OL_RE = /^\s*\d+[.)]\s+(.*)$/;
+// A line that is only `![alt](url)`. The URL must be http(s) or site-relative
+// (never `javascript:`, `data:` or protocol-relative `//host`): this text is
+// untrusted, and the URL ends up in an <img src>.
+const IMAGE_RE =
+  /^\s*!\[([^\]]*)\]\(\s*((?:https?:\/\/|\/(?!\/))[^\s)]+)(?:\s+"[^"]*")?\s*\)\s*$/;
 const DELIMITER_RE = /^\s*\|[\s:|-]+\|\s*$/;
 
 // Bold first so `**x**` is never consumed by the italic alternative. The
@@ -103,9 +109,10 @@ function readTable(lines: string[]): Segment | null {
   };
 }
 
-type LineKind = "rule" | "ul" | "ol" | "table" | "text";
+type LineKind = "rule" | "ul" | "ol" | "table" | "image" | "text";
 
 function lineKind(line: string): LineKind {
+  if (IMAGE_RE.test(line)) return "image";
   if (RULE_RE.test(line)) return "rule";
   if (UL_RE.test(line)) return "ul";
   if (OL_RE.test(line)) return "ol";
@@ -143,6 +150,12 @@ export function segmentMarkdown(content: string): Segment[] {
         case "rule":
           run.forEach(() => segments.push({ kind: "rule" }));
           break;
+        case "image":
+          for (const line of run) {
+            const m = IMAGE_RE.exec(line) as RegExpExecArray;
+            segments.push({ kind: "image", alt: m[1], src: m[2] });
+          }
+          break;
         case "ul":
           segments.push({
             kind: "ul",
@@ -163,7 +176,7 @@ export function segmentMarkdown(content: string): Segment[] {
         }
         default: {
           const text = run.join("\n");
-          const heading = /^#{2,4}\s+(.*)$/.exec(text.trim());
+          const heading = /^#{1,6}\s+(.*)$/.exec(text.trim());
           if (heading && run.length === 1) segments.push({ kind: "heading", text: heading[1] });
           else segments.push({ kind: "p", text });
         }

@@ -131,22 +131,15 @@ export function useTutorHistory(enabled: boolean) {
   });
 }
 
-/** Make `thread` the open conversation for this context. */
-function adopt(
-  queryClient: ReturnType<typeof useQueryClient>,
-  key: string,
-  thread: TutorThread,
-) {
-  useTutorStore.getState().rememberThread(key, thread.threadId);
-  queryClient.setQueryData(queryKeys.tutor.thread(key), thread);
-}
-
-/** Reopen a past conversation in the panel. */
+/**
+ * Reopen a past conversation. The caller shows the returned thread; we only
+ * remember it so closing and reopening the panel resumes the same one.
+ */
 export function useResumeTutorThread(contextKey: string) {
-  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (threadId: string) => fetchThread(threadId),
-    onSuccess: (thread) => adopt(queryClient, contextKey, thread),
+    onSuccess: (thread) =>
+      useTutorStore.getState().rememberThread(contextKey, thread.threadId),
   });
 }
 
@@ -157,7 +150,7 @@ export function useNewTutorThread(context: TutorContext) {
   return useMutation({
     mutationFn: () => createThread(context),
     onSuccess: (thread) => {
-      adopt(queryClient, key, thread);
+      useTutorStore.getState().rememberThread(key, thread.threadId);
       void queryClient.invalidateQueries({
         queryKey: queryKeys.tutor.history(),
       });

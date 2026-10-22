@@ -8,11 +8,9 @@ import {
   LuMaximize2,
   LuMinimize2,
   LuSquarePen,
-  LuTrash2,
   LuX,
 } from "react-icons/lu";
 import {
-  useClearTutorThread,
   useNewTutorThread,
   useResumeTutorThread,
   useTutorThread,
@@ -21,6 +19,7 @@ import { isApiError } from "@/lib/api/errors";
 import { contextKey } from "@/lib/tutor/context";
 import { trapTarget } from "@/lib/tutor/focus-trap";
 import { can, type SubscriptionTier } from "@/lib/subscription";
+import type { TutorThread } from "@/lib/tutor/types";
 import { selectActiveEntry, useTutorStore } from "@/stores/tutor-store";
 import { cn } from "@/lib/utils";
 import { AstraAvatar } from "./astra-avatar";
@@ -56,10 +55,20 @@ export default function TutorPanel({ tier }: { tier: SubscriptionTier }) {
 
   const entitled = can(tier, "aiTutor");
   const thread = useTutorThread(entry.context, entitled);
-  const clearThread = useClearTutorThread();
   const key = contextKey(entry.context);
   const resume = useResumeTutorThread(key);
   const startNew = useNewTutorThread(entry.context);
+  // A thread the student picked (from history, or "New chat") wins over the
+  // context's own thread. It is local state, not a cache write, so switching
+  // can't race the thread query. It only applies to the context it was
+  // picked in.
+  const [picked, setPicked] = useState<{
+    key: string;
+    thread: TutorThread;
+  } | null>(null);
+  const active =
+    picked && picked.key === key ? picked.thread : (thread.data ?? null);
+  const switchError = resume.isError || startNew.isError;
 
   const desktop = useIsDesktop();
 
@@ -101,6 +110,11 @@ export default function TutorPanel({ tier }: { tier: SubscriptionTier }) {
 
   const switching = resume.isPending || startNew.isPending;
 
+  function open(thread: TutorThread) {
+    setPicked({ key, thread });
+    setView("chat");
+  }
+
   const showContext = entry.context.type !== "general" && entry.label;
   const err = thread.error;
   const forbidden = isApiError(err) && err.isForbidden;
@@ -131,26 +145,22 @@ export default function TutorPanel({ tier }: { tier: SubscriptionTier }) {
           className="mx-auto mt-2 h-1 w-10 rounded-full bg-border lg:hidden"
           aria-hidden
         />
-        <header className="flex items-center gap-3 border-b border-border px-4 py-3">
-          <AstraAvatar className="h-9 w-9" />
+        <header className="flex items-center gap-2 border-b border-border px-4 py-3">
+          <AstraAvatar className="mr-1 h-9 w-9 flex-shrink-0" />
           <div className="min-w-0 flex-1">
-            <h2 className="text-sm font-bold leading-tight text-foreground">
+            <h2 className="truncate text-sm font-bold leading-tight text-foreground">
               Astra
             </h2>
-            <p className="text-xs text-muted">Your study buddy</p>
+            <p className="truncate text-xs text-muted">Your study buddy</p>
           </div>
           {entitled && !forbidden && (
             <>
               <button
                 type="button"
-                onClick={() =>
-                  startNew.mutate(undefined, {
-                    onSuccess: () => setView("chat"),
-                  })
-                }
+                onClick={() => startNew.mutate(undefined, { onSuccess: open })}
                 disabled={switching}
                 aria-label="New chat"
-                className="flex h-11 w-11 items-center justify-center rounded-full text-muted hover:bg-secondary"
+                className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full text-muted hover:bg-secondary"
               >
                 <LuSquarePen className="h-4 w-4" />
               </button>
@@ -161,7 +171,7 @@ export default function TutorPanel({ tier }: { tier: SubscriptionTier }) {
                 }
                 aria-label={view === "history" ? "Back to chat" : "Chat history"}
                 aria-pressed={view === "history"}
-                className="flex h-11 w-11 items-center justify-center rounded-full text-muted hover:bg-secondary"
+                className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full text-muted hover:bg-secondary"
               >
                 {view === "history" ? (
                   <LuArrowLeft className="h-4 w-4" />
@@ -170,22 +180,6 @@ export default function TutorPanel({ tier }: { tier: SubscriptionTier }) {
                 )}
               </button>
             </>
-          )}
-          {thread.data && entitled && view === "chat" && (
-            <button
-              type="button"
-              onClick={() =>
-                clearThread.mutate({
-                  threadId: thread.data.threadId,
-                  contextKey: key,
-                })
-              }
-              disabled={clearThread.isPending}
-              aria-label="Clear chat"
-              className="flex h-11 w-11 items-center justify-center rounded-full text-muted hover:bg-secondary"
-            >
-              <LuTrash2 className="h-4 w-4" />
-            </button>
           )}
           <button
             type="button"
@@ -203,7 +197,7 @@ export default function TutorPanel({ tier }: { tier: SubscriptionTier }) {
             type="button"
             onClick={closePanel}
             aria-label="Close Astra"
-            className="flex h-11 w-11 items-center justify-center rounded-full text-muted hover:bg-secondary"
+            className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full text-muted hover:bg-secondary"
           >
             <LuX className="h-5 w-5" />
           </button>
@@ -231,13 +225,24 @@ export default function TutorPanel({ tier }: { tier: SubscriptionTier }) {
           </div>
         ) : view === "history" ? (
           <TutorHistory
-            currentThreadId={thread.data?.threadId ?? null}
+            currentThreadId={active?.threadId ?? null}
             resumingId={resume.isPending ? (resume.variables ?? null) : null}
-            onResume={(id) =>
-              resume.mutate(id, { onSuccess: () => setView("chat") })
-            }
-            onNew={() =>
-              startNew.mutate(undefined, { onSuccess: () => setView("chat") })
+            failed={switchError}
+            onResume={(id) => resume.mutate(id, { onSuccess: open })}
+            onNew={() => startNew.mutate(undefined, { onSuccess: open })}
+          />
+        ) : active ? (
+          <TutorConversation
+            key={active.threadId}
+            threadId={active.threadId}
+            context={entry.context}
+            initialMessages={active.messages}
+            systemBanner={
+              active.systemBanner ??
+              (entry.context.type === "question" &&
+              entry.context.wrongAnswerContext
+                ? `Reviewing your answer: ${entry.context.wrongAnswerContext}`
+                : null)
             }
           />
         ) : thread.isPending ? (
@@ -248,7 +253,7 @@ export default function TutorPanel({ tier }: { tier: SubscriptionTier }) {
           <div className="flex-1 p-4 text-sm text-foreground" role="status">
             <p>Astra is offline right now. Please try again later.</p>
           </div>
-        ) : thread.isError || !thread.data ? (
+        ) : (
           <div className="flex-1 p-4 text-sm text-foreground" role="alert">
             Couldn&apos;t reach Astra.{" "}
             <button
@@ -267,20 +272,6 @@ export default function TutorPanel({ tier }: { tier: SubscriptionTier }) {
               </Link>
             )}
           </div>
-        ) : (
-          <TutorConversation
-            key={thread.data.threadId}
-            threadId={thread.data.threadId}
-            context={entry.context}
-            initialMessages={thread.data.messages}
-            systemBanner={
-              thread.data.systemBanner ??
-              (entry.context.type === "question" &&
-              entry.context.wrongAnswerContext
-                ? `Reviewing your answer: ${entry.context.wrongAnswerContext}`
-                : null)
-            }
-          />
         )}
       </aside>
     </>

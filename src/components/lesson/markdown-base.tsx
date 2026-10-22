@@ -98,6 +98,19 @@ export function MarkdownBase({
           case "rule":
             return <hr key={idx} className="border-border" />;
 
+          case "image":
+            return (
+              // eslint-disable-next-line @next/next/no-img-element -- remote URL from reply text; dimensions unknown, so next/image doesn't fit
+              <img
+                key={idx}
+                src={segment.src}
+                alt={segment.alt}
+                loading="lazy"
+                referrerPolicy="no-referrer"
+                className="h-auto max-w-full rounded-xl"
+              />
+            );
+
           case "math":
             // Display formulas can be wider than the column on a phone, so the
             // overflow scroller is not optional -- without it a long fraction
