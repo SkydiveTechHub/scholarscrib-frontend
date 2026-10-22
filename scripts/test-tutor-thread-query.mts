@@ -11,3 +11,12 @@ test("a thread is never served stale from cache when the panel reopens", () => {
   assert.equal(options.gcTime, 0);
   assert.deepEqual(options.queryKey, ["tutor", "thread", "lesson:L1"]);
 });
+
+// Opening the panel (or pressing "New chat") must not register a session: with
+// nothing to resume the query settles on null, and the thread is created only
+// when the student sends their first message.
+test("opening with no thread to resume creates nothing", async () => {
+  const options = tutorThreadQuery({ type: "general" }, undefined);
+  const queryFn = options.queryFn as () => Promise<unknown>;
+  assert.equal(await queryFn(), null);
+});

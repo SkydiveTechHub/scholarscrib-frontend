@@ -1,7 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useReducer, useRef } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useTutorFeedback } from "@/hooks/api/use-tutor";
+import { queryKeys } from "@/lib/api/query-keys";
 import { clearStudentToken } from "@/lib/api/client";
 import { endpoints } from "@/lib/api/endpoints";
 import { isApiError } from "@/lib/api/errors";
@@ -12,19 +14,27 @@ import type {
   TutorAction,
   TutorMessage,
   TutorSendRequest,
+  TutorThreadCreateBody,
 } from "@/lib/tutor/types";
 
 /**
- * Owns one open conversation. Mount it only once the thread has loaded and
- * `key` the parent by thread, so the reducer starts from the server's messages
- * and is replaced -- never patched -- when the context changes.
+ * Owns one open conversation. Mount it only once the thread has loaded (or is
+ * known not to exist yet) and `key` the parent by conversation, so the reducer
+ * starts from the server's messages and is replaced -- never patched -- when
+ * the context changes. A new conversation creates its thread on first send.
  */
 export function useTutorChat({
-  threadId,
+  threadId: initialThreadId,
   initialMessages,
+  createBody,
+  onThreadStarted,
 }: {
-  threadId: string;
+  /** Null for a new conversation: the server creates the thread with the first message. */
+  threadId: string | null;
   initialMessages: TutorMessage[];
+  /** Scope for the thread a new conversation will create. */
+  createBody: TutorThreadCreateBody;
+  onThreadStarted: (threadId: string) => void;
 }) {
   const [state, dispatch] = useReducer(
     chatReducer,
@@ -32,7 +42,9 @@ export function useTutorChat({
     initialChatState,
   );
   const abortRef = useRef<AbortController | null>(null);
+  const threadIdRef = useRef(initialThreadId);
   const { mutate: sendFeedback } = useTutorFeedback();
+  const queryClient = useQueryClient();
 
   useEffect(() => () => abortRef.current?.abort(), []);
 
@@ -44,11 +56,24 @@ export function useTutorChat({
       abortRef.current = controller;
       try {
         for await (const event of streamTutorReply(
-          { threadId, content: request.text },
+          {
+            threadId: threadIdRef.current,
+            create: createBody,
+            content: request.text,
+          },
           { signal: controller.signal },
         )) {
+          if (event.type === "streamStarted" && !threadIdRef.current) {
+            threadIdRef.current = event.threadId;
+            onThreadStarted(event.threadId);
+          }
           dispatch({ type: "event", event });
         }
+        // The server names the thread when the first message lands, so the
+        // history list fetched at creation still has the placeholder title.
+        void queryClient.invalidateQueries({
+          queryKey: queryKeys.tutor.history(),
+        });
       } catch (err) {
         if (controller.signal.aborted) {
           // The student stopped it. Keep the turn on screen rather than
@@ -70,7 +95,7 @@ export function useTutorChat({
         }
       }
     },
-    [threadId],
+    [createBody, onThreadStarted, queryClient],
   );
 
   const send = useCallback(
@@ -86,12 +111,15 @@ export function useTutorChat({
 
   const stop = useCallback(() => {
     // Tell the server to cancel generation, and close our end of the stream.
-    request({
-      method: "POST",
-      url: endpoints.tutor.messagesStop(threadId),
-    }).catch(() => {});
+    const threadId = threadIdRef.current;
+    if (threadId) {
+      request({
+        method: "POST",
+        url: endpoints.tutor.messagesStop(threadId),
+      }).catch(() => {});
+    }
     abortRef.current?.abort();
-  }, [threadId]);
+  }, []);
 
   /** Drops a stopped turn and returns its text for the composer. */
   const edit = useCallback(

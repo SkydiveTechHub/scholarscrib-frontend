@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useTutorChat } from "@/hooks/use-tutor-chat";
+import { createBodyFor } from "@/lib/tutor/context";
 import { ladderFor, startersFor, type Chip } from "@/lib/tutor/chips";
 import { describeError, exhaustedMessage } from "@/lib/tutor/messages";
 import type {
@@ -20,15 +21,20 @@ export function TutorConversation({
   context,
   initialMessages,
   systemBanner,
+  onThreadStarted,
 }: {
-  threadId: string;
+  threadId: string | null;
   context: TutorContext;
   initialMessages: TutorMessage[];
   systemBanner?: string | null;
+  onThreadStarted: (threadId: string) => void;
 }) {
+  const createBody = useMemo(() => createBodyFor(context), [context]);
   const { state, send, retry, stop, edit, rate } = useTutorChat({
     threadId,
     initialMessages,
+    createBody,
+    onThreadStarted,
   });
   const [prefill, setPrefill] = useState<{
     text: string;

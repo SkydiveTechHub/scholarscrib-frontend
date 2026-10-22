@@ -11,7 +11,7 @@ import {
   LuX,
 } from "react-icons/lu";
 import {
-  useNewTutorThread,
+  useRememberStartedThread,
   useResumeTutorThread,
   useTutorThread,
 } from "@/hooks/api/use-tutor";
@@ -30,16 +30,19 @@ import { TutorLocked } from "./tutor-locked";
 const FOCUSABLE =
   'button, [href], textarea, input, [tabindex]:not([tabindex="-1"])';
 
-const DESKTOP = "(min-width: 1024px)";
+// Docked beside the page (non-modal) only where the page still has room next
+// to the sidebar; below this the panel is a modal sheet/drawer over the page.
+// Keep in step with min-[1440px] here and in tutor-shell.
+const DOCKED = "(min-width: 1440px)";
 
-function useIsDesktop(): boolean {
+function useIsDocked(): boolean {
   return useSyncExternalStore(
     (notify) => {
-      const mq = window.matchMedia(DESKTOP);
+      const mq = window.matchMedia(DOCKED);
       mq.addEventListener("change", notify);
       return () => mq.removeEventListener("change", notify);
     },
-    () => window.matchMedia(DESKTOP).matches,
+    () => window.matchMedia(DOCKED).matches,
     () => false,
   );
 }
@@ -57,25 +60,31 @@ export default function TutorPanel({ tier }: { tier: SubscriptionTier }) {
   const thread = useTutorThread(entry.context, entitled);
   const key = contextKey(entry.context);
   const resume = useResumeTutorThread(key);
-  const startNew = useNewTutorThread(entry.context);
-  // A thread the student picked (from history, or "New chat") wins over the
-  // context's own thread. It is local state, not a cache write, so switching
-  // can't race the thread query. It only applies to the context it was
-  // picked in.
+  const onThreadStarted = useRememberStartedThread(entry.context);
+  const forgetThread = useTutorStore((s) => s.forgetThread);
+  const currentThreadId = useTutorStore((s) => s.threadIds[key] ?? null);
+  // A thread the student picked (from history), or a blank "New chat", wins
+  // over the context's own thread. It is local state, not a cache write, so
+  // switching can't race the thread query. It only applies to the context it
+  // was picked in. `draft` keys a blank chat so a second "New chat" resets it.
   const [picked, setPicked] = useState<{
     key: string;
-    thread: TutorThread;
+    thread: TutorThread | null;
+    draft: number;
   } | null>(null);
-  const active =
-    picked && picked.key === key ? picked.thread : (thread.data ?? null);
-  const switchError = resume.isError || startNew.isError;
+  const pickedHere = picked && picked.key === key ? picked : null;
+  const active = pickedHere ? pickedHere.thread : (thread.data ?? null);
+  // A new conversation has no thread yet; it is created on the first send.
+  const conversationKey =
+    active?.threadId ?? `new:${key}:${pickedHere?.draft ?? 0}`;
+  const switchError = resume.isError;
 
-  const desktop = useIsDesktop();
+  const docked = useIsDocked();
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.key === "Escape") closePanel();
-      if (e.key !== "Tab" || desktop || !ref.current) return;
+      if (e.key !== "Tab" || docked || !ref.current) return;
       const nodes = Array.from(
         ref.current.querySelectorAll<HTMLElement>(FOCUSABLE),
       ).filter((n) => !n.hasAttribute("disabled"));
@@ -87,16 +96,16 @@ export default function TutorPanel({ tier }: { tier: SubscriptionTier }) {
     }
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, [closePanel, desktop]);
+  }, [closePanel, docked]);
 
   useEffect(() => {
-    if (desktop) return;
+    if (docked) return;
     const previous = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => {
       document.body.style.overflow = previous;
     };
-  }, [desktop]);
+  }, [docked]);
 
   useEffect(() => {
     ref.current?.focus();
@@ -108,10 +117,18 @@ export default function TutorPanel({ tier }: { tier: SubscriptionTier }) {
   // Picking a context elsewhere (e.g. "Explain this") should land on the chat.
   useEffect(() => setView("chat"), [key]);
 
-  const switching = resume.isPending || startNew.isPending;
+  const switching = resume.isPending;
 
   function open(thread: TutorThread) {
-    setPicked({ key, thread });
+    setPicked({ key, thread, draft: 0 });
+    setView("chat");
+  }
+
+  // Nothing is registered until the student sends a message. Forgetting the
+  // old thread means closing and reopening comes back to this blank chat.
+  function startNew() {
+    forgetThread(key);
+    setPicked({ key, thread: null, draft: Date.now() });
     setView("chat");
   }
 
@@ -124,14 +141,14 @@ export default function TutorPanel({ tier }: { tier: SubscriptionTier }) {
   return (
     <>
       <div
-        className="fixed inset-0 z-40 bg-black/40 lg:hidden"
+        className="fixed inset-0 z-40 bg-black/40 min-[1440px]:hidden"
         onClick={closePanel}
         aria-hidden
       />
       <aside
         ref={ref}
         role="dialog"
-        aria-modal={!desktop}
+        aria-modal={!docked}
         aria-label="Astra, your study buddy"
         tabIndex={-1}
         className={cn(
@@ -157,7 +174,7 @@ export default function TutorPanel({ tier }: { tier: SubscriptionTier }) {
             <>
               <button
                 type="button"
-                onClick={() => startNew.mutate(undefined, { onSuccess: open })}
+                onClick={startNew}
                 disabled={switching}
                 aria-label="New chat"
                 className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full text-muted hover:bg-secondary"
@@ -225,20 +242,21 @@ export default function TutorPanel({ tier }: { tier: SubscriptionTier }) {
           </div>
         ) : view === "history" ? (
           <TutorHistory
-            currentThreadId={active?.threadId ?? null}
+            currentThreadId={currentThreadId}
             resumingId={resume.isPending ? (resume.variables ?? null) : null}
             failed={switchError}
             onResume={(id) => resume.mutate(id, { onSuccess: open })}
-            onNew={() => startNew.mutate(undefined, { onSuccess: open })}
+            onNew={startNew}
           />
-        ) : active ? (
+        ) : pickedHere || thread.isSuccess ? (
           <TutorConversation
-            key={active.threadId}
-            threadId={active.threadId}
+            key={conversationKey}
+            threadId={active?.threadId ?? null}
             context={entry.context}
-            initialMessages={active.messages}
+            initialMessages={active?.messages ?? []}
+            onThreadStarted={onThreadStarted}
             systemBanner={
-              active.systemBanner ??
+              active?.systemBanner ??
               (entry.context.type === "question" &&
               entry.context.wrongAnswerContext
                 ? `Reviewing your answer: ${entry.context.wrongAnswerContext}`

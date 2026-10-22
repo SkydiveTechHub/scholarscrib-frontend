@@ -24,6 +24,10 @@ export function TutorShell({
   const closePanel = useTutorStore((s) => s.closePanel);
   const examActive = useExamActive();
 
+  useEffect(() => {
+    void useTutorStore.persist.rehydrate();
+  }, []);
+
   // Never available mid-exam: close it if an exam starts while it is open.
   useEffect(() => {
     if (examActive) closePanel();
@@ -33,8 +37,10 @@ export function TutorShell({
 
   return (
     <>
-      {/* Desktop: content makes room for the dock instead of sitting under it. */}
-      <div className={cn(visible && "lg:pr-[400px]")}>{children}</div>
+      {/* Wide screens: content makes room for the dock instead of sitting
+          under it. Narrower desktops can't spare 400px beside the sidebar, so
+          the panel overlays the page there (see DOCKED in tutor-panel). */}
+      <div className={cn(visible && "min-[1440px]:pr-[400px]")}>{children}</div>
 
       {!visible && !examActive && (
         <button

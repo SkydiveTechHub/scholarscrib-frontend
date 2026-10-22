@@ -29,18 +29,27 @@ export function systemBannerFrom(messages: TutorApiMessage[]): string | null {
   return system.content;
 }
 
+/** Title the server gives a thread until the first message names it. */
+const PLACEHOLDER_TITLE = "New chat";
+
+function realTitle(title: string | null): string | null {
+  const t = title?.trim();
+  return t && t !== PLACEHOLDER_TITLE ? t : null;
+}
+
 /**
- * History rows for the list. Threads that were created but never used (no
- * title, never updated) are left out so "New chat" doesn't litter the list.
+ * History rows for the list. Threads that were created but never used (still
+ * on the server's placeholder title) are left out so "New chat" doesn't litter
+ * the list.
  */
 export function mapApiThreadSummaries(
   threads: TutorApiThread[],
 ): TutorThreadSummary[] {
   return threads
-    .filter((t) => !t.archived && (t.title || t.updatedAt !== t.createdAt))
+    .filter((t) => !t.archived && realTitle(t.title))
     .map((t) => ({
       threadId: t.id,
-      title: t.title?.trim() || "Untitled chat",
+      title: realTitle(t.title) ?? PLACEHOLDER_TITLE,
       scope: t.lessonId
         ? "lesson"
         : t.questionId

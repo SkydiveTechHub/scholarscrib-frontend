@@ -42,7 +42,15 @@ const MALFORMED: TutorStreamEvent = {
   message: "Astra's reply got scrambled. Please try again.",
 };
 
+const startedPayload = z
+  .object({
+    threadId: z.string(),
+    threadTitle: z.string().nullable().optional(),
+  })
+  .passthrough();
+
 const KNOWN = [
+  "streamStarted",
   "userMessage",
   "status",
   "token",
@@ -77,6 +85,16 @@ export function decodeFrame(frame: {
   }
 
   switch (frame.event) {
+    case "streamStarted": {
+      const r = startedPayload.safeParse(json);
+      return r.success
+        ? {
+            type: "streamStarted",
+            threadId: r.data.threadId,
+            threadTitle: r.data.threadTitle ?? null,
+          }
+        : MALFORMED;
+    }
     case "userMessage": {
       const r = apiMessage.safeParse(json);
       return r.success

@@ -1,6 +1,7 @@
 "use client";
 
 import { create } from "zustand";
+import { createJSONStorage, persist } from "zustand/middleware";
 import type { TutorContext } from "@/lib/tutor/types";
 
 // Panel state shared by the layout (which mounts the panel) and the entry
@@ -15,7 +16,7 @@ type TutorStore = {
   pageEntry: TutorEntry | null;
   /** "Explain this" on a specific item, or a detached (general) chat. */
   overrideEntry: TutorEntry | null;
-  /** Session cache: contextKey → threadId so reopen resumes instead of creating. */
+  /** Tab-session cache: contextKey → threadId so reopen resumes the chat. */
   threadIds: Record<string, string>;
   openPanel: (entry?: TutorEntry) => void;
   closePanel: () => void;
@@ -27,26 +28,44 @@ type TutorStore = {
 
 const GENERAL: TutorEntry = { context: { type: "general" } };
 
-export const useTutorStore = create<TutorStore>()((set) => ({
-  open: false,
-  pageEntry: null,
-  overrideEntry: null,
-  threadIds: {},
-  openPanel: (entry) => set({ open: true, overrideEntry: entry ?? null }),
-  closePanel: () => set({ open: false, overrideEntry: null }),
-  detach: () => set({ overrideEntry: GENERAL }),
-  setPageEntry: (entry) => set({ pageEntry: entry }),
-  rememberThread: (contextKey, threadId) =>
-    set((s) => ({
-      threadIds: { ...s.threadIds, [contextKey]: threadId },
-    })),
-  forgetThread: (contextKey) =>
-    set((s) => {
-      const next = { ...s.threadIds };
-      delete next[contextKey];
-      return { threadIds: next };
+// The open conversation and its thread survive closing the panel and reloading
+// the tab (sessionStorage), so coming back to Astra resumes where the student
+// left off. Rehydrated from TutorShell's mount effect (see ./README.md).
+export const useTutorStore = create<TutorStore>()(
+  persist(
+    (set) => ({
+      open: false,
+      pageEntry: null,
+      overrideEntry: null,
+      threadIds: {},
+      // Opening without a specific item keeps whatever conversation was open.
+      openPanel: (entry) =>
+        set(entry ? { open: true, overrideEntry: entry } : { open: true }),
+      closePanel: () => set({ open: false }),
+      detach: () => set({ overrideEntry: GENERAL }),
+      setPageEntry: (entry) => set({ pageEntry: entry }),
+      rememberThread: (contextKey, threadId) =>
+        set((s) => ({
+          threadIds: { ...s.threadIds, [contextKey]: threadId },
+        })),
+      forgetThread: (contextKey) =>
+        set((s) => {
+          const next = { ...s.threadIds };
+          delete next[contextKey];
+          return { threadIds: next };
+        }),
     }),
-}));
+    {
+      name: "astra-session",
+      storage: createJSONStorage(() => sessionStorage),
+      partialize: (s) => ({
+        overrideEntry: s.overrideEntry,
+        threadIds: s.threadIds,
+      }),
+      skipHydration: true,
+    },
+  ),
+);
 
 export function selectActiveEntry(
   s: Pick<TutorStore, "overrideEntry" | "pageEntry">,

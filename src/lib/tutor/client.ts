@@ -5,14 +5,19 @@ import { ApiError } from "@/lib/api/errors";
 import type { ApiErrorBody } from "@/lib/api/types";
 import { decodeFrame } from "./events";
 import { createSseParser } from "./sse";
-import type { TutorStreamEvent } from "./types";
+import type { TutorStreamEvent, TutorThreadCreateBody } from "./types";
 
 // Axios cannot stream in the browser, so the one streaming call bypasses
 // `request()` and talks to `fetch` with the same bearer token. Everything else
 // about the tutor goes through the normal hooks.
 
+/**
+ * Either continue `threadId`, or (no threadId) start a new thread from
+ * `create` -- the server makes the thread when this first message arrives.
+ */
 export type StreamArgs = {
-  threadId: string;
+  threadId?: string | null;
+  create?: TutorThreadCreateBody;
   content: string;
 };
 
@@ -63,15 +68,19 @@ export async function* streamTutorReply(
   };
   if (token) headers.Authorization = `Bearer ${token}`;
 
-  const res = await doFetch(
-    `${opts.baseUrl ?? API_URL}${endpoints.tutor.messagesStream(args.threadId)}`,
-    {
-      method: "POST",
-      headers,
-      signal: opts.signal,
-      body: JSON.stringify({ content: args.content }),
-    },
-  );
+  const path = args.threadId
+    ? endpoints.tutor.messagesStream(args.threadId)
+    : endpoints.tutor.threadsStream;
+  const body = args.threadId
+    ? { content: args.content }
+    : { ...args.create, firstMessage: args.content };
+
+  const res = await doFetch(`${opts.baseUrl ?? API_URL}${path}`, {
+    method: "POST",
+    headers,
+    signal: opts.signal,
+    body: JSON.stringify(body),
+  });
 
   if (!res.ok) {
     const body = await readErrorBody(res);

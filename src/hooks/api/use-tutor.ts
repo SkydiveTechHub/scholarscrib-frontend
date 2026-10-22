@@ -1,5 +1,6 @@
 "use client";
 
+import { useCallback } from "react";
 import {
   queryOptions,
   useMutation,
@@ -9,7 +10,7 @@ import {
 import { endpoints } from "@/lib/api/endpoints";
 import { request } from "@/lib/api/http";
 import { queryKeys } from "@/lib/api/query-keys";
-import { contextKey, createBodyFor } from "@/lib/tutor/context";
+import { contextKey } from "@/lib/tutor/context";
 import { mapApiThread, mapApiThreadSummaries } from "@/lib/tutor/map";
 import type {
   TutorApiThread,
@@ -30,25 +31,11 @@ async function fetchThread(threadId: string): Promise<TutorThread> {
   return mapApiThread(raw);
 }
 
-async function createThread(context: TutorContext): Promise<TutorThread> {
-  if (context.type === "lesson") {
-    const raw = await request<TutorApiThread>({
-      method: "POST",
-      url: endpoints.lessons.tutor(context.lessonId),
-      data: {},
-    });
-    return mapApiThread(raw);
-  }
-  const raw = await request<TutorApiThread>({
-    method: "POST",
-    url: endpoints.tutor.threads,
-    data: createBodyFor(context),
-  });
-  return mapApiThread(raw);
-}
-
 /**
- * Ensure a thread for this context: resume from the session cache, or create.
+ * Resume this context's thread from the session cache. Resolves to null when
+ * there is none: a thread is only created when the student sends their first
+ * message (see useRememberStartedThread), so opening the panel or pressing
+ * "New chat" never registers an empty session.
  * Never served stale — the live conversation lives in the chat reducer.
  */
 export function tutorThreadQuery(
@@ -58,17 +45,15 @@ export function tutorThreadQuery(
   const key = contextKey(context);
   return queryOptions({
     queryKey: queryKeys.tutor.thread(key),
-    queryFn: async () => {
-      if (cachedThreadId) {
-        try {
-          return await fetchThread(cachedThreadId);
-        } catch {
-          // Cached id may be archived or missing — fall through to create.
-        }
+    queryFn: async (): Promise<TutorThread | null> => {
+      if (!cachedThreadId) return null;
+      try {
+        return await fetchThread(cachedThreadId);
+      } catch {
+        // Cached id may be archived or missing — start over on first send.
+        useTutorStore.getState().forgetThread(key);
+        return null;
       }
-      const created = await createThread(context);
-      useTutorStore.getState().rememberThread(key, created.threadId);
-      return created;
     },
     staleTime: 0,
     gcTime: 0,
@@ -143,19 +128,23 @@ export function useResumeTutorThread(contextKey: string) {
   });
 }
 
-/** Start a fresh conversation; the previous one stays in history. */
-export function useNewTutorThread(context: TutorContext) {
+/**
+ * The server creates a new conversation's thread when the student's first
+ * message arrives (`streamStarted` carries its id), so every thread has at
+ * least one turn in it. Remember it so reopening the panel resumes it.
+ */
+export function useRememberStartedThread(context: TutorContext) {
   const queryClient = useQueryClient();
   const key = contextKey(context);
-  return useMutation({
-    mutationFn: () => createThread(context),
-    onSuccess: (thread) => {
-      useTutorStore.getState().rememberThread(key, thread.threadId);
+  return useCallback(
+    (threadId: string) => {
+      useTutorStore.getState().rememberThread(key, threadId);
       void queryClient.invalidateQueries({
         queryKey: queryKeys.tutor.history(),
       });
     },
-  });
+    [key, queryClient],
+  );
 }
 
 /** Remove one conversation from history. */

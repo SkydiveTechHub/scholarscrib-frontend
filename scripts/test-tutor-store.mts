@@ -26,12 +26,21 @@ test("opening uses the page's context", () => {
   assert.deepEqual(selectActiveEntry(s), LESSON);
 });
 
-test("an explicit entry overrides the page and is forgotten on close", () => {
+test("an explicit entry overrides the page", () => {
   useTutorStore.getState().setPageEntry(LESSON);
   useTutorStore.getState().openPanel(QUESTION);
   assert.deepEqual(selectActiveEntry(useTutorStore.getState()), QUESTION);
+});
+
+// Closing Astra to do something else and coming back resumes the same chat.
+test("closing and reopening keeps the open conversation", () => {
+  useTutorStore.getState().setPageEntry(LESSON);
+  useTutorStore.getState().openPanel(QUESTION);
   useTutorStore.getState().closePanel();
-  assert.deepEqual(selectActiveEntry(useTutorStore.getState()), LESSON);
+  useTutorStore.getState().openPanel();
+  const s = useTutorStore.getState();
+  assert.equal(s.open, true);
+  assert.deepEqual(selectActiveEntry(s), QUESTION);
 });
 
 test("detach switches to general chat without losing the page entry", () => {

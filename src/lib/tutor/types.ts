@@ -132,6 +132,11 @@ export type TutorErrorInfo = {
 };
 
 export type TutorStreamEvent =
+  | {
+      type: "streamStarted";
+      threadId: string;
+      threadTitle: string | null;
+    }
   | { type: "userMessage"; message: TutorApiMessage }
   | { type: "status"; status: TutorStatusEvent }
   | { type: "token"; text: string }
