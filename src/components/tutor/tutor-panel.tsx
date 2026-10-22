@@ -2,9 +2,19 @@
 
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
-import { LuMaximize2, LuMinimize2, LuTrash2, LuX } from "react-icons/lu";
+import {
+  LuArrowLeft,
+  LuHistory,
+  LuMaximize2,
+  LuMinimize2,
+  LuSquarePen,
+  LuTrash2,
+  LuX,
+} from "react-icons/lu";
 import {
   useClearTutorThread,
+  useNewTutorThread,
+  useResumeTutorThread,
   useTutorThread,
 } from "@/hooks/api/use-tutor";
 import { isApiError } from "@/lib/api/errors";
@@ -15,6 +25,7 @@ import { selectActiveEntry, useTutorStore } from "@/stores/tutor-store";
 import { cn } from "@/lib/utils";
 import { AstraAvatar } from "./astra-avatar";
 import { TutorConversation } from "./tutor-conversation";
+import { TutorHistory } from "./tutor-history";
 import { TutorLocked } from "./tutor-locked";
 
 const FOCUSABLE =
@@ -40,12 +51,15 @@ export default function TutorPanel({ tier }: { tier: SubscriptionTier }) {
   const closePanel = useTutorStore((s) => s.closePanel);
   const detach = useTutorStore((s) => s.detach);
   const [expanded, setExpanded] = useState(false);
+  const [view, setView] = useState<"chat" | "history">("chat");
   const ref = useRef<HTMLElement>(null);
 
   const entitled = can(tier, "aiTutor");
   const thread = useTutorThread(entry.context, entitled);
   const clearThread = useClearTutorThread();
   const key = contextKey(entry.context);
+  const resume = useResumeTutorThread(key);
+  const startNew = useNewTutorThread(entry.context);
 
   const desktop = useIsDesktop();
 
@@ -81,6 +95,11 @@ export default function TutorPanel({ tier }: { tier: SubscriptionTier }) {
       document.querySelector<HTMLElement>("[data-astra-trigger]")?.focus();
     };
   }, []);
+
+  // Picking a context elsewhere (e.g. "Explain this") should land on the chat.
+  useEffect(() => setView("chat"), [key]);
+
+  const switching = resume.isPending || startNew.isPending;
 
   const showContext = entry.context.type !== "general" && entry.label;
   const err = thread.error;
@@ -120,7 +139,39 @@ export default function TutorPanel({ tier }: { tier: SubscriptionTier }) {
             </h2>
             <p className="text-xs text-muted">Your study buddy</p>
           </div>
-          {thread.data && entitled && (
+          {entitled && !forbidden && (
+            <>
+              <button
+                type="button"
+                onClick={() =>
+                  startNew.mutate(undefined, {
+                    onSuccess: () => setView("chat"),
+                  })
+                }
+                disabled={switching}
+                aria-label="New chat"
+                className="flex h-11 w-11 items-center justify-center rounded-full text-muted hover:bg-secondary"
+              >
+                <LuSquarePen className="h-4 w-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  setView((v) => (v === "history" ? "chat" : "history"))
+                }
+                aria-label={view === "history" ? "Back to chat" : "Chat history"}
+                aria-pressed={view === "history"}
+                className="flex h-11 w-11 items-center justify-center rounded-full text-muted hover:bg-secondary"
+              >
+                {view === "history" ? (
+                  <LuArrowLeft className="h-4 w-4" />
+                ) : (
+                  <LuHistory className="h-4 w-4" />
+                )}
+              </button>
+            </>
+          )}
+          {thread.data && entitled && view === "chat" && (
             <button
               type="button"
               onClick={() =>
@@ -178,6 +229,17 @@ export default function TutorPanel({ tier }: { tier: SubscriptionTier }) {
           <div className="flex-1 overflow-y-auto">
             <TutorLocked />
           </div>
+        ) : view === "history" ? (
+          <TutorHistory
+            currentThreadId={thread.data?.threadId ?? null}
+            resumingId={resume.isPending ? (resume.variables ?? null) : null}
+            onResume={(id) =>
+              resume.mutate(id, { onSuccess: () => setView("chat") })
+            }
+            onNew={() =>
+              startNew.mutate(undefined, { onSuccess: () => setView("chat") })
+            }
+          />
         ) : thread.isPending ? (
           <div className="flex-1 p-4 text-sm text-muted" role="status">
             Getting Astra ready…

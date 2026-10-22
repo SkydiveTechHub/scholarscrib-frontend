@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTutorChat } from "@/hooks/use-tutor-chat";
 import { ladderFor, startersFor, type Chip } from "@/lib/tutor/chips";
 import { describeError, exhaustedMessage } from "@/lib/tutor/messages";
@@ -26,10 +26,14 @@ export function TutorConversation({
   initialMessages: TutorMessage[];
   systemBanner?: string | null;
 }) {
-  const { state, send, retry, stop, rate } = useTutorChat({
+  const { state, send, retry, stop, edit, rate } = useTutorChat({
     threadId,
     initialMessages,
   });
+  const [prefill, setPrefill] = useState<{
+    text: string;
+    nonce: number;
+  } | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
   const streaming = state.phase === "streaming";
   const rateLimited =
@@ -80,6 +84,15 @@ export function TutorConversation({
             streaming={streaming && i === lastIndex && m.role === "astra"}
             isLast={i === lastIndex}
             onRate={rate}
+            onEdit={
+              !streaming && m.stopped && m.role === "student"
+                ? () => {
+                    const text = edit(m.id);
+                    if (text != null)
+                      setPrefill({ text, nonce: Date.now() });
+                  }
+                : undefined
+            }
             onAction={(action, label) => send({ text: label, action })}
           />
         ))}
@@ -111,6 +124,7 @@ export function TutorConversation({
       <TutorComposer
         streaming={streaming}
         disabled={rateLimited}
+        prefill={prefill}
         onSend={(text) => send({ text, action: null })}
         onStop={stop}
       />

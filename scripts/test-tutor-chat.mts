@@ -249,6 +249,25 @@ test("stopped drops empty draft; keeps partial draft text", () => {
   assert.equal(empty.messages.length, 1);
 });
 
+test("stopped keeps the question and marks the turn; edit removes it", () => {
+  let s = run([{ type: "token", text: "Part" }], sent());
+  s = chatReducer(s, { type: "stopped" });
+  assert.equal(s.messages.length, 2);
+  assert.equal(s.messages[0].stopped, true);
+  assert.equal(s.messages[1].stopped, true);
+  assert.equal(s.messages[1].text, "Part");
+
+  const before = chatReducer(sent(), { type: "stopped" });
+  assert.equal(before.messages.length, 1);
+  assert.equal(before.messages[0].stopped, true);
+
+  const edited = chatReducer(s, { type: "edit", messageId: s.messages[0].id });
+  assert.equal(edited.messages.length, 0);
+
+  const untouched = chatReducer(s, { type: "edit", messageId: "nope" });
+  assert.equal(untouched, s);
+});
+
 test("reconcile replaces the transcript after abort", () => {
   const s = chatReducer(sent(), {
     type: "reconcile",

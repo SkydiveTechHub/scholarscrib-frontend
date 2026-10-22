@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { LuArrowUp, LuSquare } from "react-icons/lu";
 import { TUTOR_MAX_CHARS } from "@/lib/tutor/types";
 import { cn } from "@/lib/utils";
@@ -8,16 +8,32 @@ import { cn } from "@/lib/utils";
 export function TutorComposer({
   streaming,
   disabled,
+  prefill,
   onSend,
   onStop,
 }: {
   streaming: boolean;
   disabled?: boolean;
+  /** Loads text into the box (e.g. editing a stopped prompt); `nonce` re-fires. */
+  prefill?: { text: string; nonce: number } | null;
   onSend: (text: string) => void;
   onStop: () => void;
 }) {
   const [text, setText] = useState("");
   const ref = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    if (!prefill) return;
+    setText(prefill.text);
+    const el = ref.current;
+    if (!el) return;
+    el.focus();
+    requestAnimationFrame(() => {
+      el.style.height = "auto";
+      el.style.height = `${Math.min(el.scrollHeight, 112)}px`;
+      el.setSelectionRange(el.value.length, el.value.length);
+    });
+  }, [prefill]);
   const trimmed = text.trim();
   const canSend = !disabled && !streaming && trimmed.length > 0;
 

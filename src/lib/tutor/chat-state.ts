@@ -25,6 +25,7 @@ export type ChatAction =
   | { type: "event"; event: TutorStreamEvent }
   | { type: "failed"; error: TutorErrorInfo }
   | { type: "stopped" }
+  | { type: "edit"; messageId: string }
   | { type: "reconcile"; messages: TutorMessage[] }
   | { type: "rate"; messageId: string; rating: "up" | "down" };
 
@@ -174,14 +175,36 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
         rateLimitedUntil: until,
       };
     }
-    case "stopped":
+    case "stopped": {
+      // Keep the turn on screen, like any chat app: the question stays, and
+      // whatever Astra had streamed so far stays with a "stopped" marker.
+      const last = state.messages[state.messages.length - 1];
+      const partial: TutorMessage | null =
+        last?.id === DRAFT_ID && last.text !== ""
+          ? { ...last, id: `stopped-${crypto.randomUUID()}`, stopped: true }
+          : null;
+      const kept = dropDraft(state.messages);
+      const lastStudent = kept.map((m) => m.role).lastIndexOf("student");
       return {
         ...state,
         phase: "idle",
         statusLine: null,
         pendingUserId: null,
-        messages: dropEmptyDraft(state.messages),
+        messages: [
+          ...kept.map((m, i) =>
+            i === lastStudent ? { ...m, stopped: true } : m,
+          ),
+          ...(partial ? [partial] : []),
+        ],
       };
+    }
+    case "edit": {
+      // The server dropped the stopped turn, so drop it locally too; the
+      // caller moves its text back into the composer.
+      const i = state.messages.findIndex((m) => m.id === action.messageId);
+      if (i === -1 || !state.messages[i].stopped) return state;
+      return { ...state, messages: state.messages.slice(0, i) };
+    }
     case "reconcile":
       return {
         ...state,

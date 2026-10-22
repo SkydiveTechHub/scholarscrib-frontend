@@ -10,7 +10,7 @@ import { endpoints } from "@/lib/api/endpoints";
 import { request } from "@/lib/api/http";
 import { queryKeys } from "@/lib/api/query-keys";
 import { contextKey, createBodyFor } from "@/lib/tutor/context";
-import { mapApiThread } from "@/lib/tutor/map";
+import { mapApiThread, mapApiThreadSummaries } from "@/lib/tutor/map";
 import type {
   TutorApiThread,
   TutorContext,
@@ -106,6 +106,88 @@ export function useClearTutorThread() {
       useTutorStore.getState().forgetThread(input.contextKey);
       await queryClient.invalidateQueries({
         queryKey: queryKeys.tutor.thread(input.contextKey),
+      });
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.tutor.history(),
+      });
+    },
+  });
+}
+
+/** The student's past conversations, newest first. */
+export function useTutorHistory(enabled: boolean) {
+  return useQuery({
+    queryKey: queryKeys.tutor.history(),
+    queryFn: async () => {
+      const raw = await request<{ threads: TutorApiThread[] }>({
+        method: "GET",
+        url: endpoints.tutor.threads,
+      });
+      return mapApiThreadSummaries(raw.threads);
+    },
+    enabled,
+    staleTime: 0,
+    gcTime: 0,
+  });
+}
+
+/** Make `thread` the open conversation for this context. */
+function adopt(
+  queryClient: ReturnType<typeof useQueryClient>,
+  key: string,
+  thread: TutorThread,
+) {
+  useTutorStore.getState().rememberThread(key, thread.threadId);
+  queryClient.setQueryData(queryKeys.tutor.thread(key), thread);
+}
+
+/** Reopen a past conversation in the panel. */
+export function useResumeTutorThread(contextKey: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (threadId: string) => fetchThread(threadId),
+    onSuccess: (thread) => adopt(queryClient, contextKey, thread),
+  });
+}
+
+/** Start a fresh conversation; the previous one stays in history. */
+export function useNewTutorThread(context: TutorContext) {
+  const queryClient = useQueryClient();
+  const key = contextKey(context);
+  return useMutation({
+    mutationFn: () => createThread(context),
+    onSuccess: (thread) => {
+      adopt(queryClient, key, thread);
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.tutor.history(),
+      });
+    },
+  });
+}
+
+/** Remove one conversation from history. */
+export function useDeleteTutorThread() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (threadId: string) => {
+      await request({
+        method: "DELETE",
+        url: endpoints.tutor.thread(threadId),
+      });
+      return threadId;
+    },
+    onSuccess: async (threadId) => {
+      const { threadIds, forgetThread } = useTutorStore.getState();
+      for (const [key, id] of Object.entries(threadIds)) {
+        if (id === threadId) {
+          forgetThread(key);
+          await queryClient.invalidateQueries({
+            queryKey: queryKeys.tutor.thread(key),
+          });
+        }
+      }
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.tutor.history(),
       });
     },
   });

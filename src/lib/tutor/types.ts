@@ -105,6 +105,8 @@ export type TutorMessage = {
   groundedOn?: GroundedOn[];
   rating?: "up" | "down" | null;
   suggested?: TutorAction[];
+  /** Set locally when the student stopped this turn mid-reply. */
+  stopped?: boolean;
 };
 
 export type TutorThread = {
@@ -112,6 +114,14 @@ export type TutorThread = {
   messages: TutorMessage[];
   /** Wrong-answer seed shown as a banner, not a chat bubble. */
   systemBanner?: string | null;
+};
+
+/** One row in the chat history list (no messages; those load on resume). */
+export type TutorThreadSummary = {
+  threadId: string;
+  title: string;
+  scope: "lesson" | "question" | "topic" | "general";
+  updatedAt: string | null;
 };
 
 export type TutorErrorInfo = {

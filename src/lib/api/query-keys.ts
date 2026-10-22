@@ -46,6 +46,7 @@ export const queryKeys = {
     all: ["tutor"] as const,
     thread: (contextKey: string) =>
       [...queryKeys.tutor.all, "thread", contextKey] as const,
+    history: () => [...queryKeys.tutor.all, "history"] as const,
   },
   library: {
     all: ["library"] as const,

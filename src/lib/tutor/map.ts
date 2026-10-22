@@ -4,6 +4,7 @@ import type {
   TutorMessage,
   TutorRole,
   TutorThread,
+  TutorThreadSummary,
 } from "./types";
 
 function uiRole(role: TutorApiMessage["role"]): TutorRole {
@@ -26,6 +27,29 @@ export function systemBannerFrom(messages: TutorApiMessage[]): string | null {
   const system = messages.find((m) => m.role === "system");
   if (!system?.content) return null;
   return system.content;
+}
+
+/**
+ * History rows for the list. Threads that were created but never used (no
+ * title, never updated) are left out so "New chat" doesn't litter the list.
+ */
+export function mapApiThreadSummaries(
+  threads: TutorApiThread[],
+): TutorThreadSummary[] {
+  return threads
+    .filter((t) => !t.archived && (t.title || t.updatedAt !== t.createdAt))
+    .map((t) => ({
+      threadId: t.id,
+      title: t.title?.trim() || "Untitled chat",
+      scope: t.lessonId
+        ? "lesson"
+        : t.questionId
+          ? "question"
+          : t.topicId
+            ? "topic"
+            : "general",
+      updatedAt: t.updatedAt,
+    }));
 }
 
 export function mapApiThread(thread: TutorApiThread): TutorThread {

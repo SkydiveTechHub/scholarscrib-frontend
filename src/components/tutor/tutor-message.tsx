@@ -1,6 +1,6 @@
 "use client";
 
-import { LuThumbsDown, LuThumbsUp } from "react-icons/lu";
+import { LuPencil, LuThumbsDown, LuThumbsUp } from "react-icons/lu";
 import { cn } from "@/lib/utils";
 import type { GroundedOn, TutorAction, TutorMessage } from "@/lib/tutor/types";
 import { useTutorStore } from "@/stores/tutor-store";
@@ -21,20 +21,34 @@ export function TutorMessageView({
   streaming,
   isLast,
   onRate,
+  onEdit,
   onAction,
 }: {
   message: TutorMessage;
   streaming: boolean;
   isLast: boolean;
   onRate: (id: string, rating: "up" | "down") => void;
+  /** Present only on a stopped prompt that can be pulled back into the composer. */
+  onEdit?: () => void;
   onAction: (action: TutorAction, label: string) => void;
 }) {
   if (message.role === "student") {
     return (
-      <div className="flex justify-end">
+      <div className="flex flex-col items-end gap-1">
         <p className="max-w-[85%] whitespace-pre-wrap break-words rounded-2xl rounded-br-md bg-primary px-3.5 py-2.5 text-sm leading-relaxed text-primary-foreground">
           {message.text}
         </p>
+        {onEdit && (
+          <button
+            type="button"
+            onClick={onEdit}
+            aria-label="Edit message"
+            className="flex min-h-8 items-center gap-1 rounded-full px-2.5 text-xs font-semibold text-muted transition-colors hover:text-foreground"
+          >
+            <LuPencil className="h-3.5 w-3.5" />
+            Edit
+          </button>
+        )}
       </div>
     );
   }
@@ -42,7 +56,7 @@ export function TutorMessageView({
   if (message.role === "system") return null;
 
   const waiting = streaming && message.text === "";
-  const finished = !streaming && message.text !== "";
+  const finished = !streaming && message.text !== "" && !message.stopped;
   const sources = message.groundedOn?.filter(Boolean) ?? [];
 
   return (
@@ -68,6 +82,10 @@ export function TutorMessageView({
             <TutorMarkdown content={message.text} />
           )}
         </div>
+
+        {message.stopped && (
+          <p className="mt-1 px-1 text-xs text-muted">Stopped</p>
+        )}
 
         {finished && sources.length > 0 && (
           <SourcesRow sources={sources} />

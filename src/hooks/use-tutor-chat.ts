@@ -1,9 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useReducer, useRef } from "react";
-import { reloadTutorThread, useTutorFeedback } from "@/hooks/api/use-tutor";
+import { useTutorFeedback } from "@/hooks/api/use-tutor";
 import { clearStudentToken } from "@/lib/api/client";
+import { endpoints } from "@/lib/api/endpoints";
 import { isApiError } from "@/lib/api/errors";
+import { request } from "@/lib/api/http";
 import { chatReducer, initialChatState } from "@/lib/tutor/chat-state";
 import { streamTutorReply } from "@/lib/tutor/client";
 import type {
@@ -49,12 +51,10 @@ export function useTutorChat({
         }
       } catch (err) {
         if (controller.signal.aborted) {
-          try {
-            const reloaded = await reloadTutorThread(threadId);
-            dispatch({ type: "reconcile", messages: reloaded.messages });
-          } catch {
-            dispatch({ type: "stopped" });
-          }
+          // The student stopped it. Keep the turn on screen rather than
+          // reloading: the server discards a cancelled turn, so a reload
+          // would wipe the question they want to edit or resend.
+          dispatch({ type: "stopped" });
         } else if (isApiError(err) && err.isAuthFailure) {
           clearStudentToken();
           window.location.assign("/login?reason=session");
@@ -85,8 +85,24 @@ export function useTutorChat({
   }, [run, state.lastRequest]);
 
   const stop = useCallback(() => {
+    // Tell the server to cancel generation, and close our end of the stream.
+    request({
+      method: "POST",
+      url: endpoints.tutor.messagesStop(threadId),
+    }).catch(() => {});
     abortRef.current?.abort();
-  }, []);
+  }, [threadId]);
+
+  /** Drops a stopped turn and returns its text for the composer. */
+  const edit = useCallback(
+    (messageId: string): string | null => {
+      const target = state.messages.find((m) => m.id === messageId);
+      if (!target?.stopped || target.role !== "student") return null;
+      dispatch({ type: "edit", messageId });
+      return target.text;
+    },
+    [state.messages],
+  );
 
   const rate = useCallback(
     (messageId: string, rating: "up" | "down") => {
@@ -96,5 +112,5 @@ export function useTutorChat({
     [sendFeedback],
   );
 
-  return { state, send, retry, stop, rate };
+  return { state, send, retry, stop, edit, rate };
 }
