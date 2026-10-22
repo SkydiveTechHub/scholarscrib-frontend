@@ -10,7 +10,6 @@ import type { TutorAction, TutorContext } from "@/lib/tutor/types";
 
 export type TutorEntry = { context: TutorContext; label?: string };
 export type TutorAutoSend = { text: string; action: TutorAction | null };
-export type TutorAutoSend = { text: string; action: TutorAction | null };
 
 type TutorStore = {
   open: boolean;

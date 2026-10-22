@@ -62,7 +62,9 @@ export function TutorConversation({
   // conversation it was meant for; a thread that already has messages is
   // resumed as-is rather than asked the same thing again.
   const sendRef = useRef(send);
-  sendRef.current = send;
+  useEffect(() => {
+    sendRef.current = send;
+  }, [send]);
   const startedEmpty = useRef(initialMessages.length === 0);
   useEffect(() => {
     // Deferred so React's dev-only mount/unmount/mount cycle cancels the first
