@@ -176,7 +176,7 @@ function ProposalCard({
                   type={isDateField(field.key) ? "date" : "text"}
                   inputMode={field.type === "number" ? "decimal" : undefined}
                   maxLength={field.maxLength}
-                  value={typeof values[field.key] === "string" ? values[field.key] : ""}
+                  value={typeof values[field.key] === "string" ? values[field.key] as string : ""}
                   aria-invalid={errors[field.key] ? true : undefined}
                   onChange={(e) => setValues((prev) => ({ ...prev, [field.key]: e.target.value }))}
                 />
