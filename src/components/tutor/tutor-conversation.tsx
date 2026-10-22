@@ -2,14 +2,18 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { LuCheck, LuCircleX, LuLoader } from "react-icons/lu";
 import { useTutorChat } from "@/hooks/use-tutor-chat";
 import { createBodyFor } from "@/lib/tutor/context";
 import { ladderFor, startersFor, type Chip } from "@/lib/tutor/chips";
 import { describeError, exhaustedMessage } from "@/lib/tutor/messages";
+import { cn } from "@/lib/utils";
 import type {
+  ActiveRun,
   TutorContext,
   TutorErrorInfo,
   TutorMessage,
+  TutorStep,
 } from "@/lib/tutor/types";
 import { AstraAvatar } from "./astra-avatar";
 import { TutorChips } from "./tutor-chips";
@@ -20,12 +24,14 @@ export function TutorConversation({
   threadId,
   context,
   initialMessages,
+  activeRun = null,
   systemBanner,
   onThreadStarted,
 }: {
   threadId: string | null;
   context: TutorContext;
   initialMessages: TutorMessage[];
+  activeRun?: ActiveRun | null;
   systemBanner?: string | null;
   onThreadStarted: (threadId: string) => void;
 }) {
@@ -33,6 +39,7 @@ export function TutorConversation({
   const { state, send, retry, stop, edit, rate, resolve } = useTutorChat({
     threadId,
     initialMessages,
+    activeRun,
     createBody,
     onThreadStarted,
   });
@@ -56,7 +63,7 @@ export function TutorConversation({
       block: "end",
       behavior: reduce ? "auto" : "smooth",
     });
-  }, [state.messages, state.phase, state.statusLine]);
+  }, [state.messages, state.phase, state.steps, state.reconnecting]);
 
   const pick = (chip: Chip) => send({ text: chip.text, action: chip.action });
   const lastIndex = state.messages.length - 1;
@@ -66,9 +73,13 @@ export function TutorConversation({
   const showTyping =
     streaming &&
     !state.resuming &&
+    !state.reconnecting &&
     !(
       lastMessage?.role === "astra" &&
-      (lastMessage.text !== "" || lastMessage.actionProposal)
+      (lastMessage.text !== "" ||
+        lastMessage.actionProposal ||
+        (lastMessage.tools?.length ?? 0) > 0 ||
+        (lastMessage.blocks?.length ?? 0) > 0)
     );
 
   return (
@@ -103,7 +114,14 @@ export function TutorConversation({
             resolving={state.resuming}
             onRate={rate}
             onResolve={
-              m.actionProposal ? (approved) => resolve(approved) : undefined
+              m.actionProposal
+                ? (approved, args) => resolve(approved, args)
+                : undefined
+            }
+            onChoose={
+              !streaming && !pending
+                ? (text) => send({ text, action: null })
+                : undefined
             }
             onEdit={
               !streaming && m.stopped && m.role === "student"
@@ -119,6 +137,13 @@ export function TutorConversation({
         ))}
 
         {showTyping && <TypingBubble />}
+
+        {state.reconnecting && (
+          <p role="status" className="px-1 text-xs text-muted">
+            Reconnecting…
+          </p>
+        )}
+        {streaming && state.steps.length > 0 && <StepList steps={state.steps} />}
 
         {state.phase === "error" && state.error && (
           <ErrorNotice error={state.error} onRetry={retry} />
@@ -149,6 +174,30 @@ export function TutorConversation({
         onStop={stop}
       />
     </>
+  );
+}
+
+function StepList({ steps }: { steps: TutorStep[] }) {
+  return (
+    <ol className="space-y-1 px-1" aria-label="Astra's progress">
+      {steps.map((step) => (
+        <li key={step.id} className="flex items-center gap-2 text-xs text-muted">
+          {step.phase === "done" ? (
+            <LuCheck className="h-3.5 w-3.5 text-primary" aria-hidden />
+          ) : step.phase === "failed" ? (
+            <LuCircleX className="h-3.5 w-3.5 text-danger" aria-hidden />
+          ) : (
+            <LuLoader
+              className="h-3.5 w-3.5 text-primary motion-safe:animate-spin"
+              aria-hidden
+            />
+          )}
+          <span className={cn(step.phase === "active" && "text-foreground")}>
+            {step.label}
+          </span>
+        </li>
+      ))}
+    </ol>
   );
 }
 

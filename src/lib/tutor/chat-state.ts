@@ -4,7 +4,10 @@ import type {
   TutorErrorInfo,
   TutorMessage,
   TutorSendRequest,
+  TutorStep,
   TutorStreamEvent,
+  TutorToolCall,
+  TutorUiBlock,
 } from "./types";
 
 export type ChatPhase = "idle" | "streaming" | "error";
@@ -23,11 +26,23 @@ export type ChatState = {
   pendingAction: ActionProposal | null;
   /** True from resume until that stream finishes. Not a student message. */
   resuming: boolean;
+  /** Graph nodes for the turn that is still streaming. */
+  steps: TutorStep[];
+  /** Last SSE id applied. A rejoin asks for frames after this. */
+  lastEventId: string | null;
+  /** True while a dropped turn is being fetched or resubscribed. */
+  reconnecting: boolean;
+  /**
+   * When set, tokens and cards land on this Astra message instead of a new
+   * draft. Used when a rejoin continues a reply the thread GET already stored.
+   */
+  accumulateId: string | null;
 };
 
 export type ChatAction =
   | { type: "send"; request: TutorSendRequest; pendingUserId: string }
   | { type: "resume" }
+  | { type: "reconnecting" }
   | { type: "event"; event: TutorStreamEvent }
   | { type: "failed"; error: TutorErrorInfo }
   | { type: "stopped" }
@@ -49,6 +64,10 @@ export function initialChatState(messages: TutorMessage[]): ChatState {
     rateLimitedUntil: null,
     pendingAction: pendingFrom(messages),
     resuming: false,
+    steps: [],
+    lastEventId: null,
+    reconnecting: false,
+    accumulateId: null,
   };
 }
 
@@ -64,12 +83,45 @@ function dropDraft(messages: TutorMessage[]): TutorMessage[] {
   return messages.filter((m) => m.id !== DRAFT_ID);
 }
 
+function hasBody(message: TutorMessage): boolean {
+  return (
+    message.text !== "" ||
+    message.actionProposal != null ||
+    (message.tools?.length ?? 0) > 0 ||
+    (message.blocks?.length ?? 0) > 0
+  );
+}
+
 function dropEmptyDraft(messages: TutorMessage[]): TutorMessage[] {
   const last = messages[messages.length - 1];
-  if (last?.id === DRAFT_ID && last.text === "" && !last.actionProposal) {
-    return messages.slice(0, -1);
-  }
+  if (last?.id === DRAFT_ID && !hasBody(last)) return messages.slice(0, -1);
   return messages;
+}
+
+/** The latest stored Astra reply, skipping a local draft. False when the student spoke last. */
+export function turnLanded(messages: readonly TutorMessage[]): boolean {
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const message = messages[i];
+    if (message.id === DRAFT_ID) continue;
+    if (message.role !== "astra") return false;
+    return hasBody(message);
+  }
+  return false;
+}
+
+/** True when the server has an Astra message this client has not applied yet. */
+export function storedReplyIsNew(
+  local: readonly TutorMessage[],
+  remote: readonly TutorMessage[],
+): boolean {
+  const known = new Set(local.map((message) => message.id));
+  return remote.some(
+    (message) =>
+      message.role === "astra" &&
+      message.id !== DRAFT_ID &&
+      !known.has(message.id) &&
+      hasBody(message),
+  );
 }
 
 function attachProposal(
@@ -136,26 +188,134 @@ function ensureDraft(messages: TutorMessage[]): TutorMessage[] {
   ];
 }
 
-function appendToken(messages: TutorMessage[], text: string): TutorMessage[] {
-  const withDraft = ensureDraft(messages);
-  const i = withDraft.length - 1;
-  const last = withDraft[i];
+function targetMessages(state: ChatState): {
+  messages: TutorMessage[];
+  index: number;
+} {
+  if (state.accumulateId) {
+    const index = state.messages.findIndex((m) => m.id === state.accumulateId);
+    if (index !== -1) return { messages: state.messages, index };
+  }
+  const messages = ensureDraft(state.messages);
+  return { messages, index: messages.length - 1 };
+}
+
+function appendToken(state: ChatState, text: string): TutorMessage[] {
+  const { messages, index } = targetMessages(state);
+  const last = messages[index];
   return [
-    ...withDraft.slice(0, i),
+    ...messages.slice(0, index),
     { ...last, text: last.text + text },
+    ...messages.slice(index + 1),
   ];
 }
 
-/** Final assistant text always comes from assistantMessage, never token concat. */
-function applyAssistant(
-  messages: TutorMessage[],
-  assistant: TutorMessage,
-): TutorMessage[] {
-  const without = dropDraft(messages);
-  return [...without, assistant];
+function upsertById<T extends { id: string }>(items: T[] | undefined, item: T): T[] {
+  const list = items ?? [];
+  const at = list.findIndex((entry) => entry.id === item.id);
+  if (at === -1) return [...list, item];
+  return list.map((entry, index) => (index === at ? item : entry));
 }
 
-export function chatReducer(state: ChatState, action: ChatAction): ChatState {
+function withTool(state: ChatState, tool: TutorToolCall): ChatState {
+  const { messages, index } = targetMessages(state);
+  const last = messages[index];
+  const steps =
+    tool.phase === "failed"
+      ? state.steps.map((step) =>
+          step.node === tool.name && step.phase === "active"
+            ? { ...step, phase: "failed" as const }
+            : step,
+        )
+      : state.steps;
+  return {
+    ...state,
+    steps,
+    messages: [
+      ...messages.slice(0, index),
+      { ...last, tools: upsertById(last.tools, tool) },
+      ...messages.slice(index + 1),
+    ],
+  };
+}
+
+function withBlock(state: ChatState, block: TutorUiBlock): ChatState {
+  const { messages, index } = targetMessages(state);
+  const last = messages[index];
+  return {
+    ...state,
+    messages: [
+      ...messages.slice(0, index),
+      { ...last, blocks: upsertById(last.blocks, block) },
+      ...messages.slice(index + 1),
+    ],
+  };
+}
+
+function mergeCarried(
+  assistant: TutorMessage,
+  carried: TutorMessage | undefined,
+): TutorMessage {
+  const tools = assistant.tools?.length ? assistant.tools : carried?.tools;
+  const blocks = assistant.blocks?.length ? assistant.blocks : carried?.blocks;
+  return {
+    ...assistant,
+    ...(tools?.length ? { tools } : {}),
+    ...(blocks?.length ? { blocks } : {}),
+  };
+}
+
+/** Final assistant text always comes from assistantMessage, never token concat. */
+function applyAssistant(state: ChatState, assistant: TutorMessage): TutorMessage[] {
+  const messages = state.messages;
+  if (state.accumulateId) {
+    const index = messages.findIndex((m) => m.id === state.accumulateId);
+    if (index !== -1) {
+      const previous = messages[index];
+      const merged = mergeCarried(assistant, previous);
+      return messages
+        .map((m, i) =>
+          i === index
+            ? { ...merged, rating: previous.rating, stopped: previous.stopped }
+            : m,
+        )
+        .filter((m) => m.id !== DRAFT_ID);
+    }
+  }
+  const existing = messages.find((m) => m.id === assistant.id);
+  if (existing) {
+    const merged = mergeCarried(assistant, existing);
+    return dropDraft(messages).map((m) =>
+      m.id === assistant.id
+        ? { ...merged, rating: existing.rating, stopped: existing.stopped }
+        : m,
+    );
+  }
+  const draft = messages.find((m) => m.id === DRAFT_ID);
+  return [...dropDraft(messages), mergeCarried(assistant, draft)];
+}
+
+function pushStep(steps: TutorStep[], node: string, label: string): TutorStep[] {
+  const existing = steps.findIndex((step) => step.node === node);
+  const done = (step: TutorStep): TutorStep =>
+    step.phase === "active" ? { ...step, phase: "done" } : step;
+  if (existing !== -1) {
+    return steps.map((step, index) => {
+      if (index === existing) return { ...step, label, phase: "active" };
+      return done(step);
+    });
+  }
+  return [
+    ...steps.map(done),
+    { id: node, node, label, phase: "active" },
+  ];
+}
+
+export function chatReducer(incoming: ChatState, action: ChatAction): ChatState {
+  const state =
+    action.type === "event" && action.event.eventId
+      ? { ...incoming, lastEventId: action.event.eventId }
+      : incoming;
   switch (action.type) {
     case "send": {
       if (state.pendingAction || state.resuming) return state;
@@ -169,6 +329,10 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
         phase: "streaming",
         error: null,
         statusLine: "Understanding your question…",
+        steps: [],
+        lastEventId: null,
+        reconnecting: false,
+        accumulateId: null,
         lastRequest: request,
         pendingUserId,
         hintsUsed:
@@ -183,43 +347,74 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
         phase: "streaming",
         error: null,
         statusLine: null,
+        steps: [],
+        lastEventId: null,
+        reconnecting: false,
+        accumulateId: null,
         resuming: true,
       };
+    case "reconnecting": {
+      const last = state.messages[state.messages.length - 1];
+      const accumulateId =
+        last?.role === "astra" && last.id !== DRAFT_ID ? last.id : null;
+      return {
+        ...state,
+        reconnecting: true,
+        error: null,
+        phase: "streaming",
+        accumulateId,
+      };
+    }
     case "event": {
       const { event } = action;
       switch (event.type) {
         case "userMessage": {
           const mapped = mapApiMessage(event.message);
           const pending = state.pendingUserId;
+          if (pending) {
+            return {
+              ...state,
+              pendingUserId: null,
+              messages: state.messages.map((m) => (m.id === pending ? mapped : m)),
+            };
+          }
+          if (state.messages.some((m) => m.id === mapped.id)) return state;
           return {
             ...state,
             pendingUserId: null,
-            messages: pending
-              ? state.messages.map((m) => (m.id === pending ? mapped : m))
-              : [...dropEmptyDraft(state.messages), mapped],
+            messages: [...dropEmptyDraft(state.messages), mapped],
           };
         }
-        case "status":
+        case "status": {
+          const label = statusLineFor(event.status.node);
           return {
             ...state,
-            statusLine: statusLineFor(event.status.node),
+            statusLine: label,
+            steps: pushStep(state.steps, event.status.node, label),
           };
+        }
         case "token":
           return {
             ...state,
-            messages: appendToken(state.messages, event.text),
+            messages: appendToken(state, event.text),
           };
+        case "tool":
+          return withTool(state, event.tool);
+        case "ui":
+          return withBlock(state, event.block);
         case "assistantMessage": {
           const mapped = mapApiMessage(event.message);
           if (state.resuming) {
+            const cleared = clearProposals(state.messages);
             return {
               ...state,
               statusLine: null,
               pendingAction: null,
-              messages: applyAssistant(clearProposals(state.messages), {
-                ...mapped,
-                actionProposal: undefined,
-              }),
+              accumulateId: null,
+              messages: applyAssistant(
+                { ...state, accumulateId: null, messages: cleared },
+                { ...mapped, actionProposal: undefined },
+              ),
             };
           }
           const proposal = mapped.actionProposal ?? state.pendingAction;
@@ -227,8 +422,9 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
             ...state,
             statusLine: null,
             pendingAction: proposal,
+            accumulateId: null,
             messages: applyAssistant(
-              state.messages,
+              state,
               proposal ? { ...mapped, actionProposal: proposal } : mapped,
             ),
           };
@@ -259,22 +455,26 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
             messages: clearProposals(state.messages),
           };
         case "done": {
+          const settled = {
+            phase: "idle" as const,
+            statusLine: null,
+            resuming: false,
+            reconnecting: false,
+            steps: [],
+            accumulateId: null,
+          };
           if (event.paused) {
             const proposal = event.pendingAction ?? state.pendingAction;
             return {
               ...state,
-              phase: "idle",
-              statusLine: null,
-              resuming: false,
+              ...settled,
               pendingAction: proposal,
               messages: attachProposal(dropEmptyDraft(state.messages), proposal),
             };
           }
           return {
             ...state,
-            phase: "idle",
-            statusLine: null,
-            resuming: false,
+            ...settled,
             messages: dropEmptyDraft(state.messages),
           };
         }
@@ -305,6 +505,9 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
               : "Couldn't confirm that change. You can try again.",
           },
           statusLine: null,
+          steps: [],
+          reconnecting: false,
+          accumulateId: null,
           pendingUserId: null,
         };
       }
@@ -317,6 +520,9 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
           phase: "error",
           error: action.error,
           statusLine: null,
+          steps: [],
+          reconnecting: false,
+          accumulateId: null,
           pendingUserId: null,
           messages: dropEmptyDraft(messages),
         };
@@ -333,6 +539,9 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
         resuming: false,
         error: action.error,
         statusLine: null,
+        steps: [],
+        reconnecting: false,
+        accumulateId: null,
         pendingUserId: null,
         messages: dropEmptyDraft(state.messages),
         rateLimitedUntil: until,
@@ -343,7 +552,7 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
       // whatever Astra had streamed so far stays with a "stopped" marker.
       const last = state.messages[state.messages.length - 1];
       const partial: TutorMessage | null =
-        last?.id === DRAFT_ID && last.text !== ""
+        last?.id === DRAFT_ID && hasBody(last)
           ? { ...last, id: `stopped-${crypto.randomUUID()}`, stopped: true }
           : null;
       const kept = dropDraft(state.messages);
@@ -352,6 +561,9 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
         ...state,
         phase: "idle",
         statusLine: null,
+        steps: [],
+        reconnecting: false,
+        accumulateId: null,
         resuming: false,
         pendingUserId: null,
         messages: [
@@ -374,6 +586,10 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
         ...state,
         phase: "idle",
         statusLine: null,
+        steps: [],
+        lastEventId: null,
+        reconnecting: false,
+        accumulateId: null,
         error: null,
         pendingUserId: null,
         resuming: false,

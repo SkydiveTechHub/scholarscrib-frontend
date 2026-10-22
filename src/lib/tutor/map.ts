@@ -1,5 +1,7 @@
 import { citationsOnly, proposalFromGrounding } from "./actions";
+import { parseBlockList, parseToolList } from "./blocks";
 import type {
+  ActiveRun,
   TutorApiMessage,
   TutorApiThread,
   TutorMessage,
@@ -14,14 +16,26 @@ function uiRole(role: TutorApiMessage["role"]): TutorRole {
   return "system";
 }
 
+export function readActiveRun(raw: unknown): ActiveRun | null {
+  if (!raw || typeof raw !== "object") return null;
+  const run = raw as { runId?: unknown; status?: unknown };
+  if (typeof run.runId !== "string" || run.runId === "") return null;
+  if (run.status !== "running" && run.status !== "paused") return null;
+  return { runId: run.runId, status: run.status };
+}
+
 export function mapApiMessage(m: TutorApiMessage): TutorMessage {
   const actionProposal = proposalFromGrounding(m.groundedOn);
+  const tools = parseToolList(m.tools);
+  const blocks = parseBlockList(m.blocks);
   return {
     id: m.id,
     role: uiRole(m.role),
     text: m.content,
     groundedOn: citationsOnly(m.groundedOn),
     ...(actionProposal ? { actionProposal } : {}),
+    ...(tools ? { tools } : {}),
+    ...(blocks ? { blocks } : {}),
   };
 }
 
@@ -72,5 +86,6 @@ export function mapApiThread(thread: TutorApiThread): TutorThread {
       .filter((m) => m.role !== "system")
       .map(mapApiMessage),
     systemBanner: systemBannerFrom(raw),
+    activeRun: readActiveRun(thread.activeRun),
   };
 }

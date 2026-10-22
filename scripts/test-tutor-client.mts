@@ -4,6 +4,7 @@ import {
   errorCodeForStatus,
   streamTutorAction,
   streamTutorReply,
+  streamTutorRun,
 } from "../src/lib/tutor/client";
 import type { ApiError } from "../src/lib/api/errors";
 import type { TutorStreamEvent } from "../src/lib/tutor/types";
@@ -214,6 +215,49 @@ test("resume can replace the proposed args", async () => {
     ),
   );
   assert.deepEqual(JSON.parse(body).args, { dailyHours: 2 });
+});
+
+test("rejoin GETs the run and sends Last-Event-ID", async () => {
+  let seen: { url: string; init: RequestInit } | null = null;
+  const events = await collect(
+    streamTutorRun(
+      { threadId: "t1", runId: "run 1", lastEventId: "9" },
+      {
+        token: "tok",
+        baseUrl: "http://api.test",
+        fetchImpl: async (url, init) => {
+          seen = { url: String(url), init: init as RequestInit };
+          return streamOf('id: 10\nevent: done\ndata: {"ok":true}\n\n');
+        },
+      },
+    ),
+  );
+  assert.ok(seen);
+  const { url, init } = seen as { url: string; init: RequestInit };
+  assert.equal(init.method, "GET");
+  assert.equal(
+    url,
+    "http://api.test/api/tutor/threads/t1/runs/run%201/stream",
+  );
+  const headers = init.headers as Record<string, string>;
+  assert.equal(headers["Last-Event-ID"], "9");
+  assert.equal(headers.Authorization, "Bearer tok");
+  assert.equal(events[0]?.type, "done");
+  assert.equal(events[0]?.eventId, "10");
+});
+
+test("a finished run is RUN_FINISHED, not a missing thread", async () => {
+  const events = await collect(
+    streamTutorRun(
+      { threadId: "t1", runId: "r1", lastEventId: null },
+      {
+        token: "t",
+        fetchImpl: async () => new Response(null, { status: 404 }),
+      },
+    ),
+  );
+  assert.equal(events[0]?.type, "error");
+  if (events[0]?.type === "error") assert.equal(events[0].code, "RUN_FINISHED");
 });
 
 test("409 on resume is ACTION_PENDING", async () => {

@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { isSettledAction, toActionProposal } from "./actions";
+import { parseBlockList, parseTool, parseToolList, parseUiBlock } from "./blocks";
 import type {
   GroundedOn,
   TutorApiMessage,
@@ -27,6 +28,8 @@ const apiMessage = z.object({
   content: z.string(),
   groundedOn: z.array(z.unknown()).default([]),
   createdAt: z.string().nullable().optional(),
+  tools: z.array(z.unknown()).optional(),
+  blocks: z.array(z.unknown()).optional(),
 });
 
 const statusPayload = z
@@ -67,6 +70,8 @@ const KNOWN = [
   "status",
   "token",
   "assistantMessage",
+  "tool",
+  "ui",
   "actionProposal",
   "actionExecuted",
   "actionRejected",
@@ -112,12 +117,16 @@ function toApiMessage(
     if (!grounding) return null;
     groundedOn.push(grounding);
   }
+  const tools = parseToolList(parsed.tools);
+  const blocks = parseBlockList(parsed.blocks);
   return {
     id: parsed.id,
     role: parsed.role,
     content: parsed.content,
     groundedOn,
     createdAt: parsed.createdAt ?? null,
+    ...(tools ? { tools } : {}),
+    ...(blocks ? { blocks } : {}),
   };
 }
 
@@ -129,6 +138,16 @@ function actionIdOf(json: unknown): string | undefined {
 
 /** Null for event names this client does not know, so the server can add events without breaking old clients. */
 export function decodeFrame(frame: {
+  event: string;
+  data: string;
+  id?: string;
+}): TutorStreamEvent | null {
+  const event = decodeKnown(frame);
+  if (!event || !frame.id) return event;
+  return { ...event, eventId: frame.id };
+}
+
+function decodeKnown(frame: {
   event: string;
   data: string;
 }): TutorStreamEvent | null {
@@ -178,6 +197,14 @@ export function decodeFrame(frame: {
       return r.success
         ? { type: "token", text: r.data.text ?? "" }
         : MALFORMED;
+    }
+    case "tool": {
+      const tool = parseTool(json);
+      return tool ? { type: "tool", tool } : null;
+    }
+    case "ui": {
+      const block = parseUiBlock(json);
+      return block ? { type: "ui", block } : null;
     }
     case "assistantMessage": {
       const r = apiMessage.safeParse(json);
