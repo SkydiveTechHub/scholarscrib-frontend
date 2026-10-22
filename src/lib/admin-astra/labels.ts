@@ -1,0 +1,81 @@
+const STATUS_LABELS: Record<string, string> = {
+  classify_intent: "Reading the request…",
+  pick_domain: "Choosing the area…",
+  action_agent: "Drafting…",
+  action_tools: "Looking that up…",
+  inspect_action_tools: "Preparing the change…",
+  await_action_approval: "Waiting for approval…",
+  execute_action: "Applying the change…",
+  action_outcome: "Finishing…",
+};
+
+/** Stage line for one graph node. Unknown nodes, including chitchat, stay generic. */
+export function statusLabel(node: string): string {
+  return STATUS_LABELS[node] ?? "Thinking…";
+}
+
+const TOOL_TITLES: Record<string, string> = {
+  search_students: "Searching students",
+  get_student: "Opening a student",
+  get_student_deletion_impact: "Checking what a delete would remove",
+  update_student: "Updating a student",
+  set_student_status: "Changing student status",
+  set_student_tier: "Changing a tier",
+  delete_student: "Deleting a student",
+  force_signout_student: "Signing a student out",
+  list_questions: "Listing questions",
+  get_question: "Opening a question",
+  question_form_options: "Loading question options",
+  question_coverage: "Checking question coverage",
+  preview_question_export: "Previewing an export",
+  create_question: "Creating a question",
+  update_question: "Updating a question",
+  delete_questions: "Deleting questions",
+  import_questions: "Importing questions",
+  lesson_tree: "Loading the lesson tree",
+  browse_lessons: "Browsing lessons",
+  get_topic_lesson: "Opening a lesson",
+  import_lesson: "Importing a lesson",
+  list_material_subjects: "Listing library subjects",
+  list_materials: "Listing materials",
+  create_material: "Creating a material",
+  update_material: "Updating a material",
+  delete_material: "Deleting a material",
+  list_announcements: "Listing announcements",
+  preview_announcement_audience: "Previewing an audience",
+  send_announcement: "Sending an announcement",
+  test_announcement: "Sending a test announcement",
+  cancel_announcement: "Cancelling an announcement",
+  list_academic_terms: "Listing term dates",
+  create_academic_term: "Creating a term",
+  update_academic_term: "Updating a term",
+  delete_academic_term: "Deleting a term",
+  list_catalogue_subjects: "Listing subjects",
+  list_curriculums: "Listing curriculums",
+  list_topics: "Listing topics",
+  create_subject: "Creating a subject",
+  update_subject: "Updating a subject",
+  delete_subject: "Deleting a subject",
+  create_curriculum: "Creating a curriculum",
+  update_curriculum: "Updating a curriculum",
+  delete_curriculum: "Deleting a curriculum",
+  create_topic: "Creating a topic",
+  update_topic: "Updating a topic",
+  delete_topic: "Deleting a topic",
+  admin_stats: "Reading dashboard stats",
+  admin_overview: "Reading the overview",
+  admin_analytics: "Reading analytics",
+  audit_log: "Reading the audit log",
+  audit_actors: "Looking up audit actors",
+  provider_backfill: "Backfilling the provider",
+  list_rag_jobs: "Listing reindex jobs",
+  reindex_content: "Reindexing content",
+  list_admins: "Listing admins",
+  create_admin: "Creating an admin",
+  set_admin_status: "Changing an admin",
+};
+
+/** The server summary is generic. Prefer a name we know. */
+export function toolTitle(name: string, summary: string): string {
+  return TOOL_TITLES[name] ?? (summary.trim() || "Working on that…");
+}
