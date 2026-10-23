@@ -154,6 +154,10 @@ export const endpoints = {
       coverage: "/admin/api/questions/coverage",
       export: "/admin/api/questions/export",
     },
+    coverageQuestions: {
+      list: "/admin/api/coverage-questions",
+      import: "/admin/api/coverage-questions/import",
+    },
     materials: {
       list: "/admin/api/materials",
       detail: (materialId: string) => `/admin/api/materials/${seg(materialId)}`,

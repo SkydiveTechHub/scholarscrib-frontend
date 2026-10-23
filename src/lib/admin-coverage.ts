@@ -1,14 +1,14 @@
 import type { AdminCoveragePaperOut, CoverageFetchStatus } from "@/lib/api/types";
 
 export type ExportFormat = "csv" | "json";
-export type QuestionsTab = "coverage" | "all";
+export type QuestionsTab = "coverage" | "backfill" | "all";
 
 const LIST_FILTER_KEYS = ["subjectId", "examType", "examYear", "difficulty"] as const;
 
 /** Which tab the URL asks for. Old list deep links (filters, no `tab`) open the list. */
 export function resolveTab(params: { get(name: string): string | null }): QuestionsTab {
   const tab = params.get("tab");
-  if (tab === "all" || tab === "coverage") return tab;
+  if (tab === "all" || tab === "coverage" || tab === "backfill") return tab;
   return LIST_FILTER_KEYS.some((key) => params.get(key)) ? "all" : "coverage";
 }
 

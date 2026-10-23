@@ -68,6 +68,8 @@ export const queryKeys = {
       [...queryKeys.admin.all, "questions", "usage", questionId] as const,
     /** Under the admin question prefix, so any question write marks it stale. */
     questionCoverage: () => [...queryKeys.admin.all, "questions", "coverage"] as const,
+    coverageQuestions: (params?: Record<string, string>) =>
+      [...queryKeys.admin.all, "questions", "coverage-questions", params ?? {}] as const,
     lessonTopic: (topicId: string) => [...queryKeys.admin.all, "lessons", topicId] as const,
     materials: () => [...queryKeys.admin.all, "materials"] as const,
     students: () => [...queryKeys.admin.all, "students"] as const,

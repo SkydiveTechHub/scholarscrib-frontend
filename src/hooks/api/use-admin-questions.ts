@@ -183,3 +183,33 @@ export function useImportQuestions() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ADMIN_QUESTIONS_KEY }),
   });
 }
+
+/** One page of the coverage question table (separate from the main bank). */
+export function useCoverageQuestions(params: Record<string, string>) {
+  return useQuery({
+    queryKey: queryKeys.admin.coverageQuestions(params),
+    queryFn: ({ signal }) =>
+      request<AdminQuestionsOut>({
+        method: "GET",
+        url: endpoints.admin.coverageQuestions.list,
+        params,
+        realm: "admin",
+        signal,
+      }),
+    placeholderData: keepPreviousData,
+  });
+}
+
+export function useImportCoverageQuestions() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { questions: unknown[]; skipDuplicates: boolean }) =>
+      request<ImportQuestionsOut>({
+        method: "POST",
+        url: endpoints.admin.coverageQuestions.import,
+        data: input,
+        realm: "admin",
+      }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ADMIN_QUESTIONS_KEY }),
+  });
+}
