@@ -73,3 +73,10 @@ test("the More sheet hides owner-only items from a non-owner", () => {
   const hrefs = moreSheetGroups(false).flatMap((g) => g.items.map((i) => i.href));
   assert.equal(hrefs.includes("/admin/team"), false);
 });
+
+test("Astra is visible to a non-owner and stays off the bottom bar", () => {
+  assert.equal(visibleItems(false).some((item) => item.href === "/admin/astra"), true);
+  assert.equal(mobileBarItems(false).some((item) => item.href === "/admin/astra"), false);
+  const more = moreSheetGroups(false).flatMap((group) => group.items.map((item) => item.href));
+  assert.equal(more.includes("/admin/astra"), true);
+});

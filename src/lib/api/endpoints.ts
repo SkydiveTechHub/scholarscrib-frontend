@@ -186,6 +186,18 @@ export const endpoints = {
       tree: "/admin/api/lesson-tree",
       browse: "/admin/api/lesson-browse",
     },
+    astra: {
+      threads: "/admin/api/astra/threads",
+      thread: (threadId: string) => `/admin/api/astra/threads/${seg(threadId)}`,
+      messagesStream: (threadId: string) =>
+        `/admin/api/astra/threads/${seg(threadId)}/messages/stream`,
+      messagesStop: (threadId: string) =>
+        `/admin/api/astra/threads/${seg(threadId)}/messages/stream/stop`,
+      runStream: (threadId: string, runId: string) =>
+        `/admin/api/astra/threads/${seg(threadId)}/runs/${seg(runId)}/stream`,
+      actionsResume: (threadId: string) =>
+        `/admin/api/astra/threads/${seg(threadId)}/actions/resume`,
+    },
     announcements: {
       list: "/admin/api/announcements",
       preview: "/admin/api/announcements/preview",

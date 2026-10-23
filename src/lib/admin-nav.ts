@@ -8,6 +8,7 @@ import {
   LuLibrary,
   LuMegaphone,
   LuScrollText,
+  LuSparkles,
   LuUsers,
 } from "react-icons/lu";
 import type { IconType } from "react-icons";
@@ -34,7 +35,10 @@ export type AdminNavGroup = {
 export const ADMIN_NAV_GROUPS: readonly AdminNavGroup[] = [
   {
     label: "Overview",
-    items: [{ name: "Dashboard", href: "/admin", icon: LuLayoutDashboard }],
+    items: [
+      { name: "Dashboard", href: "/admin", icon: LuLayoutDashboard },
+      { name: "Astra", href: "/admin/astra", icon: LuSparkles },
+    ],
   },
   {
     label: "Content",
