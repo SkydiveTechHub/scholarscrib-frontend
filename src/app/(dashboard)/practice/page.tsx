@@ -5,6 +5,16 @@ import { Badge } from "@/components/ui/badge";
 
 const practiceOptions = [
   {
+    title: "Mock Practice",
+    description:
+      "Practice what you've learned so far under timed conditions",
+    href: "/practice/mock-exam",
+    icon: LuTimer,
+    tile: "bg-tone-purple-soft text-tone-purple-ink",
+    stats: "Timed • Full-length",
+    badge: "purple" as const,
+  },  
+  {
     title: "Past Questions",
     description:
       "Browse and practice actual JAMB, WAEC, NECO and Post-UTME past questions organized by subject and year, with detailed explanations for every answer.",
@@ -14,16 +24,6 @@ const practiceOptions = [
     stats: "JAMB • WAEC • NECO",
     badge: "green" as const,
   },
-  // {
-  //   title: "Mock Exam",
-  //   description:
-  //     "Take a full-length exam under timed conditions, with auto-grading.",
-  //   href: "/practice/mock-exam",
-  //   icon: LuTimer,
-  //   tile: "bg-tone-purple-soft text-tone-purple-ink",
-  //   stats: "Timed • Full-length",
-  //   badge: "purple" as const,
-  // },
   {
     title: "JAMB CBT Practice",
     description:
