@@ -1,9 +1,9 @@
 "use client";
 
-import { Suspense } from "react";
+import { Suspense, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { buttonClass } from "@/components/ui/button";
+import { Button, buttonClass } from "@/components/ui/button";
 import { PageHeader } from "@/components/ui/page-header";
 import { resolveTab, tabHref, type QuestionsTab } from "@/lib/admin-coverage";
 import { cn } from "@/lib/utils";
@@ -42,20 +42,36 @@ function QuestionsPageFallback() {
 
 function QuestionsShell() {
   const tab = resolveTab(useSearchParams());
+  const [coverageImportOpen, setCoverageImportOpen] = useState(false);
 
   return (
     <div>
       <PageHeader
         title="Questions"
         description="What is populated for each subject and year, and the full question list."
+        // Import is specific to each tab: Coverage opens its own import into the
+        // coverage table; the other tabs use the main question bank import.
         action={
           <div className="flex flex-wrap gap-2">
-            <Link href="/admin/questions/import" className={buttonClass("secondary", "md")}>
-              Import
-            </Link>
-            <Link href="/admin/questions/new" className={buttonClass("primary", "md")}>
-              New question
-            </Link>
+            {tab === "coverage" ? (
+              <Button
+                variant="secondary"
+                size="md"
+                onClick={() => setCoverageImportOpen(true)}
+                disabled={coverageImportOpen}
+              >
+                Import
+              </Button>
+            ) : (
+              <>
+                <Link href="/admin/questions/import" className={buttonClass("secondary", "md")}>
+                  Import
+                </Link>
+                <Link href="/admin/questions/new" className={buttonClass("primary", "md")}>
+                  New question
+                </Link>
+              </>
+            )}
           </div>
         }
       />
@@ -90,7 +106,10 @@ function QuestionsShell() {
           chip starts it with that paper's filters read from the URL. */}
       <div id="questions-tabpanel" role="tabpanel" aria-labelledby={`questions-tab-${tab}`}>
         {tab === "coverage" ? (
-          <CoverageTab />
+          <CoverageTab
+            importOpen={coverageImportOpen}
+            onImportClose={() => setCoverageImportOpen(false)}
+          />
         ) : tab === "backfill" ? (
           <BackfillTab />
         ) : (

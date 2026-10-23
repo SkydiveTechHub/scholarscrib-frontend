@@ -6,7 +6,6 @@ import {
   LuChevronRight,
   LuCircleAlert,
   LuSearch,
-  LuUpload,
 } from "react-icons/lu";
 import { HIDE_BELOW } from "@/components/admin/admin-table";
 import { StatusBanner } from "@/components/admin/status-banner";
@@ -202,8 +201,13 @@ function ImportPanel({ onClose }: { onClose: () => void }) {
   );
 }
 
-export function CoverageTab() {
-  const [importOpen, setImportOpen] = useState(false);
+export function CoverageTab({
+  importOpen,
+  onImportClose,
+}: {
+  importOpen: boolean;
+  onImportClose: () => void;
+}) {
   const [queryInput, setQueryInput] = useState("");
   const [appliedQuery, setAppliedQuery] = useState("");
   const [examFilter, setExamFilter] = useState("");
@@ -263,15 +267,9 @@ export function CoverageTab() {
         <p className="text-sm text-muted">
           {pagination ? `${pagination.total} total` : "Loading…"}
         </p>
-        {!importOpen && (
-          <Button variant="secondary" size="md" onClick={() => setImportOpen(true)}>
-            <LuUpload className="mr-2 h-4 w-4" aria-hidden />
-            Import
-          </Button>
-        )}
       </div>
 
-      {importOpen && <ImportPanel onClose={() => setImportOpen(false)} />}
+      {importOpen && <ImportPanel onClose={onImportClose} />}
 
       <div className="mb-6 grid grid-cols-2 items-end gap-3 sm:flex sm:flex-wrap">
         <form onSubmit={handleSearch} className="col-span-2 sm:min-w-[200px] sm:max-w-sm sm:flex-1">
