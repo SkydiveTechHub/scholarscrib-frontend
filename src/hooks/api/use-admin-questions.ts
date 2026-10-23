@@ -200,6 +200,20 @@ export function useCoverageQuestions(params: Record<string, string>) {
   });
 }
 
+/** What the coverage table holds: question counts per subject, exam type and year. */
+export function useCoverageOverview() {
+  return useQuery({
+    queryKey: queryKeys.admin.coverageOverview(),
+    queryFn: ({ signal }) =>
+      request<AdminQuestionCoverageOut>({
+        method: "GET",
+        url: endpoints.admin.coverageQuestions.coverage,
+        realm: "admin",
+        signal,
+      }),
+  });
+}
+
 export function useImportCoverageQuestions() {
   const queryClient = useQueryClient();
   return useMutation({

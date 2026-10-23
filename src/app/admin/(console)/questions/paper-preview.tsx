@@ -6,7 +6,7 @@ import { LuChevronLeft, LuChevronRight, LuCircleAlert, LuX } from "react-icons/l
 import { StatusBanner } from "@/components/admin/status-banner";
 import { Button, buttonClass } from "@/components/ui/button";
 import { RichText } from "@/components/ui/rich-text";
-import { useAdminQuestions } from "@/hooks/api/use-admin-questions";
+import { useAdminQuestions, useCoverageQuestions } from "@/hooks/api/use-admin-questions";
 import { listHref, optionEntries } from "@/lib/admin-coverage";
 import type { AdminCoveragePaperOut, AdminCoverageSubjectOut } from "@/lib/api/types";
 import { ExportButtons } from "./export-buttons";
@@ -32,15 +32,19 @@ const PAGE_SIZE = "20";
 export function PaperPreview({
   subject,
   paper,
+  source,
   onClose,
 }: {
   subject: AdminCoverageSubjectOut;
   paper: AdminCoveragePaperOut;
+  /** Which question table the paper is read from; the coverage table has no export or full list. */
+  source: "bank" | "coverage";
   onClose: () => void;
 }) {
   const [page, setPage] = useState(1);
   const closeRef = useRef<HTMLButtonElement>(null);
-  const query = useAdminQuestions({
+  const useList = source === "coverage" ? useCoverageQuestions : useAdminQuestions;
+  const query = useList({
     page: String(page),
     pageSize: PAGE_SIZE,
     subjectId: subject.subjectId,
@@ -89,23 +93,25 @@ export function PaperPreview({
           </Button>
         </header>
 
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border-strong px-4 py-3">
-          <ExportButtons
-            subjectId={subject.subjectId}
-            examType={paper.examType}
-            examYear={paper.examYear}
-          />
-          <Link
-            href={listHref({
-              subjectId: subject.subjectId,
-              examType: paper.examType,
-              examYear: paper.examYear,
-            })}
-            className={buttonClass("ghost", "sm")}
-          >
-            Open in list
-          </Link>
-        </div>
+        {source === "bank" && (
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border-strong px-4 py-3">
+            <ExportButtons
+              subjectId={subject.subjectId}
+              examType={paper.examType}
+              examYear={paper.examYear}
+            />
+            <Link
+              href={listHref({
+                subjectId: subject.subjectId,
+                examType: paper.examType,
+                examYear: paper.examYear,
+              })}
+              className={buttonClass("ghost", "sm")}
+            >
+              Open in list
+            </Link>
+          </div>
+        )}
 
         <div className="flex-1 overflow-y-auto p-4" aria-busy={loading}>
           {query.isError ? (

@@ -156,6 +156,7 @@ export const endpoints = {
     },
     coverageQuestions: {
       list: "/admin/api/coverage-questions",
+      coverage: "/admin/api/coverage-questions/coverage",
       import: "/admin/api/coverage-questions/import",
     },
     materials: {
