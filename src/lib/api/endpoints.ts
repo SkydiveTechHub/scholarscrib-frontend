@@ -110,6 +110,7 @@ export const endpoints = {
   },
   dashboard: "/api/dashboard",
   performance: "/api/performance",
+  performanceTopics: "/api/performance/topics",
   classroom: {
     subjects: "/api/classroom/subjects",
     subject: (slug: string) => `/api/classroom/subjects/${seg(slug)}`,
