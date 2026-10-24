@@ -13,7 +13,7 @@ import type { ScopePoint } from "@/lib/curriculum-scope";
 function MockExamSession() {
   const searchParams = useSearchParams();
 
-  const examType = searchParams.get("examType") || "WAEC";
+  const examType = searchParams.get("examType") || undefined;
   const subjectId = searchParams.get("subjectId") || "";
   const count = Number(searchParams.get("count") || 40);
 
@@ -38,7 +38,7 @@ function MockExamSession() {
     () =>
       [
         "mock",
-        examType,
+        examType ?? "all",
         subjectId,
         from.classLevel,
         from.term,
@@ -70,7 +70,7 @@ function MockExamSession() {
   return (
     <ExamSurface
       session={session}
-      eyebrow={examType}
+      eyebrow={examType ?? "Mock exam"}
       backHref="/practice/mock-exam"
       confirmTitle="Submit mock exam?"
     />

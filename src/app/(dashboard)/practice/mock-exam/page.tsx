@@ -59,7 +59,7 @@ export default async function MockExamPage({
     <div className="animate-fade-in">
       <PageHeader
         title="Mock Exam"
-        description="Pick an exam board, a subject, and the part of the syllabus you want tested."
+        description="Pick a subject from your track and the part of the syllabus you want tested."
       />
 
       <div className="mb-8 grid grid-cols-1 gap-3 sm:grid-cols-3">

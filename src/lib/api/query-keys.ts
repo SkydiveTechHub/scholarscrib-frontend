@@ -32,8 +32,8 @@ export const queryKeys = {
       [...queryKeys.assessments.all, "past-paper", "history", exam, subject] as const,
     jambHistory: (subjectIds: string) =>
       [...queryKeys.assessments.all, "jamb-cbt", "history", subjectIds] as const,
-    mockExamOptions: (examType: string) =>
-      [...queryKeys.assessments.all, "mock-exam", "options", examType] as const,
+    mockExamOptions: (examType: string | null = null) =>
+      [...queryKeys.assessments.all, "mock-exam", "options", examType ?? "all"] as const,
   },
   flashcards: {
     all: ["flashcards"] as const,

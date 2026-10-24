@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   LuArrowRight,
@@ -10,15 +10,10 @@ import {
   LuCheck,
 } from "react-icons/lu";
 import { cn } from "@/lib/utils";
-import { useQueryClient } from "@tanstack/react-query";
-import {
-  mockExamOptionsQuery,
-  useMockExamBoards,
-} from "@/hooks/api/use-assessments";
-import { Badge } from "@/components/ui/badge";
+import { useQuery } from "@tanstack/react-query";
+import { mockExamOptionsQuery } from "@/hooks/api/use-assessments";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
-import type { BoardStatus } from "@/lib/board-availability";
 import {
   CLASS_LEVELS,
   TERMS,
@@ -36,11 +31,7 @@ type SubjectAvailability = {
   code: string;
   name: string;
   scopes: ScopeCount[];
-  total: number;
 };
-
-const BOARDS = ["WAEC", "JAMB", "NECO"] as const;
-type Board = (typeof BOARDS)[number];
 
 const COUNT_OPTIONS = [20, 40, 60] as const;
 
@@ -55,95 +46,31 @@ export function MockExamPicker({
 } = {}) {
   const router = useRouter();
 
-  const [board, setBoard] = useState<Board | null>(null);
-  // Null while in flight. Every board is treated as unavailable until the
-  // answer lands, so nobody can click through to a board that turns out to
-  // hold nothing.
-  // A failed lookup reads as "nothing available" rather than "still checking".
-  const queryClient = useQueryClient();
-  const boards = useMockExamBoards();
-  const boardStatus: Record<string, BoardStatus> | null = boards.isError
-    ? {}
-    : boards.data
-      ? (boards.data.boards ?? {})
-      : null;
-  const [subjects, setSubjects] = useState<SubjectAvailability[]>([]);
-  const [loadingSubjects, setLoadingSubjects] = useState(false);
-  const [subjectId, setSubjectId] = useState<string | null>(null);
+  // The server already narrows these to the student's track. Questions are
+  // drawn from every board, so there is no board to choose.
+  const options = useQuery(mockExamOptionsQuery<SubjectAvailability>());
+  const subjects = useMemo(() => options.data?.subjects ?? [], [options.data]);
+  const loadingSubjects = options.isPending;
 
-  const [useRange, setUseRange] = useState(false);
-  const [from, setFrom] = useState<ScopePoint>({
-    classLevel: "SS1",
-    term: "FIRST",
-  });
-  const [to, setTo] = useState<ScopePoint>({
-    classLevel: "SS1",
-    term: "FIRST",
-  });
+  // A deep link pre-selects its subject and scope. A subjectId with no scope
+  // params (or only some of them) is still valid: the scope controls are left
+  // at their defaults. A subject outside the student's track simply isn't found.
+  const [subjectId, setSubjectId] = useState<string | null>(initialSubjectId);
+
+  const [useRange, setUseRange] = useState(
+    initialFrom !== null &&
+      scopeOrdinal(initialTo ?? initialFrom) !== scopeOrdinal(initialFrom),
+  );
+  const [from, setFrom] = useState<ScopePoint>(
+    initialFrom ?? { classLevel: "SS1", term: "FIRST" },
+  );
+  const [to, setTo] = useState<ScopePoint>(
+    initialTo ?? initialFrom ?? { classLevel: "SS1", term: "FIRST" },
+  );
 
   const [count, setCount] = useState<number>(40);
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState("");
-
-  // Deep-link pre-fill, held in reserve until a board is chosen: a subject
-  // can't be resolved before then, since subjects are listed per board. The
-  // reserve expresses an intent ("Biology, all of SS1") independent of which
-  // board the student happens to try first — a board with no matching subject
-  // is a dead end to back out of, not a rejection of the link. It is only
-  // cleared once actually applied, or once the student manually picks a
-  // different subject (an explicit choice supersedes the link). That means it
-  // can carry across several board switches until it finds a home.
-  const [pendingPrefill, setPendingPrefill] = useState<{
-    subjectId: string;
-    from: ScopePoint | null;
-    to: ScopePoint | null;
-  } | null>(initialSubjectId ? { subjectId: initialSubjectId, from: initialFrom, to: initialTo } : null);
-
-  // Driven from the click rather than an effect on `board`: picking a board is
-  // a user action, so the fetch belongs in the handler.
-  const chooseBoard = useCallback(
-    async (chosen: Board) => {
-      setBoard(chosen);
-      setSubjectId(null);
-      setSubjects([]);
-      setLoadingSubjects(true);
-      setError("");
-      try {
-        const data = await queryClient.fetchQuery(
-          mockExamOptionsQuery<SubjectAvailability>(chosen),
-        );
-        const list: SubjectAvailability[] = data.subjects ?? [];
-        setSubjects(list);
-
-        if (pendingPrefill) {
-          const match = list.find((s) => s.id === pendingPrefill.subjectId);
-          if (match) {
-            setSubjectId(match.id);
-            // A subjectId with no scope params (or only some of them) is a
-            // real, valid link: the subject is pre-selected and the scope
-            // controls are simply left at their defaults.
-            if (pendingPrefill.from) {
-              setFrom(pendingPrefill.from);
-              const rangeTo = pendingPrefill.to ?? pendingPrefill.from;
-              setTo(rangeTo);
-              setUseRange(
-                scopeOrdinal(rangeTo) !== scopeOrdinal(pendingPrefill.from),
-              );
-            }
-            setPendingPrefill(null);
-          }
-          // No match on this board: leave the reserve in place. It is not
-          // spent yet — a later board may still have the subject.
-        }
-      } catch {
-        setError("Couldn't load subjects. Please try again.");
-        setSubjects([]);
-      } finally {
-        setLoadingSubjects(false);
-      }
-    },
-    [pendingPrefill, queryClient],
-  );
 
   const subject = useMemo(
     () => subjects.find((s) => s.id === subjectId) ?? null,
@@ -180,11 +107,10 @@ export function MockExamPicker({
   // picker holds, and a generation that does fail surfaces on the session
   // screen, which has a way back here.
   function start() {
-    if (!board || !subjectId || available === 0) return;
+    if (!subjectId || available === 0) return;
     setStarting(true);
     setError("");
     const params = new URLSearchParams({
-      examType: board,
       subjectId,
       fromClass: from.classLevel,
       fromTerm: from.term,
@@ -197,75 +123,37 @@ export function MockExamPicker({
 
   return (
     <div className="space-y-8">
-      {/* Board */}
-      <section>
-        <h2 className="section-label mb-3">1 · Choose the exam</h2>
-        <div className="grid grid-cols-3 gap-3">
-          {BOARDS.map((b) => {
-            // A board opens itself: it is enterable exactly when its own bank
-            // holds enough syllabus-tagged subjects to scope, and it says why
-            // when it doesn't. Nothing here is on a list to be remembered.
-            const status = boardStatus?.[b] ?? null;
-            const checking = boardStatus === null;
-            const shut = !checking && !status?.ready;
-            return (
-              <button
-                key={b}
-                type="button"
-                onClick={() => chooseBoard(b)}
-                disabled={checking || shut}
-                aria-pressed={board === b}
-                title={shut ? status?.reason ?? undefined : undefined}
-                className={cn(
-                  "flex flex-col items-center justify-center gap-1.5 rounded-xl border py-4 text-sm font-bold transition-all",
-                  checking || shut
-                    ? "cursor-not-allowed border-border bg-muted/40 text-muted"
-                    : board === b
-                      ? "border-primary bg-primary-soft text-primary ring-4 ring-primary/15"
-                      : "border-border bg-card text-foreground hover:border-primary/40",
-                )}
-              >
-                {b}
-                {shut && (
-                  <Badge className="max-w-full">
-                    <span className="truncate">
-                      {status?.reason ?? "Not available"}
-                    </span>
-                  </Badge>
-                )}
-              </button>
-            );
-          })}
-        </div>
-      </section>
-
       {/* Subject */}
-      {board && (
-        <section className="animate-slide-up">
-          <h2 className="section-label mb-3">2 · Choose the subject</h2>
+      <section>
+        <h2 className="section-label mb-3">1 · Choose the subject</h2>
 
-          {loadingSubjects ? (
-            <Spinner className="py-10" />
-          ) : subjects.length === 0 ? (
-            <div className="flex items-start gap-2.5 rounded-xl border border-warning/25 bg-warning-soft px-4 py-3 text-sm text-warning">
-              <LuTriangleAlert className="mt-0.5 h-4 w-4 flex-shrink-0" />
-              <span>
-                No {board} questions are tagged to the syllabus yet, so no
-                subject can be scoped by class and term.
-              </span>
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 gap-2.5 md:grid-cols-3">
-              {subjects.map((s) => (
+        {loadingSubjects ? (
+          <Spinner className="py-10" />
+        ) : options.isError ? (
+          <div
+            role="alert"
+            className="flex items-start gap-2.5 rounded-xl border border-danger/25 bg-danger-soft px-4 py-3 text-sm font-medium text-danger"
+          >
+            <LuTriangleAlert className="mt-0.5 h-4 w-4 flex-shrink-0" />
+            <span>Couldn&apos;t load subjects. Please try again.</span>
+          </div>
+        ) : subjects.length === 0 ? (
+          <div className="flex items-start gap-2.5 rounded-xl border border-warning/25 bg-warning-soft px-4 py-3 text-sm text-warning">
+            <LuTriangleAlert className="mt-0.5 h-4 w-4 flex-shrink-0" />
+            <span>
+              No questions are tagged to the syllabus yet, so no subject can be
+              scoped by class and term.
+            </span>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-2.5 md:grid-cols-3">
+            {subjects.map((s) => {
+              const total = s.scopes.reduce((sum, scope) => sum + scope.count, 0);
+              return (
                 <button
                   key={s.id}
                   type="button"
-                  onClick={() => {
-                    setSubjectId(s.id);
-                    // An explicit pick supersedes the deep link, whether or
-                    // not it happens to be the linked subject.
-                    setPendingPrefill(null);
-                  }}
+                  onClick={() => setSubjectId(s.id)}
                   aria-pressed={subjectId === s.id}
                   className={cn(
                     "rounded-xl border p-3.5 text-left transition-all",
@@ -283,20 +171,20 @@ export function MockExamPicker({
                     )}
                   </div>
                   <p className="mt-1 text-xs text-muted">
-                    {s.total} question{s.total === 1 ? "" : "s"} tagged
+                    {total} question{total === 1 ? "" : "s"} tagged
                   </p>
                 </button>
-              ))}
-            </div>
-          )}
-        </section>
-      )}
+              );
+            })}
+          </div>
+        )}
+      </section>
 
       {/* Scope */}
       {subject && (
         <section className="animate-slide-up">
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-            <h2 className="section-label">3 · Choose the syllabus scope</h2>
+            <h2 className="section-label">2 · Choose the syllabus scope</h2>
             <label className="flex cursor-pointer items-center gap-2 text-xs font-semibold text-muted">
               <input
                 type="checkbox"
@@ -354,7 +242,7 @@ export function MockExamPicker({
       {/* Length */}
       {subject && available > 0 && (
         <section className="animate-slide-up">
-          <h2 className="section-label mb-3">4 · How many questions?</h2>
+          <h2 className="section-label mb-3">3 · How many questions?</h2>
           <div className="flex flex-wrap gap-2">
             {COUNT_OPTIONS.map((option) => {
               const capped = Math.min(option, available);
@@ -383,7 +271,7 @@ export function MockExamPicker({
         <div className="flex items-start gap-2.5 rounded-xl border border-warning/25 bg-warning-soft px-4 py-3 text-sm text-warning">
           <LuTriangleAlert className="mt-0.5 h-4 w-4 flex-shrink-0" />
           <span>
-            No {board} {subject.name} questions are tagged to {scopeText} yet.
+            No {subject.name} questions are tagged to {scopeText} yet.
             Try a wider range or another term.
           </span>
         </div>
@@ -402,8 +290,8 @@ export function MockExamPicker({
       <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-5">
         <p className="flex items-center gap-1.5 text-xs text-muted">
           <LuInfo className="h-3.5 w-3.5" />
-          Questions are drawn at random from {board ?? "the board"}&apos;s past
-          papers for the topics in your chosen scope.
+          Questions are drawn at random from past papers for the topics in your
+          chosen scope.
         </p>
         <Button
           onClick={start}

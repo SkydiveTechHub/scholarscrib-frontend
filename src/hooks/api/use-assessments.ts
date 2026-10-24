@@ -41,7 +41,7 @@ export function useGenerateQuiz() {
 }
 
 export type MockExamScopeInput = {
-  examType: string;
+  examType?: string;
   subjectId: string;
   from: ScopePoint;
   to: ScopePoint;
@@ -132,18 +132,17 @@ export function useMockExamBoards() {
 }
 
 /**
- * Subjects available for one board. Fetched from a click handler through
- * `queryClient.fetchQuery(mockExamOptionsQuery(board))`, so it shares the
- * cache without turning the picker's step logic into an effect.
+ * Mock exam subjects in the student's track, with question counts per class
+ * and term. Counts span every board unless one is named.
  */
-export function mockExamOptionsQuery<T>(examType: string) {
+export function mockExamOptionsQuery<T>(examType: string | null = null) {
   return queryOptions({
     queryKey: queryKeys.assessments.mockExamOptions(examType),
     queryFn: () =>
       request<{ subjects: T[] }>({
         method: "GET",
         url: endpoints.assessments.mockExam.options,
-        params: { examType },
+        params: examType ? { examType } : undefined,
       }),
   });
 }
