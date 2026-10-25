@@ -1,4 +1,5 @@
 import { Fragment, type ReactNode } from "react";
+import { LazyMath } from "@/components/ui/lazy-math";
 import { parseQuestionMarkup, type MarkupNode } from "@/lib/question-markup";
 
 /**
@@ -7,7 +8,8 @@ import { parseQuestionMarkup, type MarkupNode } from "@/lib/question-markup";
  *
  * Renders React elements from an allowlisted tree (see `question-markup.ts`),
  * never the provider's HTML, so it is safe on any text the bank returns. No
- * hooks and no client code: it renders the same in server and client trees.
+ * hooks of its own: it renders the same in server and client trees. Formulas
+ * are the one exception, delegated to the client `LazyMath`.
  */
 export function RichText({ text }: { text: string | null | undefined }) {
   return <>{renderNodes(parseQuestionMarkup(text))}</>;
@@ -24,6 +26,8 @@ function renderNodes(nodes: MarkupNode[]): ReactNode[] {
         return <Fragment key={i}>{node.text}</Fragment>;
       case "br":
         return <br key={i} />;
+      case "math":
+        return <LazyMath key={i} tex={node.tex} />;
       case "sup":
         return (
           <sup key={i} className={`${SCRIPT_CLS} -top-[0.5em] align-baseline`}>

@@ -13,6 +13,7 @@
 export type MarkupNode =
   | { type: "text"; text: string }
   | { type: "br" }
+  | { type: "math"; tex: string }
   | { type: "sup" | "sub" | "b" | "i" | "u"; children: MarkupNode[] };
 
 type ElementType = "sup" | "sub" | "b" | "i" | "u";
@@ -100,6 +101,14 @@ const WORD_BRACKETS = /[〖〗]/g;
  */
 const CARET = /\^(\([^()]*\)|\{[^{}]*\}|[-−+]?\d+(?:\.\d+)?|[-−]?[a-zA-Z](?![a-zA-Z]))/g;
 
+/**
+ * A LaTeX environment the bank left bare, as in "\begin{pmatrix} 5 & 3 \\
+ * 2 & 1 \end{pmatrix}": matrices and the like. With no `$` around them they
+ * are found by their own begin/end pair and handed to KaTeX whole, before the
+ * tag and whitespace passes can mangle the `&` and `\\` inside.
+ */
+const LATEX_ENV = /\\begin\{([a-zA-Z]+\*?)\}[\s\S]*?\\end\{\1\}/g;
+
 function tidyText(text: string): string {
   return decodeEntities(text).replace(WORD_BRACKETS, "").replace(/\s+/g, " ");
 }
@@ -131,6 +140,8 @@ function compact(nodes: MarkupNode[]): MarkupNode[] {
       const prev = out[out.length - 1];
       if (prev?.type === "text") prev.text += node.text;
       else out.push({ ...node });
+    } else if (node.type === "math") {
+      out.push(node);
     } else if (node.type === "br") {
       // Never two breaks in a row, and never one before any content.
       if (out.length > 0 && out[out.length - 1].type !== "br") out.push(node);
@@ -163,33 +174,44 @@ export function parseQuestionMarkup(raw: string | null | undefined): MarkupNode[
     current().push(...(inSup() ? [{ type: "text" as const, text: tidy }] : caretPowers(tidy)));
   };
 
-  let last = 0;
-  for (const match of raw.matchAll(TAG)) {
-    const [whole, closing, rawName, , selfClosing] = match;
-    const name = rawName.toLowerCase();
-    if (!KNOWN_TAGS.has(name)) continue; // not a tag we know: leave it as text
-    const at = match.index ?? 0;
-    pushText(raw.slice(last, at));
-    last = at + whole.length;
+  const parseMarkup = (chunk: string) => {
+    let last = 0;
+    for (const match of chunk.matchAll(TAG)) {
+      const [whole, closing, rawName, , selfClosing] = match;
+      const name = rawName.toLowerCase();
+      if (!KNOWN_TAGS.has(name)) continue; // not a tag we know: leave it as text
+      const at = match.index ?? 0;
+      pushText(chunk.slice(last, at));
+      last = at + whole.length;
 
-    if (BREAK_TAGS.has(name)) {
-      current().push({ type: "br" });
-      continue;
-    }
-    const type = ELEMENT_TAGS[name];
-    if (!type || selfClosing) continue; // a transparent wrapper, or <sup/>
+      if (BREAK_TAGS.has(name)) {
+        current().push({ type: "br" });
+        continue;
+      }
+      const type = ELEMENT_TAGS[name];
+      if (!type || selfClosing) continue; // a transparent wrapper, or <sup/>
 
-    if (!closing) {
-      const frame = { type, children: [] as MarkupNode[] };
-      current().push(frame);
-      stack.push(frame);
-      continue;
+      if (!closing) {
+        const frame = { type, children: [] as MarkupNode[] };
+        current().push(frame);
+        stack.push(frame);
+        continue;
+      }
+      // Close the nearest open element of this type; a stray close is dropped.
+      const index = stack.map((frame) => frame.type).lastIndexOf(type);
+      if (index !== -1) stack.length = index;
     }
-    // Close the nearest open element of this type; a stray close is dropped.
-    const index = stack.map((frame) => frame.type).lastIndexOf(type);
-    if (index !== -1) stack.length = index;
+    pushText(chunk.slice(last));
+  };
+
+  let from = 0;
+  for (const env of raw.matchAll(LATEX_ENV)) {
+    const at = env.index ?? 0;
+    parseMarkup(raw.slice(from, at));
+    current().push({ type: "math", tex: decodeEntities(env[0]) });
+    from = at + env[0].length;
   }
-  pushText(raw.slice(last));
+  parseMarkup(raw.slice(from));
 
   const nodes = compact(root);
   // Edges of the whole text: provider strings often end in a stray space.
@@ -221,6 +243,7 @@ function plain(nodes: MarkupNode[]): string {
     .map((node) => {
       if (node.type === "text") return node.text;
       if (node.type === "br") return " ";
+      if (node.type === "math") return node.tex.replace(/\s+/g, " ");
       const inner = plain(node.children);
       if (node.type === "sup") return scripted(inner, SUPERSCRIPT, "^");
       if (node.type === "sub") return scripted(inner, SUBSCRIPT, "_");

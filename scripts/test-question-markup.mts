@@ -108,3 +108,13 @@ test("plain text uses Unicode scripts where every character has one", () => {
   assert.equal(questionPlainText("10<sup>-3</sup>"), "10⁻³");
   assert.equal(questionPlainText("a<sup>bc</sup>"), "a^(bc)");
 });
+
+test("bare LaTeX environments become math nodes, untouched by the tag/space passes", () => {
+  const tex = String.raw`\begin{pmatrix} 5 & 3 \ 2 & 1 \end{pmatrix}`;
+  assert.deepEqual(parseQuestionMarkup(`If P = ${tex}, find 2P`), [
+    { type: "text", text: "If P = " },
+    { type: "math", tex },
+    { type: "text", text: ", find 2P" },
+  ]);
+  assert.deepEqual(parseQuestionMarkup(tex), [{ type: "math", tex }]);
+});
