@@ -2,7 +2,7 @@
 
 import { useCallback, useState } from "react";
 import type { UseQueryResult } from "@tanstack/react-query";
-import { LuChevronDown, LuChevronRight, LuCircleAlert } from "react-icons/lu";
+import { LuCheck, LuChevronDown, LuChevronRight, LuCircleAlert } from "react-icons/lu";
 import { StatusBanner } from "@/components/admin/status-banner";
 import { Button } from "@/components/ui/button";
 import { fillBadge, groupPapersByExam, paperKey, type ExamGroup } from "@/lib/admin-coverage";
@@ -20,11 +20,13 @@ function ExamGroupSection({
   group,
   onSelect,
   showExport,
+  inCoverage,
 }: {
   subject: AdminCoverageSubjectOut;
   group: ExamGroup;
   onSelect: (paper: AdminCoveragePaperOut) => void;
   showExport: boolean;
+  inCoverage?: ReadonlySet<string>;
 }) {
   const [open, setOpen] = useState(true);
   const listId = `${subject.subjectId}-${group.examType}-papers`;
@@ -62,16 +64,24 @@ function ExamGroupSection({
         <ul id={listId} className="mt-2 flex flex-wrap gap-2">
           {group.papers.map((paper) => {
             const badge = fillBadge(paper.fetchStatus);
+            const both = inCoverage?.has(paperKey(subject.subjectId, paper.examType, paper.examYear)) ?? false;
             return (
               <li key={paperKey(subject.subjectId, paper.examType, paper.examYear)}>
                 <button
                   type="button"
                   onClick={() => onSelect(paper)}
-                  aria-label={`Preview ${subject.name} ${paper.examType} ${paper.examYear}, ${paper.count} questions`}
+                  aria-label={`Preview ${subject.name} ${paper.examType} ${paper.examYear}, ${paper.count} questions${both ? ", also in Coverage" : ""}`}
                   className="flex items-center gap-2 rounded-lg border border-border bg-secondary/40 px-3 py-1.5 text-sm hover:bg-secondary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
                 >
                   <span className="font-medium text-foreground">{paper.examYear}</span>
                   <span className="tabular-nums text-muted">{paper.count}</span>
+                  {both && (
+                    <LuCheck
+                      className="h-3.5 w-3.5 text-tone-green-ink"
+                      aria-label="Also in Coverage"
+                      role="img"
+                    />
+                  )}
                   {badge && (
                     <span
                       className={cn(
@@ -103,11 +113,14 @@ export function CoverageBoard({
   source,
   emptyMessage,
   showExport,
+  inCoverage,
 }: {
   coverage: UseQueryResult<AdminQuestionCoverageOut>;
   source: "bank" | "coverage";
   emptyMessage: string;
   showExport: boolean;
+  /** Paper keys also present in the Coverage table; those pills get a check. */
+  inCoverage?: ReadonlySet<string>;
 }) {
   const [selected, setSelected] = useState<{
     subject: AdminCoverageSubjectOut;
@@ -181,6 +194,7 @@ export function CoverageBoard({
                     group={group}
                     onSelect={(paper) => setSelected({ subject, paper })}
                     showExport={showExport}
+                    inCoverage={inCoverage}
                   />
                 ))}
               </div>
