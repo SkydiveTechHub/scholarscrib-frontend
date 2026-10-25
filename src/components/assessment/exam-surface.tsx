@@ -23,6 +23,7 @@ import { RichText } from "@/components/ui/rich-text";
 import { formatExamTime, type ExamSession } from "./use-exam-session";
 import { Modal } from "@/components/ui/modal";
 import { useNavigationGuard } from "./use-navigation-guard";
+import { progressPercent as examProgressPercent } from "./exam-state";
 
 /** A named block of questions in the navigator — one per subject on a mock exam. */
 export type QuestionGroup = {
@@ -89,7 +90,6 @@ export function ExamSurface({
     indexById,
     answeredCount,
     flaggedCount,
-    progressPercent,
     lowTime,
     setShowConfirmSubmit,
     setFocusMode,
@@ -105,6 +105,8 @@ export function ExamSurface({
   // A paged paper reports its full size up front; fall back to what has loaded.
   const total = Math.max(totalQuestions ?? 0, questions.length);
   const unanswered = Math.max(0, total - answeredCount);
+  // Answered against the whole paper, not just the pages loaded so far.
+  const progressPercent = examProgressPercent(questions, answers, total);
   // 1-based numbers of the loaded questions still blank. Questions past the
   // last page loaded are unanswered too, but have no number to jump to yet.
   const unansweredNumbers = questions.flatMap((q, i) =>

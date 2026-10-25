@@ -269,9 +269,12 @@ export function countAnswered(
 export function progressPercent(
   questions: readonly ExamQuestion[],
   answers: AnswerMap,
+  /** Full paper size for a paged exam; defaults to what has loaded. */
+  totalQuestions?: number,
 ): number {
-  if (questions.length === 0) return 0; // guards NaN on an empty question list
-  return (countAnswered(questions, answers).answeredCount / questions.length) * 100;
+  const total = Math.max(totalQuestions ?? 0, questions.length);
+  if (total === 0) return 0; // guards NaN on an empty question list
+  return (countAnswered(questions, answers).answeredCount / total) * 100;
 }
 
 export type SubmissionAnswer = {

@@ -348,6 +348,20 @@ test("progressPercent reports the answered fraction", () => {
   assert.equal(progressPercent(questions, answers), 25);
 });
 
+test("progressPercent measures against the full paper size when only part is loaded", () => {
+  const questions = [question("q1"), question("q2")];
+  let answers = withSelectedAnswer(emptyAnswers(questions), "q1", "A");
+  answers = withSelectedAnswer(answers, "q2", "B");
+  // 2 answered of a 40-question paper whose first page holds 2.
+  assert.equal(progressPercent(questions, answers, 40), 5);
+});
+
+test("progressPercent ignores a total smaller than what has loaded", () => {
+  const questions = [question("q1"), question("q2")];
+  const answers = withSelectedAnswer(emptyAnswers(questions), "q1", "A");
+  assert.equal(progressPercent(questions, answers, 1), 50);
+});
+
 // ─── submission ────────────────────────────────────────────
 
 test("buildSubmission emits one entry per question in exam order", () => {
