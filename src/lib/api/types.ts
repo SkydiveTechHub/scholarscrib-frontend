@@ -421,6 +421,29 @@ export type PerformanceOut = {
   attemptTotal?: number;
 };
 
+export type TopicStandingStatus = "strong" | "weak" | "normal" | "emerging";
+
+export type TopicStandingFilter = "all" | "strong" | "weak" | "normal";
+
+export type TopicStanding = {
+  topicId: string;
+  title: string;
+  slug: string;
+  subjectId: string;
+  subjectName: string;
+  subjectSlug: string;
+  mastery: number;
+  level: string;
+  status: TopicStandingStatus;
+  confidence: number;
+  observations: number;
+};
+
+export type TopicStandingsOut = {
+  topics: TopicStanding[];
+  status: TopicStandingFilter;
+};
+
 // ─── Classroom ─────────────────────────────────────────────────────────────
 
 export type ClassroomSubjectRow = Record<string, unknown> & { id?: string; slug: string };

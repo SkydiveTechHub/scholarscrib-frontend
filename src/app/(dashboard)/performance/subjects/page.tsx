@@ -7,12 +7,13 @@ import { requiredTierFor } from "@/lib/subscription";
 import { PageHeader } from "@/components/ui/page-header";
 import { UpgradePrompt } from "@/components/billing/upgrade-prompt";
 import { getSubjectChoices, getSubjectPerformance } from "@/lib/analytics/subject-view";
+import { getTopicStandings } from "@/lib/analytics/topic-standings";
 import { EmptyState } from "@/components/ui/empty-state";
 import { buttonClass } from "@/components/ui/button";
 import { SubjectChips } from "@/components/performance/subject-chips";
 import { VerdictBand } from "@/components/performance/verdict-band";
 import { InsightList } from "@/components/performance/insight-list";
-import { TopicGroupList } from "@/components/performance/topic-group-list";
+import { TopicStandingsList } from "@/components/performance/topic-standings-list";
 import { ProfileBand } from "@/components/performance/profile-band";
 
 export default async function SubjectPerformancePage({
@@ -74,6 +75,8 @@ export default async function SubjectPerformancePage({
   const data = await getSubjectPerformance(session.id, activeSlug);
   if (!data) redirect("/performance/subjects");
 
+  const standings = await getTopicStandings({ subjectId: data.subject.id });
+
   return (
     <>
       <SubjectChips subjects={choices} activeSlug={activeSlug} />
@@ -82,40 +85,8 @@ export default async function SubjectPerformancePage({
       <InsightList insights={data.insights} />
 
       <h2 className="section-label mt-8 mb-1">Topics</h2>
-      <TopicGroupList
-        title="Needs work"
-        blurb="Measured, and weak. These are your real weaknesses."
-        rows={data.groups.NEEDS_WORK}
-        group="NEEDS_WORK"
-        subjectSlug={data.subject.slug}
-        defaultOpen
-      />
-      <TopicGroupList
-        title="Needs revision"
-        blurb="You knew these and they've faded."
-        rows={data.groups.NEEDS_REVISION}
-        group="NEEDS_REVISION"
-        subjectSlug={data.subject.slug}
-      />
-      <TopicGroupList
-        title="Coming along"
-        blurb="Real progress, not finished yet."
-        rows={data.groups.COMING_ALONG}
-        group="COMING_ALONG"
-        subjectSlug={data.subject.slug}
-      />
-      <TopicGroupList
-        title="Unproven"
-        blurb="Not weaknesses — unknowns. You haven't answered enough here to say."
-        rows={data.groups.UNPROVEN}
-        group="UNPROVEN"
-        subjectSlug={data.subject.slug}
-      />
-      <TopicGroupList
-        title="Solid"
-        blurb="Strong. Anything marked stale is worth a quick review."
-        rows={data.groups.SOLID}
-        group="SOLID"
+      <TopicStandingsList
+        topics={standings.topics}
         subjectSlug={data.subject.slug}
       />
 
