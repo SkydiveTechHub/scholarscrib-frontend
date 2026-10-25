@@ -1,8 +1,9 @@
 "use client";
 
 import { Badge } from "@/components/ui/badge";
-import { groupWindow } from "@/lib/study-plan-display";
+import { groupWindow, timetableMatch } from "@/lib/study-plan-display";
 import type { StudyPlanData, StudyPlanItemData } from "@/lib/study-plan";
+import type { TimetableData } from "@/lib/study-timetable";
 import { PlanItemRow } from "./plan-item-row";
 
 type OnStatus = (id: string, status: "COMPLETED" | "SKIPPED" | "PENDING") => Promise<void>;
@@ -17,11 +18,13 @@ function DayList({
   title,
   days,
   runwayStart,
+  timetable,
   onStatus,
 }: {
   title: string;
   days: { date: string; items: StudyPlanItemData[] }[];
   runwayStart: string | null;
+  timetable: TimetableData | null;
   onStatus: OnStatus;
 }) {
   if (days.length === 0) return null;
@@ -43,7 +46,9 @@ function DayList({
               </div>
             </div>
             <div className="space-y-2">
-              {day.items.map((item) => <PlanItemRow key={item.id} item={item} onStatus={onStatus} />)}
+              {day.items.map((item) => (
+                <PlanItemRow key={item.id} item={item} onStatus={onStatus} fromTimetable={timetableMatch(item, timetable)} />
+              ))}
             </div>
           </div>
         );
@@ -73,7 +78,9 @@ export function PlanSchedule({ plan, today, onStatus }: { plan: StudyPlanData; t
           <p className="text-sm text-muted">Nothing planned today — rest, or get ahead from this week&apos;s list.</p>
         ) : (
           <div className="space-y-2">
-            {groups.today.map((item) => <PlanItemRow key={item.id} item={item} onStatus={onStatus} />)}
+            {groups.today.map((item) => (
+              <PlanItemRow key={item.id} item={item} onStatus={onStatus} fromTimetable={timetableMatch(item, plan.timetable)} />
+            ))}
           </div>
         )}
       </section>
@@ -82,17 +89,23 @@ export function PlanSchedule({ plan, today, onStatus }: { plan: StudyPlanData; t
         <section className="space-y-2">
           <h2 className="text-sm font-bold uppercase tracking-wider text-muted">Missed this week</h2>
           <p className="text-xs text-muted">These have been moved to your next free slots. Studied offline? Tick them off.</p>
-          {groups.recentMissed.map((item) => <PlanItemRow key={item.id} item={item} onStatus={onStatus} />)}
+          {groups.recentMissed.map((item) => (
+            <PlanItemRow key={item.id} item={item} onStatus={onStatus} fromTimetable={timetableMatch(item, plan.timetable)} />
+          ))}
         </section>
       )}
 
-      <DayList title="This week" days={groups.thisWeek} runwayStart={plan.runwayStart} onStatus={onStatus} />
-      <DayList title="Next week" days={groups.nextWeek} runwayStart={plan.runwayStart} onStatus={onStatus} />
-      <DayList title="Later" days={groups.later} runwayStart={plan.runwayStart} onStatus={onStatus} />
+      <DayList title="This week" days={groups.thisWeek} runwayStart={plan.runwayStart} timetable={plan.timetable} onStatus={onStatus} />
+      <DayList title="Next week" days={groups.nextWeek} runwayStart={plan.runwayStart} timetable={plan.timetable} onStatus={onStatus} />
+      <DayList title="Later" days={groups.later} runwayStart={plan.runwayStart} timetable={plan.timetable} onStatus={onStatus} />
 
       {plan.outline.length > 0 && (
         <details className="card p-5">
-          <summary className="cursor-pointer text-sm font-bold text-foreground">Rest of the plan</summary>
+          <summary className="cursor-pointer text-sm font-bold text-foreground">Rest of the plan (a rough projection)</summary>
+          <p className="mt-2 text-xs text-muted">
+            This is a guide to where your class will be, not a day-by-day schedule. It does not follow your timetable or what you
+            finish or miss. Your real sessions are planned two weeks at a time.
+          </p>
           <ul className="mt-4 space-y-3">
             {plan.outline.map((week) => (
               <li key={week.weekStart} className="text-sm">

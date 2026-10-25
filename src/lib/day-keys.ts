@@ -28,6 +28,12 @@ export function addDays(key: DayKey, days: number): DayKey {
   return new Date(toUtcMs(key) + days * DAY_MS).toISOString().slice(0, 10);
 }
 
+/** ISO weekday of `key`: 1 is Monday, 7 is Sunday. */
+export function weekdayOf(key: DayKey): number {
+  const day = new Date(toUtcMs(key)).getUTCDay();
+  return day === 0 ? 7 : day;
+}
+
 /** The Monday of the ISO week containing `key`. */
 export function mondayOf(key: DayKey): DayKey {
   const day = new Date(toUtcMs(key)).getUTCDay();

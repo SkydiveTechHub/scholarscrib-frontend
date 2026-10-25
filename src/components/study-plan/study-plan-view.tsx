@@ -19,7 +19,11 @@ import {
 } from "@/hooks/api/use-study-plan";
 import { ClassPositionPanel } from "./class-position-panel";
 import { PlanSchedule } from "./plan-schedule";
-import { PlanSetupForm, type PlanSettings } from "./plan-setup-form";
+import { PlanSetupForm, type PlanSetupStart } from "./plan-setup-form";
+import { TimetableSummary } from "./timetable-summary";
+import { UnmetNotice } from "./unmet-notice";
+import { WeekOverview } from "./week-overview";
+import type { PlanSettings } from "@/lib/study-plan-settings";
 
 /**
  * Everything arrives from the server page, which re-plans first. Mutations call
@@ -29,6 +33,13 @@ export function StudyPlanView({ data }: { data: StudyPlanPageData }) {
   const router = useRouter();
   const { plan } = data;
   const [editing, setEditing] = useState(false);
+  // Which step the setup form opens on, so "Edit subjects" lands on the subjects.
+  const [startAt, setStartAt] = useState<PlanSetupStart>("basics");
+
+  function openEditor(step: PlanSetupStart) {
+    setStartAt(step);
+    setEditing(true);
+  }
   const [error, setError] = useState("");
   // True from a successful first save until the refreshed plan arrives, so the
   // gap between the two shows a loader instead of the "No study plan yet" state.
@@ -100,7 +111,7 @@ export function StudyPlanView({ data }: { data: StudyPlanPageData }) {
         description={description}
         action={
           plan && !editing && (
-            <button type="button" onClick={() => setEditing(true)} className={buttonClass("secondary", "md")}>
+            <button type="button" onClick={() => openEditor("basics")} className={buttonClass("secondary", "md")}>
               <LuSettings2 className="h-4 w-4" />
               Change plan
             </button>
@@ -112,6 +123,8 @@ export function StudyPlanView({ data }: { data: StudyPlanPageData }) {
 
       {editing && (
         <PlanSetupForm
+          key={startAt}
+          initialStep={startAt}
           data={data}
           plan={plan}
           onSubmit={saveSettings}
@@ -129,7 +142,7 @@ export function StudyPlanView({ data }: { data: StudyPlanPageData }) {
           title="No study plan yet"
           description="Pick your subjects and when you can study. We'll plan your term week by week."
           action={
-            <button type="button" onClick={() => setEditing(true)} className={buttonClass("primary", "lg")}>
+            <button type="button" onClick={() => openEditor("basics")} className={buttonClass("primary", "lg")}>
               <LuPlus className="h-4 w-4" />
               Create a study plan
             </button>
@@ -154,14 +167,22 @@ export function StudyPlanView({ data }: { data: StudyPlanPageData }) {
           {plan.overload && (
             <div role="status" className="flex items-start gap-3 rounded-xl border border-tone-amber-line bg-tone-amber-soft px-4 py-3 text-sm text-tone-amber-ink">
               <LuTriangleAlert className="mt-0.5 h-4 w-4 flex-shrink-0" />
-              <p>
-                You&apos;re about {plan.overload.topicsBehind} {plan.overload.topicsBehind === 1 ? "topic" : "topics"} behind.
-                Adding {plan.overload.suggestedExtraMinutesPerWeek} minutes a week would help you catch up.
-              </p>
+              <div>
+                <p>
+                  You&apos;re about {plan.overload.topicsBehind} {plan.overload.topicsBehind === 1 ? "topic" : "topics"} behind.
+                  Adding {plan.overload.suggestedExtraMinutesPerWeek} minutes a week, or one more study day, would help you catch up.
+                </p>
+                <button type="button" onClick={() => openEditor("availability")} className={buttonClass("outline", "sm", "mt-2")}>
+                  Add study time
+                </button>
+              </div>
             </div>
           )}
 
+          <UnmetNotice unmet={plan.unmet} subjects={data.subjects} today={data.today} onEdit={openEditor} />
+          <WeekOverview plan={plan} today={data.today} />
           <PlanSchedule plan={plan} today={data.today} onStatus={setStatus} />
+          <TimetableSummary plan={plan} subjects={data.subjects} onEdit={openEditor} />
           <ClassPositionPanel plan={plan} subjects={data.subjects} onSave={savePositions} />
         </div>
       )}

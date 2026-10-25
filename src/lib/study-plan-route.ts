@@ -9,6 +9,7 @@ import type {
   PlanMode,
   TermSource,
 } from "@/types/study-plan";
+import { parseTimetable, parseUnmet } from "@/lib/study-timetable";
 import type {
   PositionOption,
   StudyPlanData,
@@ -205,6 +206,8 @@ function asPlan(
       value.overload && typeof value.overload === "object"
         ? (value.overload as Overload)
         : null,
+    timetable: parseTimetable(value.timetable),
+    unmet: parseUnmet(value.unmet),
     items: Array.isArray(value.items)
       ? value.items
           .filter((row): row is Record<string, unknown> => typeof row === "object" && row !== null)

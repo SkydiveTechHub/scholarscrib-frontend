@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { LuCheck, LuRotateCcw, LuSkipForward } from "react-icons/lu";
+import { LuCheck, LuPin, LuRotateCcw, LuSkipForward } from "react-icons/lu";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { ACTIVITY_LABELS, planItemHref } from "@/lib/study-plan-display";
 import type { StudyPlanItemData } from "@/lib/study-plan";
+import type { Strength } from "@/lib/study-timetable";
 
 const TONE: Record<string, "blue" | "green" | "purple" | "amber" | "red"> = {
   LESSON: "blue",
@@ -23,8 +24,11 @@ function weekdayName(day: string): string {
 export function PlanItemRow({
   item,
   onStatus,
+  fromTimetable = null,
 }: {
   item: StudyPlanItemData;
+  /** Set when this session is on a day and subject the student put on their timetable. */
+  fromTimetable?: Strength | null;
   onStatus: (id: string, status: "COMPLETED" | "SKIPPED" | "PENDING") => Promise<void>;
 }) {
   const [busy, setBusy] = useState(false);
@@ -52,6 +56,9 @@ export function PlanItemRow({
       <Badge variant={done ? "green" : (TONE[item.activityType] ?? "neutral")}>
         {ACTIVITY_LABELS[item.activityType] ?? item.activityType}
       </Badge>
+      {fromTimetable === "PINNED" && (
+        <LuPin className="h-3.5 w-3.5 shrink-0 text-primary" aria-hidden="true" />
+      )}
       <div className="min-w-0 flex-1">
         <p className={cn("truncate text-sm font-semibold", done ? "text-tone-green-ink" : "text-foreground")}>
           {item.subject.code || item.subject.name}
@@ -59,6 +66,7 @@ export function PlanItemRow({
         </p>
         <p className="truncate text-xs text-muted">
           {item.durationMinutes} min
+          {fromTimetable === "PINNED" ? " · Pinned on your timetable" : fromTimetable ? " · On your timetable" : ""}
           {item.notes ? ` · ${item.notes}` : ""}
           {item.carriedFrom ? ` · Moved from ${weekdayName(item.carriedFrom)}` : ""}
           {done && item.completionSource === "AUTO" ? " · Done automatically" : ""}

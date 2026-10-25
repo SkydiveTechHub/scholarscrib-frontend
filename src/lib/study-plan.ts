@@ -5,6 +5,7 @@ import type { PlanMode } from "@/types/study-plan";
 import type { OutlineWeek } from "@/types/study-plan";
 import type { Overload } from "@/types/study-plan";
 import type { TermSource } from "@/types/study-plan";
+import type { TimetableData, UnmetAllocation } from "./study-timetable";
 
 // Study plan page shapes. The loader that feeds these lives in
 // `study-plan-route.ts` (a read of `GET /api/study-plan`); settings, positions
@@ -49,6 +50,10 @@ export type StudyPlanData = {
   runwayStart: DayKey | null;
   outline: OutlineWeek[];
   overload: Overload | null;
+  /** The student's own timetable; null on a smart plan (and on plans made before timetables). */
+  timetable: TimetableData | null;
+  /** Timetable sessions the last replan could not give to their subject. */
+  unmet: UnmetAllocation[];
   items: StudyPlanItemData[];
   /** subjectId → the student's override, if any. */
   positions: Record<string, string>;
