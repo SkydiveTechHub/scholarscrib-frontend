@@ -49,6 +49,7 @@ scripts/_*.mts
 
 # agent scratch (subagent-driven development ledger, briefs, review packages)
 .superpowers/
+docs/PRD.md
 
 # Worktrees created for isolated feature work (see superpowers:using-git-worktrees).
 .claude/worktrees/
