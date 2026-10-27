@@ -77,6 +77,7 @@ export default async function CBTPracticePage() {
           english={options.english}
           subjects={options.subjects}
           track={session.track ?? null}
+          classLevel={session.classLevel ?? null}
         />
       ) : (
         <div

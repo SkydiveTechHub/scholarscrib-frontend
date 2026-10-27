@@ -16,7 +16,7 @@ export default async function PastQuestionsPage() {
         description="Pick an exam, a subject in your track, then a year. Three quick steps to your next practice session."
       />
 
-      <PastQuestionPicker track={track} />
+      <PastQuestionPicker track={track} classLevel={session.classLevel ?? null} />
     </div>
   );
 }

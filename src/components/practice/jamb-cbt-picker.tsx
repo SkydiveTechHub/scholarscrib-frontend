@@ -24,6 +24,8 @@ import { Spinner } from "@/components/ui/spinner";
 import { JAMB_SPEC, sharedYears } from "@/lib/jamb-cbt";
 import { formatScore, summariseHistory } from "@/lib/past-paper-history";
 import { PastPaperHistoryModal } from "./past-paper-history-modal";
+import { PracticeWarningModal } from "./practice-warning-modal";
+import { hasWarning, practiceWarnings } from "@/lib/practice-warnings";
 import { isTrackSubject } from "@/lib/subject-coverage";
 import type { JambSubjectOption } from "@/lib/jamb-availability";
 
@@ -63,10 +65,12 @@ export function JambCbtPicker({
   english,
   subjects,
   track,
+  classLevel = null,
 }: {
   english: JambSubjectOption | null;
   subjects: JambSubjectOption[];
   track: string | null;
+  classLevel?: string | null;
 }) {
   const router = useRouter();
   const { mutateAsync: prepareJambCbt } = usePrepareJambCbt<JambPrepareOut>();
@@ -166,6 +170,27 @@ export function JambCbtPicker({
   }
 
   const ready = yearState.status === "done" && yearState.report.ready;
+
+  const warnings = useMemo(
+    () =>
+      practiceWarnings({
+        classLevel,
+        track,
+        subjects: chosenSubjects.map((s) => ({
+          name: s.providerKey,
+          category: s.category,
+          label: s.name,
+        })),
+      }),
+    [classLevel, track, chosenSubjects],
+  );
+  const [warning, setWarning] = useState(false);
+
+  function requestStart() {
+    if (!year || !ready || !complete) return;
+    if (hasWarning(warnings)) setWarning(true);
+    else void start();
+  }
 
   async function start() {
     if (!year || !ready || !complete) return;
@@ -456,7 +481,7 @@ export function JambCbtPicker({
           minutes · marked out of {JAMB_SPEC.totalMarks}
         </p>
         <Button
-          onClick={start}
+          onClick={requestStart}
           disabled={!ready || starting}
           size="lg"
         >
@@ -464,6 +489,18 @@ export function JambCbtPicker({
           {!starting && <LuArrowRight className="h-4 w-4" />}
         </Button>
       </div>
+
+      {warning && (
+        <PracticeWarningModal
+          warnings={warnings}
+          classLevel={classLevel}
+          onCancel={() => setWarning(false)}
+          onContinue={() => {
+            setWarning(false);
+            void start();
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -5,11 +5,13 @@ import { useParams, useSearchParams } from "next/navigation";
 import { QuizEngine } from "@/components/assessment/quiz-engine";
 import { Spinner } from "@/components/ui/spinner";
 import { PageHeader } from "@/components/ui/page-header";
+import { useSessionUser } from "@/hooks/api/use-session-user";
 import { PastQuestionPicker } from "@/components/practice/past-question-picker";
 
 function PastQuestionQuiz() {
   const params = useParams();
   const searchParams = useSearchParams();
+  const { data: user } = useSessionUser();
   const subjectSlug = params.subjectSlug as string;
   const examType = searchParams.get("exam") || undefined;
   // The picker has always sent ?year=, but this page used to drop it, so
@@ -27,7 +29,8 @@ function PastQuestionQuiz() {
           description="Pick a year to start practising."
         />
         <PastQuestionPicker
-          track={null}
+          track={user?.track ?? null}
+          classLevel={user?.classLevel ?? null}
           initialExam={examType}
           initialSubject={subjectSlug}
         />

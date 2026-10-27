@@ -20,6 +20,8 @@ import {
 import { formatScore, summariseHistory } from "@/lib/past-paper-history";
 import { PastPaperExam } from "./past-paper-exam";
 import { PastPaperHistoryModal } from "./past-paper-history-modal";
+import { PracticeWarningModal } from "./practice-warning-modal";
+import { hasWarning, practiceWarnings } from "@/lib/practice-warnings";
 
 const EXAM_BADGES: Record<string, "blue" | "green" | "purple" | "neutral"> = {
   jamb: "green",
@@ -38,10 +40,12 @@ const NO_SUBJECTS: CoverageSubjectOut[] = [];
  */
 export function PastQuestionPicker({
   track,
+  classLevel = null,
   initialExam = null,
   initialSubject = null,
 }: {
   track: string | null;
+  classLevel?: string | null;
   /** Deep link: start with this exam chosen (case-insensitive). */
   initialExam?: string | null;
   /** Deep link: start with this subject chosen, by provider key or our slug. */
@@ -60,6 +64,8 @@ export function PastQuestionPicker({
   );
   const [showAllSubjects, setShowAllSubjects] = useState(false);
   const [year, setYear] = useState<number | null>(null);
+  // A year waiting on the student's answer to the class/track warning.
+  const [warnYear, setWarnYear] = useState<number | null>(null);
 
   // A year whose earlier sittings are being reviewed in the modal.
   const [reviewYear, setReviewYear] = useState<number | null>(null);
@@ -100,6 +106,32 @@ export function PastQuestionPicker({
     setShowAllSubjects(false);
     setYear(null);
     setReviewYear(null);
+    setWarnYear(null);
+  }
+
+  // Starting a paper is the one moment worth a warning: SS1/SS2 students may
+  // meet questions past their class, and off-track subjects skew their record.
+  const warnings = useMemo(
+    () =>
+      practiceWarnings({
+        classLevel,
+        track,
+        subjects: chosenSubject
+          ? [
+              {
+                name: chosenSubject.name,
+                category: chosenSubject.category,
+                label: chosenSubject.displayName,
+              },
+            ]
+          : [],
+      }),
+    [classLevel, track, chosenSubject],
+  );
+
+  function startYear(y: number) {
+    if (hasWarning(warnings)) setWarnYear(y);
+    else setYear(y);
   }
 
   const trackSubjects = useMemo(
@@ -260,7 +292,7 @@ export function PastQuestionPicker({
                   <button
                     key={y.year}
                     type="button"
-                    onClick={() => (past ? setReviewYear(y.year) : setYear(y.year))}
+                    onClick={() => (past ? setReviewYear(y.year) : startYear(y.year))}
                     className="group rounded-xl border border-border bg-card px-3 py-2.5 text-center transition-all hover:border-primary/40"
                   >
                     <span className="block text-sm font-bold text-foreground group-hover:text-primary">
@@ -288,8 +320,20 @@ export function PastQuestionPicker({
           summary={reviewSummary}
           onClose={() => setReviewYear(null)}
           onStart={() => {
-            setYear(reviewYear);
+            startYear(reviewYear);
             setReviewYear(null);
+          }}
+        />
+      )}
+
+      {warnYear !== null && (
+        <PracticeWarningModal
+          warnings={warnings}
+          classLevel={classLevel}
+          onCancel={() => setWarnYear(null)}
+          onContinue={() => {
+            setYear(warnYear);
+            setWarnYear(null);
           }}
         />
       )}
