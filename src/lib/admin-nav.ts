@@ -1,6 +1,7 @@
 import {
   LuBookOpen,
   LuCalendarDays,
+  LuChartLine,
   LuDatabase,
   LuGraduationCap,
   LuListTree,
@@ -60,7 +61,10 @@ export const ADMIN_NAV_GROUPS: readonly AdminNavGroup[] = [
   },
   {
     label: "System",
-    items: [{ name: "Audit log", href: "/admin/audit", icon: LuScrollText }],
+    items: [
+      { name: "Calibration", href: "/admin/calibration", icon: LuChartLine },
+      { name: "Audit log", href: "/admin/audit", icon: LuScrollText },
+    ],
   },
 ];
 

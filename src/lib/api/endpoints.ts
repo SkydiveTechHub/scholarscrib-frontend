@@ -135,6 +135,7 @@ export const endpoints = {
     },
     overview: "/admin/api/overview",
     analytics: "/admin/api/analytics",
+    calibration: "/admin/api/calibration",
     audit: "/admin/api/audit",
     auditActors: "/admin/api/audit/actors",
     admins: "/admin/api/admins",
