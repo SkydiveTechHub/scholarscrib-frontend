@@ -4,7 +4,10 @@ import {
   achievementState,
   availableCategories,
   categoryOf,
+  countByState,
   filterByCategory,
+  filterByState,
+  upNext,
   nextStep,
   type CardInput,
 } from "../src/lib/achievements-ui";
@@ -115,4 +118,37 @@ test("the mock improvement badge points at mock exams", () => {
   );
   assert.equal(step?.href, "/practice/mock-exam");
   assert.match(step?.text ?? "", /mock/i);
+});
+
+test("badges are counted by state", () => {
+  const counts = countByState([
+    card({ id: "a", earned: true, progress: 100 }),
+    card({ id: "b", progress: 5 }),
+    card({ id: "c", progress: 0 }),
+    card({ id: "d", progress: 0 }),
+  ]);
+  assert.deepEqual(counts, { earned: 1, "in-progress": 1, locked: 2 });
+});
+
+test("filtering by state keeps order and 'all' keeps everything", () => {
+  const list = [
+    card({ id: "a", progress: 5 }),
+    card({ id: "b", earned: true, progress: 100 }),
+    card({ id: "c", progress: 9 }),
+  ];
+  assert.deepEqual(filterByState(list, "in-progress").map((c) => c.id), ["a", "c"]);
+  assert.equal(filterByState(list, "all").length, 3);
+});
+
+test("up next lists in-progress badges closest to done, capped", () => {
+  const list = [
+    card({ id: "a", progress: 10, target: 100 }),
+    card({ id: "b", progress: 90, target: 100 }),
+    card({ id: "c", earned: true, progress: 100 }),
+    card({ id: "d", progress: 0 }),
+    card({ id: "e", progress: 50, target: 100 }),
+    card({ id: "f", progress: 20, target: 100 }),
+  ];
+  assert.deepEqual(upNext(list).map((c) => c.id), ["b", "e", "f"]);
+  assert.deepEqual(upNext(list, 1).map((c) => c.id), ["b"]);
 });

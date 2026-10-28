@@ -1,12 +1,35 @@
 "use client";
 
+import { useEffect } from "react";
 import { LuAward, LuX } from "react-icons/lu";
 import { useAchievementUnlocks } from "@/hooks/api/use-achievement-unlocks";
+
+/** Gold and brand blue, matching the badge medallions. */
+const CONFETTI_COLORS = ["#fbbf24", "#f59e0b", "#2563eb", "#4f46e5", "#ffffff"];
+
+/**
+ * One short burst. Skipped when the OS asks for less motion; the banner still
+ * announces the unlock in text. The library loads only when a badge is earned.
+ */
+async function celebrate(): Promise<void> {
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  const { default: confetti } = await import("canvas-confetti");
+  const base = { colors: CONFETTI_COLORS, disableForReducedMotion: true, zIndex: 60 };
+  void confetti({ ...base, particleCount: 70, spread: 70, startVelocity: 45, origin: { x: 0.2, y: 0.7 }, angle: 60 });
+  void confetti({ ...base, particleCount: 70, spread: 70, startVelocity: 45, origin: { x: 0.8, y: 0.7 }, angle: 120 });
+}
 
 /** Announces achievements the student has just earned. Renders nothing otherwise. */
 export function AchievementUnlockBanner() {
   const [unlocks, dismiss] = useAchievementUnlocks();
-  if (unlocks.length === 0) return null;
+  const hasUnlocks = unlocks.length > 0;
+
+  // The hook returns each badge once, so this fires once per unlock.
+  useEffect(() => {
+    if (hasUnlocks) void celebrate().catch(() => {});
+  }, [hasUnlocks]);
+
+  if (!hasUnlocks) return null;
 
   return (
     <div

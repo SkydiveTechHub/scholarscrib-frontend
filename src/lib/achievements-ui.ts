@@ -97,3 +97,27 @@ export function filterByCategory<T extends CardInput>(
 ): T[] {
   return category === "all" ? [...items] : items.filter((i) => categoryOf(i) === category);
 }
+
+export type StateFilter = "all" | AchievementState;
+
+export function countByState(items: readonly CardInput[]): Record<AchievementState, number> {
+  const counts: Record<AchievementState, number> = { earned: 0, "in-progress": 0, locked: 0 };
+  for (const item of items) counts[achievementState(item)] += 1;
+  return counts;
+}
+
+export function filterByState<T extends CardInput>(items: readonly T[], state: StateFilter): T[] {
+  return state === "all" ? [...items] : items.filter((i) => achievementState(i) === state);
+}
+
+const fraction = (a: CardInput): number => (a.target > 0 ? a.progress / a.target : 0);
+
+/** Badges already under way, closest to done first. Ties keep catalogue order. */
+export function upNext<T extends CardInput>(items: readonly T[], limit = 3): T[] {
+  return items
+    .filter((i) => achievementState(i) === "in-progress")
+    .map((item, index) => ({ item, index }))
+    .sort((a, b) => fraction(b.item) - fraction(a.item) || a.index - b.index)
+    .slice(0, limit)
+    .map(({ item }) => item);
+}
