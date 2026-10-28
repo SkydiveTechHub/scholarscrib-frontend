@@ -4,7 +4,10 @@ import { buildMetadata } from "@/lib/seo/metadata";
 // DRAFT — written against the Nigeria Data Protection Act 2023 (NDPA) and the
 // NDPC General Application and Implementation Directive 2025 (GAID). Not yet
 // reviewed by a lawyer. Before publishing:
-//   1. Fill the [BRACKETED] placeholders (registered name, address, DPO).
+//   1. Appoint a Data Protection Officer if the NDPC requires one for your
+//      processing (large-scale or sensitive data, which includes children's
+//      data at scale), then name them in section 1. Until then the policy
+//      points to the privacy@ mailbox, which must be monitored.
 //   2. Confirm the processor list matches what is switched on in production.
 //   3. Register with the NDPC as a data controller/processor of major
 //      importance if you meet the threshold, and file the annual compliance
@@ -30,8 +33,8 @@ const SECTIONS: { heading: string; body: React.ReactNode }[] = [
         <p>
           ScholarsCrib is an online learning service that helps Nigerian
           students prepare for school and exams such as WAEC, NECO and JAMB.
-          In this policy, “we”, “us” and “ScholarsCrib” means [REGISTERED
-          COMPANY NAME], of [REGISTERED ADDRESS], Nigeria.
+          In this policy, “we”, “us” and “ScholarsCrib” means ScholarsCrib,
+          of 10b Falola Close, Oke-Yidi, Abeokuta, Ogun State, Nigeria.
         </p>
         <p>
           We are the <strong>data controller</strong> for the personal data
@@ -40,11 +43,12 @@ const SECTIONS: { heading: string; body: React.ReactNode }[] = [
           Commission (the “NDPC”).
         </p>
         <p>
-          Our Data Protection Officer can be reached at{" "}
+          For any question about your personal data, or to use your rights,
+          contact us at{" "}
           <a href="mailto:privacy@scholarscrib.com" className={linkClass}>
             privacy@scholarscrib.com
-          </a>{" "}
-          (DPO: [NAME OF DPO]).
+          </a>
+          .
         </p>
       </>
     ),
