@@ -386,6 +386,10 @@ export default function RegisterPage() {
         By creating an account you agree to the{" "}
         <Link href="/terms" className="font-semibold text-primary hover:underline">
           Terms of Service
+        </Link>{" "}
+        and acknowledge the{" "}
+        <Link href="/privacy" className="font-semibold text-primary hover:underline">
+          Privacy Policy
         </Link>
         .
       </p>
