@@ -5,6 +5,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { useUpdateProfile } from "@/hooks/api/use-user";
 import { NIGERIAN_STATES } from "@/lib/constants/exam-types";
+import { VerifyEmailModal } from "@/components/auth/verify-email-modal";
 import {
   FormMessage,
   Section,
@@ -15,18 +16,21 @@ import {
 
 export function ProfileForm({
   email,
+  emailVerified,
   firstName,
   lastName,
   phone,
   state,
 }: {
   email: string | null;
+  emailVerified: boolean;
   firstName: string;
   lastName: string;
   phone: string | null;
   state: string | null;
 }) {
   const router = useRouter();
+  const [verifyOpen, setVerifyOpen] = useState(false);
   const [form, setForm] = useState({
     firstName,
     lastName,
@@ -72,6 +76,14 @@ export function ProfileForm({
 
   return (
     <Section title="Profile" description="Your name and contact details.">
+      {email && (
+        <VerifyEmailModal
+          open={verifyOpen}
+          email={email}
+          onClose={() => setVerifyOpen(false)}
+        />
+      )}
+
       <FormMessage error={error} />
 
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -121,6 +133,18 @@ export function ProfileForm({
           <p className="text-xs text-muted mt-1.5">
             Your email is how you sign in, so it can&apos;t be changed here.
           </p>
+          {!emailVerified && email && (
+            <p className="mt-1.5 text-xs text-tone-amber-ink">
+              Not verified.{" "}
+              <button
+                type="button"
+                onClick={() => setVerifyOpen(true)}
+                className="font-bold underline underline-offset-2"
+              >
+                Verify your email
+              </button>
+            </p>
+          )}
         </div>
 
         <div>

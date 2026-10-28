@@ -89,7 +89,10 @@ export function useTutorChat({
   }
 
   function acceptEvent(event: TutorStreamEvent): boolean {
-    if (event.type === "streamStarted" && !threadIdRef.current) {
+    if (event.type === "streamStarted") {
+      // Always treat threadId from streamStarted as canonical — the stream
+      // endpoint may resume an existing thread (question-scoped resume) rather
+      // than creating a new one, so we cannot assume the id we had locally.
       threadIdRef.current = event.threadId;
       onThreadStartedRef.current(event.threadId);
     }

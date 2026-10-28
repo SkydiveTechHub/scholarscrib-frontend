@@ -15,6 +15,8 @@ export const endpoints = {
     googleTokens: "/api/auth/google/tokens",
     forgotPassword: "/api/auth/forgot-password",
     resetPassword: "/api/auth/reset-password",
+    otpSend: "/api/auth/otp/send",
+    otpVerify: "/api/auth/otp/verify",
   },
   user: {
     profile: "/api/user/profile",

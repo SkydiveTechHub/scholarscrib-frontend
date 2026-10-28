@@ -15,6 +15,11 @@ const SCOPE_LABEL: Record<TutorThreadSummary["scope"], string> = {
   general: "General",
 };
 
+function examLabel(t: TutorThreadSummary): string | null {
+  if (t.scope !== "question" || !t.examType) return null;
+  return t.examYear ? `${t.examType} ${t.examYear}` : t.examType;
+}
+
 function when(iso: string | null): string {
   if (!iso) return "";
   const d = new Date(iso);
@@ -110,7 +115,7 @@ export function TutorHistory({
                     <span className="block text-xs text-muted">
                       {loading
                         ? "Opening…"
-                        : [SCOPE_LABEL[t.scope], when(t.updatedAt)]
+                        : [examLabel(t) ?? SCOPE_LABEL[t.scope], when(t.updatedAt)]
                             .filter(Boolean)
                             .join(" · ")}
                     </span>

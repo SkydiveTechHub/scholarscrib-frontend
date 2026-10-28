@@ -136,6 +136,10 @@ export type TutorApiThread = {
   topicId: string | null;
   questionId: string | null;
   lessonId: string | null;
+  /** Snapshotted from the Question at thread-creation time; null when no questionId. */
+  examType: "WAEC" | "JAMB" | "NECO" | "CUSTOM" | null;
+  /** Exam year, e.g. 2023; null when not set on the question. */
+  examYear: number | null;
   archived: boolean;
   createdAt: string | null;
   updatedAt: string | null;
@@ -203,6 +207,10 @@ export type TutorThreadSummary = {
   threadId: string;
   title: string;
   scope: "lesson" | "question" | "topic" | "general";
+  /** Snapshotted exam type; non-null only for question-scoped threads. */
+  examType: "WAEC" | "JAMB" | "NECO" | "CUSTOM" | null;
+  /** Exam year; non-null only for question-scoped threads that have one. */
+  examYear: number | null;
   updatedAt: string | null;
 };
 

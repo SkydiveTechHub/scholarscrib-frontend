@@ -74,6 +74,8 @@ export function mapApiThreadSummaries(
           : t.topicId
             ? "topic"
             : "general",
+      examType: t.examType ?? null,
+      examYear: t.examYear ?? null,
       updatedAt: t.updatedAt,
     }));
 }

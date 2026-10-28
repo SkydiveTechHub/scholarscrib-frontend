@@ -9,6 +9,7 @@ import { AcademicForm } from "@/components/settings/academic-form";
 import { PasswordForm } from "@/components/settings/password-form";
 import { NotificationsSection } from "@/components/settings/notifications-section";
 import { PageHeader } from "@/components/ui/page-header";
+import { VerifyEmailBanner } from "@/components/auth/verify-email-banner";
 
 export const metadata: Metadata = {
   title: "Settings — ScholarsCrib",
@@ -31,6 +32,10 @@ export default async function SettingsPage() {
       />
 
       <div className="space-y-5 max-w-2xl">
+        {!user.emailVerified && user.email && (
+          <VerifyEmailBanner email={user.email} />
+        )}
+
         <SubscriptionSection userId={session.id} />
 
         <NotificationsSection userId={session.id} />
@@ -43,6 +48,7 @@ export default async function SettingsPage() {
 
         <ProfileForm
           email={user.email ?? null}
+          emailVerified={!!user.emailVerified}
           firstName={user.firstName ?? ""}
           lastName={user.lastName ?? ""}
           phone={user.phone ?? null}

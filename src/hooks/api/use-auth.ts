@@ -109,6 +109,28 @@ export function useAdminResetPassword() {
   });
 }
 
+export function useOtpSend() {
+  return useMutation({
+    mutationFn: (input: { email: string }) =>
+      request<{ ok: boolean; message?: string }>({
+        method: "POST",
+        url: endpoints.auth.otpSend,
+        data: input,
+      }),
+  });
+}
+
+export function useOtpVerify() {
+  return useMutation({
+    mutationFn: (input: { email: string; otp: string }) =>
+      request<{ ok: boolean; message?: string }>({
+        method: "POST",
+        url: endpoints.auth.otpVerify,
+        data: input,
+      }),
+  });
+}
+
 export function useAdminLogin() {
   return useMutation({
     mutationFn: (input: { identifier: string; password: string }) =>

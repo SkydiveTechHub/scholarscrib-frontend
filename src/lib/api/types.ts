@@ -21,6 +21,7 @@ export type SessionUserOut = {
   deviceId?: string | null;
   role?: string | null;
   hasPassword?: boolean | null;
+  emailVerified?: string | null;
 };
 
 export type SessionOut = { user: SessionUserOut };
@@ -70,6 +71,7 @@ export type SettingsProfileOut = {
   tier: string;
   tierExpiresAt?: string | null;
   hasPassword: boolean;
+  emailVerified?: string | null;
   notificationPreferences: NotificationPreferences;
 };
 
