@@ -14,26 +14,40 @@ const OTP_LENGTH = 6;
 function OtpInput({
   value,
   onChange,
+  onComplete,
   disabled,
 }: {
   value: string;
   onChange: (v: string) => void;
+  /** Called with the full code as soon as all digits are filled. */
+  onComplete: (v: string) => void;
   disabled: boolean;
 }) {
   const refs = useRef<Array<HTMLInputElement | null>>([]);
 
-  function handleChange(index: number, raw: string) {
-    // Accept pasted full codes or single digits.
-    const cleaned = raw.replace(/\D/g, "").slice(0, OTP_LENGTH);
-    if (cleaned.length > 1) {
-      onChange(cleaned.slice(0, OTP_LENGTH).padEnd(OTP_LENGTH, ""));
-      refs.current[Math.min(cleaned.length, OTP_LENGTH - 1)]?.focus();
-      return;
+  function fill(next: string) {
+    onChange(next);
+    if (next.length === OTP_LENGTH) {
+      refs.current[OTP_LENGTH - 1]?.focus();
+      onComplete(next);
+    } else {
+      refs.current[Math.min(next.length, OTP_LENGTH - 1)]?.focus();
     }
-    const digits = value.split("");
-    digits[index] = cleaned;
-    onChange(digits.join(""));
-    if (cleaned && index < OTP_LENGTH - 1) refs.current[index + 1]?.focus();
+  }
+
+  // onPaste fires before the browser applies maxLength, so we get the full text.
+  function handlePaste(e: React.ClipboardEvent) {
+    e.preventDefault();
+    const pasted = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, OTP_LENGTH);
+    if (pasted) fill(pasted);
+  }
+
+  function handleChange(index: number, raw: string) {
+    const digit = raw.replace(/\D/g, "").slice(-1); // last char in case browser sneaks two
+    const digits = value.padEnd(OTP_LENGTH, "").split("");
+    digits[index] = digit;
+    const next = digits.join("").trimEnd(); // drop trailing empty slots
+    fill(next);
   }
 
   function handleKeyDown(index: number, e: React.KeyboardEvent) {
@@ -57,6 +71,7 @@ function OtpInput({
           disabled={disabled}
           onChange={(e) => handleChange(i, e.target.value)}
           onKeyDown={(e) => handleKeyDown(i, e)}
+          onPaste={handlePaste}
           onFocus={(e) => e.target.select()}
           aria-label={`Digit ${i + 1}`}
           className={cn(
@@ -132,14 +147,14 @@ export function VerifyEmailModal({
     );
   }
 
-  function handleVerify() {
-    if (otp.replace(/\D/g, "").length < OTP_LENGTH) {
+  function submitCode(code: string) {
+    if (code.replace(/\D/g, "").length < OTP_LENGTH) {
       setError("Enter all 6 digits.");
       return;
     }
     setError("");
     verifyOtp.mutate(
-      { email, otp },
+      { email, otp: code },
       {
         onSuccess: () => {
           setStep("done");
@@ -190,7 +205,7 @@ export function VerifyEmailModal({
           <div className="flex flex-col gap-3">
             <button
               type="button"
-              onClick={handleVerify}
+              onClick={() => submitCode(otp)}
               disabled={busy || otp.replace(/\D/g, "").length < OTP_LENGTH}
               className={buttonClass("primary", "lg", "w-full")}
             >
@@ -225,6 +240,7 @@ export function VerifyEmailModal({
           <OtpInput
             value={otp}
             onChange={setOtp}
+            onComplete={submitCode}
             disabled={verifyOtp.isPending}
           />
         </div>
