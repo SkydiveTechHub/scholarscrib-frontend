@@ -22,6 +22,10 @@ import { Progress } from "@/components/ui/progress";
 import { EmptyState } from "@/components/ui/empty-state";
 import { cn } from "@/lib/utils";
 import { TodaysSession } from "@/components/path/todays-session";
+import { ReturnPromptSection } from "@/components/gamification/return-prompt-section";
+import { NextMoveCard } from "@/components/gamification/next-move-card";
+import { pickNextMove } from "@/lib/next-move";
+import { DailyQuestsSection } from "@/components/gamification/daily-quests-section";
 import { InstallBanner } from "@/components/pwa/install-banner";
 import { VerifyEmailBanner } from "@/components/auth/verify-email-banner";
 
@@ -255,6 +259,9 @@ export default async function DashboardPage({
         </div>
       </section>
 
+      {/* One recommended action, drawn from today's session data. */}
+      <NextMoveCard move={pickNextMove(todaysSession, subjects, hasActivity)} />
+
       {/* Today's session (hidden until the student has activity) */}
       {hasActivity && todaysSession && (
         <section>
@@ -262,6 +269,14 @@ export default async function DashboardPage({
           <TodaysSession session={todaysSession} subjects={subjects} />
         </section>
       )}
+
+      {/* Streams in separately; renders nothing if quests are unavailable. */}
+      <Suspense fallback={null}>
+        <ReturnPromptSection />
+      </Suspense>
+      <Suspense fallback={null}>
+        <DailyQuestsSection />
+      </Suspense>
 
       {/* Quick launch */}
       <section>

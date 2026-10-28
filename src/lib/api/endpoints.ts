@@ -101,6 +101,10 @@ export const endpoints = {
   },
   library: "/api/library",
   achievements: "/api/achievements",
+  gamificationProfile: "/api/gamification/profile",
+  gamificationQuests: "/api/gamification/quests",
+  gamificationStreak: "/api/gamification/streak",
+  gamificationImprovement: "/api/gamification/improvement",
   announcements: {
     list: "/api/announcements",
     dismiss: (id: string) => `/api/announcements/${seg(id)}/dismiss`,

@@ -27,6 +27,8 @@ import {
 import { AskAstraButton } from "@/components/tutor/ask-astra-button";
 import { reviewPrompt } from "@/lib/tutor/review-prompt";
 import { AchievementUnlockBanner } from "@/components/achievements/unlock-banner";
+import { XpAwardBanner } from "@/components/gamification/xp-award-banner";
+import { ImprovementNote } from "@/components/gamification/improvement-note";
 
 type QuestionResult = {
   questionId: string;
@@ -191,6 +193,8 @@ export function ResultsView({
 
   return (
     <div className="mx-auto max-w-3xl space-y-6 animate-fade-in">
+      <XpAwardBanner />
+      <ImprovementNote attemptId={result.attemptId} />
       <AchievementUnlockBanner />
       <button
         type="button"

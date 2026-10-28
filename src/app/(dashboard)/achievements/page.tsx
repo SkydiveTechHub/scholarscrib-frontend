@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { getSessionUser } from "@/lib/session";
 import { getStudentAchievements } from "@/lib/achievements";
+import { getStreak, getXpProfile } from "@/lib/gamification-data";
 import { AchievementsView } from "@/components/achievements/achievements-view";
 
 // Server-rendered. Previously this mounted a spinner and fetched
@@ -10,7 +11,11 @@ export default async function AchievementsPage() {
   const session = await getSessionUser();
   if (!session?.id) redirect("/login");
 
-  const achievements = await getStudentAchievements();
+  const [achievements, xp, streak] = await Promise.all([
+    getStudentAchievements(),
+    getXpProfile(),
+    getStreak(),
+  ]);
 
-  return <AchievementsView achievements={achievements} />;
+  return <AchievementsView achievements={achievements} xp={xp} streak={streak} />;
 }

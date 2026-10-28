@@ -7,6 +7,8 @@ export type StudentAchievement = {
   title: string;
   description: string;
   criteriaType: string;
+  /** Group on the Achievements page, decided by the backend. */
+  category?: string;
   criteriaValue: number;
   /** Current figure toward `target`; equals `target` once earned. */
   progress: number;
@@ -28,6 +30,7 @@ function asStudentAchievement(
     title: String(row.title ?? ""),
     description: String(row.description ?? ""),
     criteriaType: String(row.criteriaType ?? ""),
+    category: typeof row.category === "string" ? row.category : undefined,
     criteriaValue: typeof criteriaValue === "number" ? criteriaValue : 0,
     progress,
     target,

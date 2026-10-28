@@ -13,6 +13,7 @@ import { buttonClass } from "@/components/ui/button";
 import { SubjectChips } from "@/components/performance/subject-chips";
 import { VerdictBand } from "@/components/performance/verdict-band";
 import { InsightList } from "@/components/performance/insight-list";
+import { MasteryLabelsHelp } from "@/components/performance/mastery-labels-help";
 import { TopicStandingsList } from "@/components/performance/topic-standings-list";
 import { ProfileBand } from "@/components/performance/profile-band";
 
@@ -85,6 +86,7 @@ export default async function SubjectPerformancePage({
       <InsightList insights={data.insights} />
 
       <h2 className="section-label mt-8 mb-1">Topics</h2>
+      <MasteryLabelsHelp />
       <TopicStandingsList
         topics={standings.topics}
         subjectSlug={data.subject.slug}

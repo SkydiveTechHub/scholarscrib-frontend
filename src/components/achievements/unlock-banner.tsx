@@ -13,7 +13,7 @@ export function AchievementUnlockBanner() {
       role="status"
       className="card flex items-start gap-3 p-4 ring-1 ring-warning/30 animate-fade-in"
     >
-      <span className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-warning-soft text-warning">
+      <span className="flex h-10 w-10 flex-shrink-0 animate-pop items-center justify-center rounded-xl bg-warning-soft text-warning">
         <LuAward className="h-5 w-5" />
       </span>
       <div className="min-w-0 flex-1">

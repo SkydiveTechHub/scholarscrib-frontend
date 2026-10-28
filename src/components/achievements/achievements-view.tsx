@@ -1,54 +1,26 @@
-import {
-  LuAward,
-  LuBookOpen,
-  LuStar,
-  LuFlame,
-  LuGraduationCap,
-  LuTrophy,
-  LuLock,
-} from "react-icons/lu";
-import { Badge } from "@/components/ui/badge";
+import { LuAward } from "react-icons/lu";
 import { Progress } from "@/components/ui/progress";
 import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
-import { cn } from "@/lib/utils";
-import { progressPercent } from "@/lib/achievement-unlocks";
+import {
+  AchievementBrowser,
+  type Achievement,
+} from "@/components/achievements/achievement-browser";
+import { XpCard } from "@/components/gamification/xp-card";
+import { StreakCalendar } from "@/components/gamification/streak-calendar";
+import type { StreakInfo, XpProfile } from "@/lib/gamification";
 
-export type Achievement = {
-  id: string;
-  title: string;
-  description: string;
-  criteriaType: string;
-  criteriaValue: number;
-  progress: number;
-  target: number;
-  earned: boolean;
-  earnedAt: string | null;
-};
-
-const CRITERIA_ICONS: Record<string, React.ReactNode> = {
-  questions_answered: <LuBookOpen className="h-6 w-6" />,
-  perfect_score: <LuStar className="h-6 w-6" />,
-  streak_days: <LuFlame className="h-6 w-6" />,
-  lessons_completed: <LuGraduationCap className="h-6 w-6" />,
-  subject_mastery: <LuTrophy className="h-6 w-6" />,
-  mock_score_70: <LuAward className="h-6 w-6" />,
-};
-
-const CRITERIA_COLORS: Record<string, string> = {
-  questions_answered: "bg-tone-blue-soft text-tone-blue-ink",
-  perfect_score: "bg-tone-amber-soft text-tone-amber-ink",
-  streak_days: "bg-tone-orange-soft text-tone-orange-ink",
-  lessons_completed: "bg-tone-purple-soft text-tone-purple-ink",
-  subject_mastery: "bg-tone-green-soft text-tone-green-ink",
-  mock_score_70: "bg-tone-red-soft text-tone-red-ink",
-};
+export type { Achievement };
 
 /** Presentational only — the catalogue is resolved by the server component. */
 export function AchievementsView({
   achievements,
+  xp = null,
+  streak = null,
 }: {
   achievements: Achievement[];
+  xp?: XpProfile | null;
+  streak?: StreakInfo | null;
 }) {
   const earnedCount = achievements.filter((a) => a.earned).length;
   const progress =
@@ -66,6 +38,9 @@ export function AchievementsView({
             : "Rewards for your effort"
         }
       />
+
+      {xp && <XpCard profile={xp} />}
+      {streak && <StreakCalendar streak={streak} />}
 
       {achievements.length > 0 && (
         <div className="card mb-8 p-5">
@@ -87,7 +62,11 @@ export function AchievementsView({
             </div>
             <span className="text-sm font-bold text-foreground">{progress}%</span>
           </div>
-          <Progress value={progress} tone={progress === 100 ? "success" : "auto"} className="mt-3 h-2.5" />
+          <p className="mt-2 text-xs text-muted">
+            {earnedCount} of {achievements.length} badges earned. This counts every badge
+            available today; new ones are added over time, so the total can grow.
+          </p>
+          <Progress value={progress} tone={progress === 100 ? "success" : "primary"} className="mt-3 h-2.5" />
         </div>
       )}
 
@@ -98,71 +77,7 @@ export function AchievementsView({
           description="Check back soon — new challenges are on the way."
         />
       ) : (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {achievements.map((achievement) => (
-            <div
-              key={achievement.id}
-              className={cn(
-                "card p-5 transition-all",
-                achievement.earned
-                  ? "shadow-card"
-                  : "border-dashed opacity-70 grayscale-[0.3]",
-              )}
-            >
-              <div className="flex items-start gap-4">
-                <span
-                  className={cn(
-                    "flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl",
-                    achievement.earned
-                      ? CRITERIA_COLORS[achievement.criteriaType] || "bg-secondary text-muted"
-                      : "bg-secondary text-muted",
-                  )}
-                >
-                  {achievement.earned
-                    ? CRITERIA_ICONS[achievement.criteriaType] || <LuAward className="h-6 w-6" />
-                    : <LuLock className="h-5 w-5" />}
-                </span>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <h3
-                      className={cn(
-                        "truncate text-sm font-bold",
-                        achievement.earned ? "text-foreground" : "text-muted",
-                      )}
-                    >
-                      {achievement.title}
-                    </h3>
-                  </div>
-                  <p className="mt-0.5 text-xs leading-relaxed text-muted">
-                    {achievement.description}
-                  </p>
-                  {!achievement.earned && achievement.target > 1 && (
-                    <div className="mt-3">
-                      <Progress
-                        value={progressPercent(achievement.progress, achievement.target)}
-                        tone="primary"
-                        className="h-1.5"
-                      />
-                      <p className="mt-1 text-[11px] font-medium text-muted">
-                        {achievement.progress} / {achievement.target}
-                      </p>
-                    </div>
-                  )}
-                  {achievement.earned && achievement.earnedAt && (
-                    <Badge variant="primary" className="mt-2">
-                      Earned{" "}
-                      {new Date(achievement.earnedAt).toLocaleDateString("en-GB", {
-                        day: "numeric",
-                        month: "short",
-                        year: "numeric",
-                      })}
-                    </Badge>
-                  )}
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
+        <AchievementBrowser achievements={achievements} />
       )}
     </div>
   );
