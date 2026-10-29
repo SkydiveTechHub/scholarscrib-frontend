@@ -1,4 +1,5 @@
 import posthog from "posthog-js";
+import { bindPageLeaveOnHistoryChange } from "@/lib/posthog-browser";
 import { withoutAdminCapture } from "@/lib/posthog-privacy";
 
 const token = process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN;
@@ -12,7 +13,13 @@ if (token && apiHost) {
       ui_host: "https://eu.posthog.com",
       defaults: "2026-08-30",
       person_profiles: "identified_only",
+      autocapture: true,
+      capture_pageview: "history_change",
+      capture_pageleave: true,
+      capture_heatmaps: true,
+      capture_dead_clicks: true,
       capture_exceptions: true,
+      loaded: bindPageLeaveOnHistoryChange,
       // Console lines and response bodies can contain tutor text and answers.
       enable_recording_console_log: false,
       // URL, method, status, and duration for the replay network panel.

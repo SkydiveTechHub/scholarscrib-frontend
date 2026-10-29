@@ -27,6 +27,19 @@ export function isAdminAnalyticsPath(pathname: string): boolean {
   return pathname === "/admin" || pathname.startsWith("/admin/");
 }
 
+/** True when a history API URL points at a different path than the page open now. */
+export function historyTargetChangesPath(
+  url: string | URL | null | undefined,
+  currentHref: string,
+): boolean {
+  if (url == null) return false;
+  try {
+    return new URL(url, currentHref).pathname !== new URL(currentHref).pathname;
+  } catch {
+    return false;
+  }
+}
+
 export function withoutAdminCapture(event: CaptureResult): CaptureResult | null {
   if (typeof window !== "undefined" && isAdminAnalyticsPath(window.location.pathname)) {
     return null;

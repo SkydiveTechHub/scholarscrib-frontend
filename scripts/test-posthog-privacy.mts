@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   distinctIdFromPostHogCookie,
+  historyTargetChangesPath,
   isAdminAnalyticsPath,
   studentPersonProperties,
   withoutAdminCapture,
@@ -54,6 +55,13 @@ test("admin paths are dropped and student paths are kept", () => {
       },
     }),
   );
+});
+
+test("a history change records a page leave only when the path changes", () => {
+  const here = "https://scholarscrib.vercel.app/dashboard";
+  assert.equal(historyTargetChangesPath("/study-plan", here), true);
+  assert.equal(historyTargetChangesPath("/dashboard?tab=1", here), false);
+  assert.equal(historyTargetChangesPath(null, here), false);
 });
 
 test("distinct id comes from the PostHog cookie and nowhere else", () => {
