@@ -50,7 +50,9 @@ const PAGE_LEAVE_MARK = "__scholarscribPageLeaveWrapped";
  * listener never runs. Send $pageleave first, then let the SDK record the
  * next pageview. That is what bounce rate, time on page, and scroll depth use.
  */
-export function bindPageLeaveOnHistoryChange(client: typeof posthog): void {
+export function bindPageLeaveOnHistoryChange(client: {
+  capture: (event: string) => unknown;
+}): void {
   if (typeof window === "undefined") return;
   const history = window.history;
   const pushState = history.pushState as History["pushState"] & { [PAGE_LEAVE_MARK]?: boolean };
