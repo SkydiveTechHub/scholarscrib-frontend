@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect } from "react";
+import { capturePostHogException } from "@/lib/posthog-browser";
+import { isAdminAnalyticsPath } from "@/lib/posthog-privacy";
 import "./globals.css";
 
 /**
@@ -22,6 +24,8 @@ export default function GlobalError({
 }) {
   useEffect(() => {
     console.error("Global error:", error);
+    if (isAdminAnalyticsPath(window.location.pathname)) return;
+    capturePostHogException(error);
   }, [error]);
 
   return (

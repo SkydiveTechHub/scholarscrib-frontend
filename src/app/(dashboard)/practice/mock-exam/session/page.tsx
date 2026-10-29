@@ -3,6 +3,10 @@
 import { Suspense, useCallback, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
 import { useGenerateMockExam } from "@/hooks/api/use-assessments";
+import {
+  MOCK_EXAM_MIN_QUESTIONS,
+  scopedMockExamCount,
+} from "@/lib/mock-exam";
 import { ExamSurface } from "@/components/assessment/exam-surface";
 import {
   useExamSession,
@@ -15,7 +19,10 @@ function MockExamSession() {
 
   const examType = searchParams.get("examType") || undefined;
   const subjectId = searchParams.get("subjectId") || "";
-  const count = Number(searchParams.get("count") || 40);
+  const requested = Number(searchParams.get("count") || 40);
+  // Same rule as the picker. A hand-built link with count under 5 must not
+  // reach the API, which would answer with a validation error.
+  const count = scopedMockExamCount(requested, requested);
 
   const from = useMemo<ScopePoint>(
     () => ({
@@ -44,14 +51,19 @@ function MockExamSession() {
         from.term,
         to.classLevel,
         to.term,
-        count,
+        count ?? requested,
       ].join(":"),
-    [examType, subjectId, from, to, count],
+    [examType, subjectId, from, to, count, requested],
   );
 
   // mutateAsync is stable, so `generate` only changes with the scope.
   const { mutateAsync: generateMockExam } = useGenerateMockExam();
   const generate = useCallback(async (): Promise<GeneratedExam> => {
+    if (count === null) {
+      throw new Error(
+        `A mock exam needs at least ${MOCK_EXAM_MIN_QUESTIONS} questions. Go back and choose a wider scope.`,
+      );
+    }
     return generateMockExam({ examType, subjectId, from, to, count });
   }, [generateMockExam, examType, subjectId, from, to, count]);
 
@@ -64,7 +76,7 @@ function MockExamSession() {
     sessionKey,
     generate,
     resultHref: toResult,
-    defaultTimeLimitMinutes: Math.ceil(count * 1.5),
+    defaultTimeLimitMinutes: Math.ceil((count ?? MOCK_EXAM_MIN_QUESTIONS) * 1.5),
   });
 
   return (

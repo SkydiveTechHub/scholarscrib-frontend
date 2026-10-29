@@ -1,6 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // The Node SDK uses Node APIs. Keep it out of the edge/server bundle.
+  serverExternalPackages: ["posthog-node"],
   images: {
     // Avatars are served from Cloudinary; question and explanation diagrams come
     // from the question bank's own CDN. Anything else is rejected by the

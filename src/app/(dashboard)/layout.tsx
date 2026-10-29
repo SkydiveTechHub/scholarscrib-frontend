@@ -4,6 +4,7 @@ import { getSessionUser } from "@/lib/session";
 import { Sidebar } from "@/components/ui/sidebar";
 import { MobileNav } from "@/components/ui/mobile-nav";
 import { MobileHeader } from "@/components/ui/mobile-header";
+import { PostHogIdentify } from "@/components/analytics/posthog-identify";
 import { SessionGuard } from "@/components/auth/session-guard";
 import { PushSync } from "@/components/push/push-sync";
 import { EncouragementModal } from "@/components/ui/encouragement-modal";
@@ -44,6 +45,13 @@ export default async function DashboardLayout({
 
   return (
     <div className="min-h-full">
+      <PostHogIdentify
+        id={user.id}
+        classLevel={user.classLevel}
+        track={user.track}
+        state={user.state}
+        tier={user.tier}
+      />
       <SessionGuard realm="student" />
       <PushSync />
       <Toaster position="top-center" closeButton />

@@ -12,6 +12,7 @@
     "test:path": "node --import tsx --test --test-force-exit \"scripts/test-learning-path-*.mts\" scripts/test-evidence-display.mts scripts/test-attempt-abandonment.mts"
   },
   "dependencies": {
+    "@posthog/react": "^1.11.3",
     "@tanstack/react-query": "^5.103.2",
     "axios": "^1.20.0",
     "canvas-confetti": "^1.9.4",
@@ -20,6 +21,8 @@
     "katex": "^0.18.1",
     "lucide-react": "^1.25.0",
     "next": "16.2.11",
+    "posthog-js": "^1.442.0",
+    "posthog-node": "^5.60.0",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "react-icons": "^5.7.0",
