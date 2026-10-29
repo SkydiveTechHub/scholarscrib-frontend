@@ -12,6 +12,10 @@ import {
 import { cn } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { mockExamOptionsQuery } from "@/hooks/api/use-assessments";
+import {
+  MOCK_EXAM_MIN_QUESTIONS,
+  scopedMockExamCount,
+} from "@/lib/mock-exam";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import {
@@ -99,15 +103,18 @@ export function MockExamPicker({
   }, [subject, from, effectiveTo, countsBySlot]);
 
   const scopeText = describeScopeRange(from, effectiveTo);
+  // Null when this scope cannot make a paper the API will accept. Starting
+  // anyway would post a count under 5 and come back as a validation error.
+  const examCount = scopedMockExamCount(count, available);
 
   // Navigation only. The session page generates the paper, and that is the one
   // actually sat — posting here as well drew a whole second paper that was
   // thrown away unread, costing two round-trips and two rate-limit slots per
-  // start. `available` already gates the empty-scope case from the counts the
-  // picker holds, and a generation that does fail surfaces on the session
-  // screen, which has a way back here.
+  // start. `examCount` already gates a scope that is empty or too thin, and a
+  // generation that does fail surfaces on the session screen, which has a way
+  // back here.
   function start() {
-    if (!subjectId || available === 0) return;
+    if (!subjectId || examCount === null) return;
     setStarting(true);
     setError("");
     const params = new URLSearchParams({
@@ -116,7 +123,7 @@ export function MockExamPicker({
       fromTerm: from.term,
       toClass: effectiveTo.classLevel,
       toTerm: effectiveTo.term,
-      count: String(Math.min(count, available)),
+      count: String(examCount),
     });
     router.push(`/practice/mock-exam/session?${params.toString()}`);
   }
@@ -240,7 +247,7 @@ export function MockExamPicker({
       )}
 
       {/* Length */}
-      {subject && available > 0 && (
+      {subject && examCount !== null && (
         <section className="animate-slide-up">
           <h2 className="section-label mb-3">3 · How many questions?</h2>
           <div className="flex flex-wrap gap-2">
@@ -267,12 +274,23 @@ export function MockExamPicker({
         </section>
       )}
 
-      {subject && available === 0 && (
+      {subject && examCount === null && (
         <div className="flex items-start gap-2.5 rounded-xl border border-warning/25 bg-warning-soft px-4 py-3 text-sm text-warning">
           <LuTriangleAlert className="mt-0.5 h-4 w-4 flex-shrink-0" />
           <span>
-            No {subject.name} questions are tagged to {scopeText} yet.
-            Try a wider range or another term.
+            {available === 0 ? (
+              <>
+                No {subject.name} questions are tagged to {scopeText} yet.
+                Try a wider range or another term.
+              </>
+            ) : (
+              <>
+                Only {available} {subject.name}{" "}
+                {available === 1 ? "question is" : "questions are"} tagged to{" "}
+                {scopeText}. A mock exam needs at least {MOCK_EXAM_MIN_QUESTIONS}{" "}
+                questions. Try a wider range or another term.
+              </>
+            )}
           </span>
         </div>
       )}
@@ -296,7 +314,7 @@ export function MockExamPicker({
         <Button
           onClick={start}
           size="lg"
-          disabled={!subjectId || available === 0 || starting}
+          disabled={!subjectId || examCount === null || starting}
         >
           {starting ? "Building your exam…" : "Start mock exam"}
           {!starting && <LuArrowRight className="h-4 w-4" />}

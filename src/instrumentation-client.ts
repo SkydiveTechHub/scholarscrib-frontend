@@ -13,12 +13,17 @@ if (token && apiHost) {
       defaults: "2026-08-30",
       person_profiles: "identified_only",
       capture_exceptions: true,
-      // The project opt-in and the 2026-06-25 default would record console
-      // lines and API bodies. Tutor text and answers live in both.
+      // Console lines and response bodies can contain tutor text and answers.
       enable_recording_console_log: false,
+      // URL, method, status, and duration for the replay network panel.
+      // Bodies stay off. PostHog still drops Authorization and Cookie headers.
+      capture_performance: { network_timing: true, web_vitals: true },
       session_recording: {
+        // Page text stays visible so a replay shows labels, links, and what
+        // was clicked. Typed fields (email, password, tutor drafts) stay masked.
         maskAllInputs: true,
-        maskTextSelector: "*",
+        recordHeaders: true,
+        recordBody: false,
         streamNetworkBody: false,
       },
       before_send: withoutAdminCapture,
