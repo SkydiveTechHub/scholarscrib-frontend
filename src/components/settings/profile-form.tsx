@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { useUpdateProfile } from "@/hooks/api/use-user";
 import { NIGERIAN_STATES } from "@/lib/constants/exam-types";
 import { VerifyEmailModal } from "@/components/auth/verify-email-modal";
+import { AvatarUpload } from "./avatar-upload";
 import {
   FormMessage,
   Section,
@@ -21,6 +22,7 @@ export function ProfileForm({
   lastName,
   phone,
   state,
+  image,
 }: {
   email: string | null;
   emailVerified: boolean;
@@ -28,6 +30,7 @@ export function ProfileForm({
   lastName: string;
   phone: string | null;
   state: string | null;
+  image: string | null;
 }) {
   const router = useRouter();
   const [verifyOpen, setVerifyOpen] = useState(false);
@@ -75,7 +78,7 @@ export function ProfileForm({
   }
 
   return (
-    <Section title="Profile" description="Your name and contact details.">
+    <Section title="Profile" description="Your photo, name and contact details.">
       {email && (
         <VerifyEmailModal
           open={verifyOpen}
@@ -83,6 +86,8 @@ export function ProfileForm({
           onClose={() => setVerifyOpen(false)}
         />
       )}
+
+      <AvatarUpload image={image} firstName={firstName} lastName={lastName} />
 
       <FormMessage error={error} />
 

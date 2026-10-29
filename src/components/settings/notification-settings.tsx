@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useUpdateNotificationPreferences } from "@/hooks/api/use-user";
+import { Badge } from "@/components/ui/badge";
 import { buttonClass } from "@/components/ui/button";
 import { FormMessage } from "./section";
 import type { PushCapability } from "@/lib/push-capability";
@@ -84,14 +85,23 @@ export function NotificationSettings({ initial }: { initial: NotificationPrefere
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-sm font-semibold text-foreground">Notifications on this device</p>
-          <p className="text-sm text-muted">
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="text-sm font-semibold text-foreground">Notifications on this device</p>
+            {state === "subscribed" ? (
+              <Badge variant="green">On</Badge>
+            ) : state === "default" && !workerProblem ? (
+              <Badge variant="neutral">Off</Badge>
+            ) : (
+              <Badge variant="amber">Unavailable</Badge>
+            )}
+          </div>
+          <p className="mt-0.5 text-sm text-muted">
             {workerProblem
               ? PUSH_STATE_COPY[workerProblem]
               : state === "subscribed"
-                ? "On"
+                ? "You'll get reminders on this device."
                 : state === "default"
-                  ? "Off"
+                  ? "Turn on to get reminders on this device."
                   : PUSH_STATE_COPY[state]}
           </p>
         </div>
@@ -107,25 +117,36 @@ export function NotificationSettings({ initial }: { initial: NotificationPrefere
         )}
       </div>
 
-      <ul className="mt-5 space-y-4 border-t border-border pt-5">
+      <ul className="mt-5 divide-y divide-border border-t border-border">
         {TOGGLES.map((toggleItem) => (
-          <li key={toggleItem.key} className="flex items-start justify-between gap-4">
-            <label htmlFor={`pref-${toggleItem.key}`} className="min-w-0">
-              <span className="block text-sm font-semibold text-foreground">{toggleItem.label}</span>
-              <span className="block text-sm text-muted">{toggleItem.hint}</span>
+          <li key={toggleItem.key}>
+            {/* The whole row is the label, so the tap target is the row (well
+                over 44px), not the 24px switch. */}
+            <label
+              htmlFor={`pref-${toggleItem.key}`}
+              className="flex min-h-14 cursor-pointer items-center justify-between gap-4 py-3"
+            >
+              <span className="min-w-0">
+                <span className="block text-sm font-semibold text-foreground">{toggleItem.label}</span>
+                <span className="block text-sm text-muted">{toggleItem.hint}</span>
+              </span>
+              <input
+                id={`pref-${toggleItem.key}`}
+                type="checkbox"
+                role="switch"
+                checked={prefs[toggleItem.key]}
+                onChange={() => toggle(toggleItem.key)}
+                className="peer sr-only"
+              />
+              <span
+                aria-hidden
+                className="relative h-6 w-11 shrink-0 rounded-full bg-muted/50 transition-colors after:absolute after:left-0.5 after:top-0.5 after:h-5 after:w-5 after:rounded-full after:bg-white after:shadow-soft after:transition-transform peer-checked:bg-primary peer-checked:after:translate-x-5 peer-focus-visible:ring-2 peer-focus-visible:ring-primary/60 peer-focus-visible:ring-offset-2 peer-focus-visible:ring-offset-background"
+              />
             </label>
-            <input
-              id={`pref-${toggleItem.key}`}
-              type="checkbox"
-              role="switch"
-              checked={prefs[toggleItem.key]}
-              onChange={() => toggle(toggleItem.key)}
-              className="mt-1 h-5 w-5 shrink-0 accent-primary"
-            />
           </li>
         ))}
       </ul>
-      <p className="mt-4 text-xs text-muted">These choices apply to all your devices.</p>
+      <p className="mt-3 text-xs text-muted">These choices apply to all your devices.</p>
     </div>
   );
 }

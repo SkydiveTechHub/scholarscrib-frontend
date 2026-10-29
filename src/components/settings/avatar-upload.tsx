@@ -5,7 +5,8 @@ import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { useUploadAvatar } from "@/hooks/api/use-user";
 import { Avatar } from "@/components/ui/avatar";
-import { FormMessage, Section, submitClass } from "./section";
+import { buttonClass } from "@/components/ui/button";
+import { FormMessage } from "./section";
 
 const MAX_EDGE = 512;
 
@@ -130,8 +131,9 @@ export function AvatarUpload({
     }
   }
 
+  // Sits at the top of the Profile card, so it carries its own divider.
   return (
-    <Section title="Photo" description="JPEG, PNG, or WebP. Large photos are resized automatically.">
+    <div className="mb-5 border-b border-border pb-5">
       <FormMessage error={error} />
 
       <div className="flex items-center gap-4">
@@ -150,18 +152,20 @@ export function AvatarUpload({
             accept="image/jpeg,image/png,image/webp"
             onChange={handleFile}
             disabled={loading}
-            className="sr-only"
+            className="peer sr-only"
           />
+          {/* Secondary: this applies at once, so it is not a "Save" button. */}
           <label
             htmlFor="avatar"
-            className={`${submitClass} inline-block cursor-pointer ${
+            className={`${buttonClass("outline", "md")} cursor-pointer peer-focus-visible:ring-2 peer-focus-visible:ring-primary/60 peer-focus-visible:ring-offset-2 peer-focus-visible:ring-offset-background ${
               loading ? "opacity-50 pointer-events-none" : ""
             }`}
           >
             {loading ? "Uploading..." : image ? "Change photo" : "Upload photo"}
           </label>
+          <p className="mt-1.5 text-xs text-muted">JPEG, PNG or WebP. Resized automatically.</p>
         </div>
       </div>
-    </Section>
+    </div>
   );
 }

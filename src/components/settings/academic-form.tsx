@@ -124,6 +124,14 @@ export function AcademicForm({
           </div>
         </div>
 
+        {/* Said up front, not only in the confirmation: the user should know
+            before they pick, and the modal then repeats what they expect. */}
+        <p
+          className={`text-xs ${changed ? "font-semibold text-tone-amber-ink" : "text-muted"}`}
+        >
+          Changing your class level or track resets your study plan.
+        </p>
+
         <button type="submit" disabled={loading || !changed} className={submitClass}>
           {loading ? "Saving..." : "Save changes"}
         </button>
@@ -132,7 +140,7 @@ export function AcademicForm({
       <Modal
         open={confirming}
         title="Change your class or track?"
-        description="Your current study plan will be deleted, and your library will switch to the subjects for your new track. Sessions you already completed stay in your progress, and you can build a new plan any time."
+        description="Here is what happens when you switch:"
         onClose={() => setConfirming(false)}
         footer={
           <div className="flex flex-wrap justify-end gap-3">
@@ -153,7 +161,12 @@ export function AcademicForm({
           </div>
         }
       >
-        {null}
+        <ul className="list-disc space-y-1.5 pl-5 text-sm text-foreground">
+          <li>Your current study plan is deleted.</li>
+          <li>Your library switches to the subjects for your new track.</li>
+          <li>Sessions you already completed stay in your progress.</li>
+          <li>You can build a new plan any time.</li>
+        </ul>
       </Modal>
     </Section>
   );

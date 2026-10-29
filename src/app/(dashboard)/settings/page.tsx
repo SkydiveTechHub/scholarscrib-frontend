@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { getSessionUser } from "@/lib/session";
 import { getSettingsProfile } from "@/lib/settings";
 import { SubscriptionSection } from "@/components/settings/subscription-section";
-import { AvatarUpload } from "@/components/settings/avatar-upload";
+import { SettingsTabs } from "@/components/settings/settings-tabs";
 import { ProfileForm } from "@/components/settings/profile-form";
 import { AcademicForm } from "@/components/settings/academic-form";
 import { PasswordForm } from "@/components/settings/password-form";
@@ -15,7 +15,11 @@ export const metadata: Metadata = {
   title: "Settings — ScholarsCrib",
 };
 
-export default async function SettingsPage() {
+export default async function SettingsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ tab?: string }>;
+}) {
   const session = await getSessionUser();
   // The layout already guards this, but the page reads by id and must not
   // fall through to a query with an undefined id.
@@ -23,6 +27,8 @@ export default async function SettingsPage() {
 
   const user = await getSettingsProfile();
   if (!user) redirect("/login");
+
+  const { tab } = await searchParams;
 
   return (
     <div className="animate-fade-in">
@@ -38,27 +44,42 @@ export default async function SettingsPage() {
 
         <SubscriptionSection userId={session.id} />
 
-        <NotificationsSection userId={session.id} />
+        <SettingsTabs
+          initial={tab ?? "account"}
+          tabs={[
+            {
+              id: "account",
+              label: "Account",
+              panel: (
+                <>
+                  <ProfileForm
+                    email={user.email ?? null}
+                    emailVerified={!!user.emailVerified}
+                    firstName={user.firstName ?? ""}
+                    lastName={user.lastName ?? ""}
+                    phone={user.phone ?? null}
+                    state={user.state ?? null}
+                    image={user.image ?? null}
+                  />
 
-        <AvatarUpload
-          image={user.image ?? null}
-          firstName={user.firstName ?? ""}
-          lastName={user.lastName ?? ""}
+                  {/* Google-only accounts have no password to change. */}
+                  {user.hasPassword && <PasswordForm />}
+                </>
+              ),
+            },
+            {
+              id: "study",
+              label: "Study",
+              panel: (
+                <>
+                  <AcademicForm classLevel={user.classLevel ?? null} track={user.track ?? null} />
+
+                  <NotificationsSection userId={session.id} />
+                </>
+              ),
+            },
+          ]}
         />
-
-        <ProfileForm
-          email={user.email ?? null}
-          emailVerified={!!user.emailVerified}
-          firstName={user.firstName ?? ""}
-          lastName={user.lastName ?? ""}
-          phone={user.phone ?? null}
-          state={user.state ?? null}
-        />
-
-        <AcademicForm classLevel={user.classLevel ?? null} track={user.track ?? null} />
-
-        {/* Google-only accounts have no password to change. */}
-        {user.hasPassword && <PasswordForm />}
       </div>
     </div>
   );
