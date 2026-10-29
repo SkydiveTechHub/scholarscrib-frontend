@@ -4,6 +4,8 @@ import {
   LuArrowLeft,
   LuArrowRight,
   LuBookOpen,
+  LuChevronDown,
+  LuPlay,
   LuCheck,
   LuChevronRight,
   LuClock,
@@ -22,6 +24,7 @@ import { LessonExitCard } from "@/components/lesson/lesson-exit-card";
 import { TopicActionBar } from "@/components/classroom/topic-action-bar";
 import { TopicResources } from "@/components/classroom/topic-resources";
 import { Badge } from "@/components/ui/badge";
+import { buttonClass } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { TERM_LABELS } from "@/lib/curriculum-scope";
 import { TutorContextSetter } from "@/components/tutor/tutor-context-setter";
@@ -104,6 +107,63 @@ export default async function TopicDetailPage({
     (block): block is CheckBlock | ShortBlock =>
       block.type === "check" || block.type === "short",
   );
+  const needsMorePractice =
+    Boolean(topicState) &&
+    hasEvidence(topicState!) &&
+    topicState!.mastery >= MASTERY_TARGET &&
+    answeredCount(topicState!) < MASTERY_MIN_QUESTIONS;
+  const hasDetails =
+    topic.attemptedCount > 0 ||
+    topic.waecWeight > 0 ||
+    topic.jambWeight > 0 ||
+    needsMorePractice ||
+    pretestCertified ||
+    Boolean(topicState && hasEvidence(topicState) && topicState.retention != null);
+  const primaryAction = !lesson
+    ? null
+    : !lesson.unlocked
+      ? { href: "#lesson-top", label: "Read the preview", icon: <LuBookOpen className="h-4 w-4" /> }
+      : completed
+        ? { href: "#topic-actions", label: "Practise this topic", icon: <LuTarget className="h-4 w-4" /> }
+        : resumeId
+          ? {
+              href: `#block-${resumeId}`,
+              label: `Continue · ${lesson.percentRead}%`,
+              icon: <LuArrowRight className="h-4 w-4" />,
+            }
+          : { href: "#lesson-top", label: "Start lesson", icon: <LuPlay className="h-4 w-4" /> };
+  const renderPrereq = (prereq: (typeof prereqs)[number]) => {
+    const chip = (
+      <span
+        className={cn(
+          "chip border",
+          prereq.met
+            ? "border-success/30 bg-success-soft text-success"
+            : "border-tone-amber-line bg-tone-amber-soft text-tone-amber-ink",
+        )}
+      >
+        {prereq.met ? <LuCheck className="h-3.5 w-3.5" /> : <LuLock className="h-3.5 w-3.5" />}
+        {prereq.title}
+        {prereq.met
+          ? " — ready"
+          : ` — needs ${prereq.need}% mastery (${Math.round(prereq.mastery)}%)`}
+      </span>
+    );
+    if (prereq.subjectId === subject.id && prereq.slug) {
+      return (
+        <Link
+          key={prereq.topicId}
+          href={`/classroom/${subjectSlug}/${prereq.slug}`}
+          className="transition-opacity hover:opacity-80"
+        >
+          {chip}
+        </Link>
+      );
+    }
+    return <span key={prereq.topicId}>{chip}</span>;
+  };
+  const unmetPrereqs = prereqs.filter((p) => !p.met);
+  const metPrereqs = prereqs.filter((p) => p.met);
   const classColor = CLASS_COLORS[classLevel] ?? "bg-secondary text-muted border-border";
 
   return (
@@ -156,6 +216,8 @@ export default async function TopicDetailPage({
                 <p className="text-sm text-muted">{subject.name}</p>
               </div>
             </div>
+            {/* Three badges at most: where it sits, how far along, how well known.
+                The rest is reference, one tap away. */}
             <div className="mt-4 flex flex-wrap items-center gap-2">
               <span className={cn("chip border font-bold", classColor)}>
                 {classLevel} · {TERM_LABELS[term] ?? term}
@@ -172,118 +234,103 @@ export default async function TopicDetailPage({
                   In progress · {lesson.percentRead}%
                 </Badge>
               )}
-              {topic.attemptedCount > 0 && (
-                <Badge variant="green">
-                  <LuTarget className="h-3 w-3" />
-                  {topic.attemptedCount}{" "}
-                  {topic.attemptedCount === 1 ? "question" : "questions"} attempted
-                </Badge>
-              )}
-              {topic.waecWeight > 0 && <Badge variant="blue">WAEC weight {topic.waecWeight}</Badge>}
-              {topic.jambWeight > 0 && <Badge variant="green">JAMB weight {topic.jambWeight}</Badge>}
               {/* Without any evidence the mastery is just the 45% prior, not a result. */}
               {topicState && hasEvidence(topicState) && (
-                <>
-                  <Badge variant={MASTERY_VARIANT[topicState.level] ?? "neutral"}>
-                    <LuTarget className="h-3 w-3" />
-                    {topicState.mastery}% mastery ·{" "}
-                    {LEVEL_LABELS[topicState.level] ?? topicState.level}
-                  </Badge>
-                  {topicState.mastery >= MASTERY_TARGET &&
-                    answeredCount(topicState) < MASTERY_MIN_QUESTIONS && (
-                      <Badge variant="amber">
-                        <LuTarget className="h-3 w-3" />
-                        Needs more practice · {answeredCount(topicState)}/
-                        {MASTERY_MIN_QUESTIONS} questions
-                      </Badge>
-                    )}
-                  {topicState.retention != null && (
-                    <Badge
-                      variant={topicState.retention < 0.8 ? "amber" : "blue"}
-                    >
+                <Badge variant={MASTERY_VARIANT[topicState.level] ?? "neutral"}>
+                  <LuTarget className="h-3 w-3" />
+                  {topicState.mastery}% mastery ·{" "}
+                  {LEVEL_LABELS[topicState.level] ?? topicState.level}
+                </Badge>
+              )}
+            </div>
+
+            {hasDetails && (
+              <details className="group/stats mt-3">
+                <summary className="inline-flex min-h-8 cursor-pointer list-none items-center gap-1.5 text-sm font-semibold text-muted transition-colors hover:text-foreground [&::-webkit-details-marker]:hidden">
+                  Topic stats
+                  <LuChevronDown className="h-4 w-4 transition-transform group-open/stats:rotate-180" />
+                </summary>
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  {topic.attemptedCount > 0 && (
+                    <Badge variant="green">
+                      <LuTarget className="h-3 w-3" />
+                      {topic.attemptedCount}{" "}
+                      {topic.attemptedCount === 1 ? "question" : "questions"} attempted
+                    </Badge>
+                  )}
+                  {topic.waecWeight > 0 && <Badge variant="blue">WAEC weight {topic.waecWeight}</Badge>}
+                  {topic.jambWeight > 0 && <Badge variant="green">JAMB weight {topic.jambWeight}</Badge>}
+                  {needsMorePractice && topicState && (
+                    <Badge variant="amber">
+                      <LuTarget className="h-3 w-3" />
+                      Needs more practice · {answeredCount(topicState)}/
+                      {MASTERY_MIN_QUESTIONS} questions
+                    </Badge>
+                  )}
+                  {topicState && hasEvidence(topicState) && topicState.retention != null && (
+                    <Badge variant={topicState.retention < 0.8 ? "amber" : "blue"}>
                       <LuClock className="h-3 w-3" />
                       Retention {Math.round(topicState.retention * 100)}%
                     </Badge>
                   )}
-                </>
-              )}
-              {pretestCertified && (
-                <Badge variant="green">
-                  <LuCheck className="h-3 w-3" />
-                  Certified by pretest
-                </Badge>
-              )}
-            </div>
-            {resumeId && (
-              <a
-                href={`#block-${resumeId}`}
-                className="mt-3 inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline"
-              >
-                Continue where you left off
-                <LuArrowRight className="h-3.5 w-3.5" />
-              </a>
+                  {pretestCertified && (
+                    <Badge variant="green">
+                      <LuCheck className="h-3 w-3" />
+                      Certified by pretest
+                    </Badge>
+                  )}
+                </div>
+              </details>
             )}
-          </div>
 
-          <PretestDialog
-            topicId={topic.id}
-            topicTitle={topic.title}
-            alreadyPassed={pretestCertified}
-          />
+            {/* One obvious next step that follows the student's state; the
+                pretest is the quieter alternative beside it. */}
+            <div className="mt-5 flex flex-wrap items-center gap-3">
+              {primaryAction && (
+                <a href={primaryAction.href} className={buttonClass("primary", "lg")}>
+                  {primaryAction.icon}
+                  {primaryAction.label}
+                </a>
+              )}
+              <PretestDialog
+                topicId={topic.id}
+                topicTitle={topic.title}
+                alreadyPassed={pretestCertified}
+              />
+            </div>
+          </div>
         </div>
       </div>
 
-      {prereqs.length > 0 && (
-        <div className="card mt-6 p-5">
+      {/* Only what is still blocking gets a card; what is already met folds away. */}
+      {unmetPrereqs.length > 0 && (
+        <div className="card mt-6 border-tone-amber-line p-5">
           <h2 className="mb-3 flex items-center gap-2 text-sm font-bold tracking-tight text-foreground">
-            <LuLink className="h-4 w-4 text-primary" />
-            Prerequisites
+            <LuLock className="h-4 w-4 text-tone-amber-ink" />
+            Before you start
           </h2>
           <div className="flex flex-wrap gap-2">
-            {prereqs.map((prereq) => {
-              const chip = (
-                <span
-                  className={cn(
-                    "chip border",
-                    prereq.met
-                      ? "border-success/30 bg-success-soft text-success"
-                      : "border-tone-amber-line bg-tone-amber-soft text-tone-amber-ink",
-                  )}
-                >
-                  {prereq.met ? (
-                    <LuCheck className="h-3.5 w-3.5" />
-                  ) : (
-                    <LuLock className="h-3.5 w-3.5" />
-                  )}
-                  {prereq.title}
-                  {prereq.met
-                    ? " — ready"
-                    : ` — needs ${prereq.need}% mastery (${Math.round(
-                        prereq.mastery,
-                      )}%)`}
-                </span>
-              );
-              if (prereq.subjectId === subject.id && prereq.slug) {
-                return (
-                  <Link
-                    key={prereq.topicId}
-                    href={`/classroom/${subjectSlug}/${prereq.slug}`}
-                    className="transition-opacity hover:opacity-80"
-                  >
-                    {chip}
-                  </Link>
-                );
-              }
-              return <span key={prereq.topicId}>{chip}</span>;
-            })}
+            {unmetPrereqs.map((prereq) => renderPrereq(prereq))}
           </div>
           {!topicReady && (
-            <p className="mt-3 text-xs text-muted">
+            <p className="mt-3 text-sm text-muted">
               You can read the lesson below as a preview. Progress tracking and
               the practice test unlock once these are met.
             </p>
           )}
         </div>
+      )}
+      {metPrereqs.length > 0 && (
+        <details className="group/prereq mt-6">
+          <summary className="inline-flex min-h-8 cursor-pointer list-none items-center gap-1.5 text-sm font-semibold text-muted transition-colors hover:text-foreground [&::-webkit-details-marker]:hidden">
+            <LuLink className="h-4 w-4 text-primary" />
+            {metPrereqs.length} {metPrereqs.length === 1 ? "prerequisite" : "prerequisites"} ready
+            <LuChevronDown className="h-4 w-4 transition-transform group-open/prereq:rotate-180" />
+          </summary>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {metPrereqs.map((prereq) => renderPrereq(prereq))}
+          </div>
+        </details>
       )}
 
       {/* The topic opens on the lesson itself: tracked, with its checks inline.

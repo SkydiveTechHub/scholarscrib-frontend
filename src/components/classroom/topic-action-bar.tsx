@@ -81,7 +81,7 @@ export function TopicActionBar({
   }
 
   return (
-    <div className="mt-8 rounded-2xl border border-border bg-card p-4">
+    <div id="topic-actions" className="mt-8 scroll-mt-4 rounded-2xl border border-border bg-card p-4">
       <p className="mb-3 text-sm font-semibold text-foreground">
         {PRACTICE_TEST_ENABLED ? "Practise this topic" : "Remember it"}
       </p>

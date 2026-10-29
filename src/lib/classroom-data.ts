@@ -29,6 +29,9 @@ export type ClassroomSubject = {
   isNeco: boolean;
   topicCount: number;
   questionCount: number;
+  /** Topics the student has mastered / begun, from the backend's graph colours. */
+  masteredCount: number;
+  startedCount: number;
 };
 
 export type ClassroomListData = {
@@ -98,6 +101,8 @@ export async function getClassroomSubjects(
       isNeco: Boolean(row.isNeco),
       topicCount: num(row.topicCount) ?? 0,
       questionCount: num(row.questionCount) ?? 0,
+      masteredCount: num(row.mastered) ?? 0,
+      startedCount: num(row.started) ?? 0,
     };
     (byCategory[subject.trackCategory] ??= []).push(subject);
   }
@@ -123,6 +128,9 @@ export type SubjectPageData = {
   masteredCount: number;
   readyCount: number;
   dueCount: number;
+  startedCount: number;
+  /** Where to pick up: a topic already begun, else the first one ready to start. */
+  continueTopic: { slug: string; title: string; started: boolean } | null;
   classes: ClassGroup[];
   initialClassLevel: ClassLevel;
 };
@@ -165,6 +173,7 @@ export async function getSubjectPageData(
   let masteredCount = 0;
   let readyCount = 0;
   let dueCount = 0;
+  let startedCount = 0;
   for (const row of topicRows) {
     const topicId = str(row.id);
     if (!topicId) continue;
@@ -172,6 +181,7 @@ export async function getSubjectPageData(
     nodeStates[topicId] = state;
     if (state === "MASTERED") masteredCount += 1;
     if (state === "READY") readyCount += 1;
+    if (state === "STARTED") startedCount += 1;
     if (state === "DECAYED") dueCount += 1;
     graphNodes.push({
       id: topicId,
@@ -195,7 +205,14 @@ export async function getSubjectPageData(
   // renders as an ordered spine with navigation arrows only.
   const graphEdges: GraphViewEdge[] = [];
 
-  const classes = buildClasses(topicRows, nodeStates, userClassLevel, scopeById);
+  const continueNode = pickContinueNode(graphNodes);
+  const classes = buildClasses(
+    topicRows,
+    nodeStates,
+    userClassLevel,
+    scopeById,
+    continueNode?.slug ?? null,
+  );
 
   const classesWithTopics = classes
     .filter((group) => group.terms.some((t) => t.topics.length > 0))
@@ -226,9 +243,23 @@ export async function getSubjectPageData(
     masteredCount,
     readyCount,
     dueCount,
+    startedCount,
+    continueTopic: continueNode
+      ? { slug: continueNode.slug, title: continueNode.title, started: continueNode.state === "STARTED" }
+      : null,
     classes,
     initialClassLevel: resolveClassLevel(userClassLevel, classesWithTopics),
   };
+}
+
+/** A topic already begun wins; otherwise the earliest one that is ready to start. */
+function pickContinueNode(nodes: GraphViewNode[]): GraphViewNode | null {
+  const ordered = [...nodes].sort((a, b) => a.orderIndex - b.orderIndex);
+  return (
+    ordered.find((node) => node.state === "STARTED") ??
+    ordered.find((node) => node.state === "READY") ??
+    null
+  );
 }
 
 type TopicScope = { classLevel: string; term: string };
@@ -273,12 +304,16 @@ function scopeOf(
 function asBrowserTopic(
   row: Record<string, unknown>,
   states: Record<string, GraphNodeState>,
+  nextSlug: string | null,
 ): BrowserTopic {
   const id = str(row.id);
   const state = states[id] ?? "LOCKED";
+  const slug = str(row.slug) || id;
   return {
-    slug: str(row.slug) || id,
+    slug,
     title: str(row.title),
+    started: state === "STARTED",
+    isNext: slug === nextSlug,
     // backend-ported: topics carry no `completed` flag, so completion is
     // inferred from the node colour the backend already derives.
     completed: state === "MASTERED" || state === "DECAYED",
@@ -290,6 +325,7 @@ function buildClasses(
   states: Record<string, GraphNodeState>,
   userClassLevel: string | null,
   scopeById: Map<string, TopicScope>,
+  nextSlug: string | null,
 ): ClassGroup[] {
   const scoped = topicRows
     .map((row) => ({ row, scope: scopeOf(row, scopeById) }))
@@ -309,7 +345,7 @@ function buildClasses(
         terms: [
           {
             term: "FIRST" as Term,
-            topics: topicRows.map((row) => asBrowserTopic(row, states)),
+            topics: topicRows.map((row) => asBrowserTopic(row, states, nextSlug)),
           },
         ],
       },
@@ -323,7 +359,7 @@ function buildClasses(
       (scope as { term: string }).term
     ];
     if (!bucket) continue;
-    bucket.push(asBrowserTopic(row, states));
+    bucket.push(asBrowserTopic(row, states, nextSlug));
   }
 
   return CLASS_LEVELS.map((level) => ({

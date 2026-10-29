@@ -49,3 +49,10 @@ export function isRelevantSubject(
 ) {
   return relevantTrackCategories(track).includes(trackCategory as TrackCategory);
 }
+
+/** One colour per exam body, so the list, the subject page and the practice links agree. */
+export const EXAM_STYLES: Record<string, { badge: "blue" | "green" | "orange"; link: string }> = {
+  WAEC: { badge: "blue", link: "bg-tone-blue-soft text-tone-blue-ink hover:bg-tone-blue-line" },
+  JAMB: { badge: "green", link: "bg-tone-green-soft text-tone-green-ink hover:bg-tone-green-line" },
+  NECO: { badge: "orange", link: "bg-tone-orange-soft text-tone-orange-ink hover:bg-tone-orange-line" },
+};

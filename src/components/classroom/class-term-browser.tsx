@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { LuBookOpen, LuCheck } from "react-icons/lu";
+import { LuCircle, LuCircleCheck, LuCircleDot, LuListChecks } from "react-icons/lu";
 import { cn } from "@/lib/utils";
 import { mockExamHrefFor } from "@/lib/classroom";
 import { buttonClass } from "@/components/ui/button";
@@ -17,12 +17,26 @@ export type BrowserTopic = {
   slug: string;
   title: string;
   completed: boolean;
+  /** Begun but not finished. */
+  started: boolean;
+  /** The topic to pick up next, so the row can say so. */
+  isNext: boolean;
 };
 
 export type ClassGroup = {
   classLevel: string;
   terms: { term: string; topics: BrowserTopic[] }[];
 };
+
+function TopicStatusIcon({ topic }: { topic: BrowserTopic }) {
+  if (topic.completed) {
+    return <LuCircleCheck className="h-4 w-4 flex-shrink-0 text-tone-green-ink" aria-hidden />;
+  }
+  if (topic.started) {
+    return <LuCircleDot className="h-4 w-4 flex-shrink-0 text-primary" aria-hidden />;
+  }
+  return <LuCircle className="h-4 w-4 flex-shrink-0 text-muted/60" aria-hidden />;
+}
 
 export function ClassTermBrowser({
   subjectSlug,
@@ -46,36 +60,51 @@ export function ClassTermBrowser({
 
   return (
     <div>
+      {/* Class tabs and the class's practice link share the sticky bar, so
+          practice is one tap away however far down the syllabus they are. */}
       <div className="sticky top-14 sticky-chrome -mx-4 px-4 pb-4 sm:-mx-6 sm:px-6">
-        <div
-          className="flex rounded-xl border border-border bg-card p-1"
-          role="group"
-          aria-label="Class level"
-        >
-          {CLASS_LEVELS.map((level) => {
-            const group = byLevel.get(level);
-            const hasTopics = (group?.terms.flatMap((t) => t.topics).length ?? 0) > 0;
-            const selected = selectedClass === level;
+        <div className="flex items-center gap-2">
+          <div
+            className="flex flex-1 rounded-xl border border-border bg-card p-1"
+            role="group"
+            aria-label="Class level"
+          >
+            {CLASS_LEVELS.map((level) => {
+              const group = byLevel.get(level);
+              const hasTopics = (group?.terms.flatMap((t) => t.topics).length ?? 0) > 0;
+              const selected = selectedClass === level;
 
-            return (
-              <button
-                key={level}
-                type="button"
-                aria-pressed={selected}
-                disabled={!hasTopics}
-                onClick={() => setSelectedClass(level)}
-                className={cn(
-                  "flex-1 rounded-lg px-3 py-1.5 text-xs font-bold transition-colors",
-                  selected
-                    ? "bg-primary text-primary-foreground shadow-soft"
-                    : "text-muted hover:text-foreground",
-                  !hasTopics && "cursor-not-allowed opacity-40 hover:text-muted",
-                )}
-              >
-                {level}
-              </button>
-            );
-          })}
+              return (
+                <button
+                  key={level}
+                  type="button"
+                  aria-pressed={selected}
+                  disabled={!hasTopics}
+                  title={hasTopics ? undefined : `No ${level} topics yet`}
+                  onClick={() => setSelectedClass(level)}
+                  className={cn(
+                    "h-9 flex-1 rounded-lg px-3 text-sm font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60",
+                    selected
+                      ? "bg-primary text-primary-foreground shadow-soft"
+                      : "text-muted hover:text-foreground",
+                    !hasTopics && "cursor-not-allowed opacity-40 hover:text-muted",
+                  )}
+                >
+                  {level}
+                </button>
+              );
+            })}
+          </div>
+
+          <Link
+            href={mockExamHrefFor({ subjectId, classLevel: selectedClass as ClassLevel })}
+            className={buttonClass("outline", "lg", "flex-shrink-0")}
+          >
+            <LuListChecks className="h-4 w-4" aria-hidden />
+            <span>
+              Practice<span className="hidden sm:inline"> {selectedClass}</span>
+            </span>
+          </Link>
         </div>
       </div>
 
@@ -89,31 +118,45 @@ export function ClassTermBrowser({
               <div className="mb-3 flex items-center justify-between gap-2">
                 <h3 className="section-label mb-0">{TERM_LABELS[term]}</h3>
                 {topics.length > 0 && (
-                  <span className="text-[11px] font-semibold text-muted">
+                  <span className="text-xs font-semibold text-muted">
                     {done}/{topics.length} done
                   </span>
                 )}
               </div>
 
               {topics.length === 0 ? (
-                <p className="text-xs text-muted">No topics yet</p>
+                <p className="text-sm text-muted">No topics yet</p>
               ) : (
                 <div className="space-y-2">
                   {topics.map((topic) => (
                     <Link
                       key={topic.slug}
                       href={`/classroom/${subjectSlug}/${topic.slug}`}
-                      className="group/topic flex items-center justify-between gap-3 rounded-xl border border-border p-3 transition-all hover:border-primary/40 hover:shadow-soft"
+                      className={cn(
+                        "group/topic flex min-h-11 items-center justify-between gap-3 rounded-xl border p-3 transition-all hover:border-primary/40 hover:shadow-soft",
+                        topic.isNext
+                          ? "border-primary/50 bg-primary-soft/60"
+                          : "border-border",
+                      )}
                     >
                       <div className="flex min-w-0 items-center gap-2.5">
-                        <LuBookOpen className="h-3.5 w-3.5 flex-shrink-0 text-muted transition-colors group-hover/topic:text-primary" />
+                        <TopicStatusIcon topic={topic} />
                         <span className="truncate text-sm font-medium text-foreground">
                           {topic.title}
                         </span>
                       </div>
-                      {topic.completed && (
-                        <LuCheck className="h-3.5 w-3.5 flex-shrink-0 text-tone-green-ink" />
-                      )}
+                      {/* Words as well as icons, so status never rests on colour alone. */}
+                      {topic.isNext ? (
+                        <span className="flex-shrink-0 text-xs font-bold text-primary">
+                          {topic.started ? "Continue" : "Up next"}
+                        </span>
+                      ) : topic.completed ? (
+                        <span className="sr-only">Completed</span>
+                      ) : topic.started ? (
+                        <span className="flex-shrink-0 text-xs font-semibold text-muted">
+                          In progress
+                        </span>
+                      ) : null}
                     </Link>
                   ))}
                 </div>
@@ -121,12 +164,6 @@ export function ClassTermBrowser({
             </div>
           );
         })}
-      </div>
-
-      <div className="mt-4 flex justify-end">
-        <Link href={mockExamHrefFor({ subjectId, classLevel: selectedClass as ClassLevel })} className={buttonClass("primary", "md")}>
-          Practice {selectedClass}
-        </Link>
       </div>
     </div>
   );

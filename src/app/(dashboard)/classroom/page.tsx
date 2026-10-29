@@ -7,10 +7,13 @@ import {
   TRACK_CATEGORIES,
   TRACK_COLORS,
   TRACK_LABELS,
+  EXAM_STYLES,
   type TrackCategory,
 } from "@/lib/subjects";
 import { PageHeader } from "@/components/ui/page-header";
 import { Badge } from "@/components/ui/badge";
+import { buttonClass } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
 
 export default async function ClassroomPage({
   searchParams,
@@ -39,7 +42,7 @@ export default async function ClassroomPage({
           hasNarrowing ? (
             <Link
               href={showAll ? "/classroom" : "/classroom?all=1"}
-              className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-2.5 text-sm font-bold text-foreground shadow-soft transition-colors hover:border-primary/40 hover:bg-primary-soft"
+              className={buttonClass("outline", "md")}
             >
               {showAll ? (
                 <>
@@ -72,6 +75,11 @@ export default async function ClassroomPage({
                   key={subject.code}
                   href={`/classroom/${subject.slug}`}
                   className="card card-interactive group flex items-center gap-4 p-4"
+                  aria-label={
+                    subject.topicCount > 0
+                      ? `${subject.name}, ${subject.masteredCount} of ${subject.topicCount} topics mastered`
+                      : subject.name
+                  }
                 >
                   <div
                     className={`flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl border text-xs font-bold ${TRACK_COLORS[category]}`}
@@ -83,15 +91,26 @@ export default async function ClassroomPage({
                       {subject.name}
                     </h3>
                     <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                      {subject.isWaec && <Badge variant="blue">WAEC</Badge>}
-                      {subject.isJamb && <Badge variant="green">JAMB</Badge>}
-                      {subject.isNeco && <Badge variant="orange">NECO</Badge>}
+                      {subject.isWaec && <Badge variant={EXAM_STYLES.WAEC.badge}>WAEC</Badge>}
+                      {subject.isJamb && <Badge variant={EXAM_STYLES.JAMB.badge}>JAMB</Badge>}
+                      {subject.isNeco && <Badge variant={EXAM_STYLES.NECO.badge}>NECO</Badge>}
                       {subject.questionCount > 0 && (
-                        <span className="text-[11px] font-semibold text-muted">
+                        <span className="text-xs font-semibold text-muted">
                           {subject.questionCount} questions
                         </span>
                       )}
                     </div>
+                    {subject.topicCount > 0 && (
+                      <div className="mt-2.5 flex items-center gap-2">
+                        <Progress
+                          value={(subject.masteredCount / subject.topicCount) * 100}
+                          className="h-1.5 flex-1"
+                        />
+                        <span className="flex-shrink-0 text-xs font-semibold text-muted">
+                          {subject.masteredCount}/{subject.topicCount}
+                        </span>
+                      </div>
+                    )}
                   </div>
                   <LuArrowRight className="h-4 w-4 flex-shrink-0 text-muted transition-all group-hover:translate-x-0.5 group-hover:text-primary" />
                 </Link>
