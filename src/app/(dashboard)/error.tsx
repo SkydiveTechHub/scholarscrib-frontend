@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import Link from "next/link";
 import { LuTriangleAlert, LuRotateCcw } from "react-icons/lu";
 import { Button } from "@/components/ui/button";
+import { capturePostHogException } from "@/lib/posthog-browser";
 
 /**
  * Catches render and data errors anywhere under the dashboard. Without it a
@@ -19,6 +20,7 @@ export default function DashboardError({
 }) {
   useEffect(() => {
     console.error("Dashboard error:", error);
+    capturePostHogException(error);
   }, [error]);
 
   return (

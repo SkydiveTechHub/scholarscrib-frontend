@@ -13,6 +13,7 @@ import { getAccessToken } from "@/lib/api/client";
 import { ACCESS_COOKIE, ADMIN_ACCESS_COOKIE } from "@/lib/api/config";
 import { endpoints } from "@/lib/api/endpoints";
 import { request } from "@/lib/api/http";
+import { resetPostHog } from "@/lib/posthog-browser";
 
 const MAX_AGE_SECONDS = 60 * 60 * 24 * 30;
 
@@ -67,6 +68,7 @@ async function postLogout(path: string, realm: "student" | "admin"): Promise<voi
 export async function studentLogout(callbackUrl = "/login"): Promise<void> {
   await postLogout(endpoints.auth.logout, "student");
   clearStudentToken();
+  resetPostHog();
   // replace, not assign: Back must not land on the signed-in page.
   window.location.replace(callbackUrl);
 }
@@ -78,5 +80,6 @@ export async function studentLogout(callbackUrl = "/login"): Promise<void> {
 export async function adminLogout(callbackUrl = "/admin/login"): Promise<void> {
   await postLogout(endpoints.admin.auth.logout, "admin");
   clearAdminToken();
+  resetPostHog();
   window.location.replace(callbackUrl);
 }

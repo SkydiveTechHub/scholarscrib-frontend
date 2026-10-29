@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { getSessionUser } from "@/lib/session";
+import { PostHogIdentify } from "@/components/analytics/posthog-identify";
 import { Logo } from "@/components/ui/logo";
 import { NOINDEX } from "@/lib/seo/metadata";
 
@@ -18,6 +19,13 @@ export default async function OnboardingLayout({
 
   return (
     <div className="flex min-h-full flex-col items-center px-6 py-10 lg:py-16">
+      <PostHogIdentify
+        id={user.id}
+        classLevel={user.classLevel}
+        track={user.track}
+        state={user.state}
+        tier={user.tier}
+      />
       <Logo href={null} className="mb-10" />
       <div className="w-full max-w-md">{children}</div>
     </div>
