@@ -23,7 +23,7 @@ export type ResourceItem = {
   description?: string | null;
 };
 
-// Same icon language as the Library (`src/components/library/library-view.tsx`)
+// Same icon language as the Library (`src/components/library/resource-card.tsx`)
 // so a student recognises these as the same kind of thing.
 const RESOURCE_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   pdf: LuFileText,
@@ -74,17 +74,21 @@ export function TopicResources({
               <ResourceIcon type={item.resourceType} />
             </span>
             <div className="min-w-0 flex-1">
-              <h3 className="truncate text-sm font-semibold text-foreground transition-colors group-hover:text-primary">
+              <h3 className="line-clamp-2 text-sm font-semibold text-foreground transition-colors group-hover:text-primary">
                 {item.title}
               </h3>
               {item.description && (
-                <p className="mt-1 line-clamp-2 text-xs text-muted">{item.description}</p>
+                <p className="mt-1 line-clamp-2 text-sm text-muted">{item.description}</p>
               )}
               <div className="mt-2 flex items-center gap-2">
-                <span className="chip border border-border bg-card text-[11px] capitalize text-muted">
+                <span className="chip border border-border bg-card text-xs capitalize text-muted">
                   {MATERIAL_LABELS[item.resourceType as MaterialType] ?? item.resourceType}
                 </span>
-                <LuExternalLink className="ml-auto h-3.5 w-3.5 text-muted opacity-0 transition-opacity group-hover:opacity-100" />
+                <span className="ml-auto flex items-center gap-1 text-xs font-semibold text-muted group-hover:text-primary">
+                  Open
+                  <LuExternalLink className="h-3.5 w-3.5" aria-hidden />
+                  <span className="sr-only">(opens in a new tab)</span>
+                </span>
               </div>
             </div>
           </a>
