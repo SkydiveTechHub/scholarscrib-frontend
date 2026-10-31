@@ -3,6 +3,7 @@ import { Nunito } from "next/font/google";
 import { siteDescription, siteName, siteUrl } from "@/lib/seo/site";
 import { ServiceWorkerRegistrar } from "@/components/pwa/service-worker-registrar";
 import { PostHogRoute } from "@/components/analytics/posthog-route";
+import { BackendWakingBanner } from "@/components/providers/backend-waking-banner";
 import { QueryProvider } from "@/components/providers/query-provider";
 import "./globals.css";
 // KaTeX markup is unreadable without its stylesheet -- fractions collapse onto
@@ -65,6 +66,7 @@ export default function RootLayout({
       <body className="h-full">
         <PostHogRoute />
         <QueryProvider>{children}</QueryProvider>
+        <BackendWakingBanner />
         <ServiceWorkerRegistrar />
       </body>
     </html>

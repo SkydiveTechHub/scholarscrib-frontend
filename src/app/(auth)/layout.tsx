@@ -1,6 +1,8 @@
 import Image from "next/image";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { LuSparkles, LuClipboardCheck, LuCalendarClock } from "react-icons/lu";
+import { ACCESS_COOKIE } from "@/lib/api/config";
 import { getSession } from "@/lib/session";
 import { NOINDEX } from "@/lib/seo/metadata";
 import { siteName } from "@/lib/seo/site";
@@ -34,8 +36,15 @@ export default async function AuthLayout({
 }) {
   // Signed-in users belong on the dashboard, not the login screen. This is the
   // authoritative check: proxy.ts lets /login and /register through.
-  const session = await getSession();
-  if (session?.user) redirect("/dashboard");
+  //
+  // No token cookie means nobody to redirect, so skip the backend round trip:
+  // a first-time visitor would otherwise wait on the session endpoint (and its
+  // retries, if the backend is cold) before seeing the login form.
+  const hasToken = Boolean((await cookies()).get(ACCESS_COOKIE)?.value);
+  if (hasToken) {
+    const session = await getSession();
+    if (session?.user) redirect("/dashboard");
+  }
 
   return (
     <div className="flex min-h-full">
