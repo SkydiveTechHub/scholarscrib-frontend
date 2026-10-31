@@ -1,5 +1,5 @@
 import type { LessonBlock, ConceptBlock } from "@/lib/lesson-engine";
-import { MAX_CARD_WORDS, blockWordCount, lintLessonBlocks, wordCount } from "@/lib/lesson-engine";
+import { MAX_CARD_WORDS, blockWordCount, lintLessonBlocks, softLengthWarnings, wordCount } from "@/lib/lesson-engine";
 import type { Issue, ParsedLesson } from "./types";
 import { makeIdFactory, slugify } from "./ids";
 import { parseFrontmatter } from "./frontmatter";
@@ -22,6 +22,37 @@ import {
 
 /** A heading section, before it is turned into one or more concept blocks. */
 type Section = { title?: string; text: string; reveal?: string; line: number };
+
+/**
+ * A single paragraph over the cap has no blank line to split on, so fall back
+ * to sentence boundaries. Chunks are balanced (153 words → 77 + 76, not
+ * 150 + 3) so no card is left as a stub. Paragraphs within the cap, and ones
+ * with no sentence boundary, pass through untouched.
+ */
+function splitOversizedParagraph(paragraph: string): string[] {
+  const total = wordCount(paragraph);
+  if (total <= MAX_CARD_WORDS) return [paragraph];
+
+  const sentences = paragraph.match(/\S[\s\S]*?(?:[.!?]+["')\]]*(?=\s|$)|$)/g)?.map((s) => s.trim());
+  if (!sentences || sentences.length < 2) return [paragraph];
+
+  const target = Math.ceil(total / Math.ceil(total / MAX_CARD_WORDS));
+  const chunks: string[] = [];
+  let current: string[] = [];
+  let running = 0;
+  for (const sentence of sentences) {
+    const words = wordCount(sentence);
+    if (current.length > 0 && running + words > target) {
+      chunks.push(current.join(" "));
+      current = [];
+      running = 0;
+    }
+    current.push(sentence);
+    running += words;
+  }
+  if (current.length > 0) chunks.push(current.join(" "));
+  return chunks;
+}
 
 /**
  * Emits a section as one concept card, or several split at paragraph
@@ -49,10 +80,15 @@ function emitConcept(
     return;
   }
 
-  const paragraphs = section.text.split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean);
+  const paragraphs = section.text
+    .split(/\n\s*\n/)
+    .map((p) => p.trim())
+    .filter(Boolean)
+    .flatMap(splitOversizedParagraph);
   if (paragraphs.length < 2) {
-    // Nothing to split on. Keep it whole — the lint will reject it, which is
-    // the honest outcome: splitting mid-sentence would be worse.
+    // Nothing to split on, not even a sentence boundary. Keep it whole — the
+    // lint will reject it, which is the honest outcome: splitting mid-sentence
+    // would be worse.
     blocks.push(whole);
     return;
   }
@@ -276,7 +312,12 @@ export function validateLessonMarkdown(source: string): ParsedLesson {
   const lintIssues = lintLessonBlocks(parsed.blocks).map((issue) => ({
     message: issue.blockId ? `${issue.blockId}: ${issue.message}` : issue.message,
   }));
-  return { ...parsed, errors: [...parsed.errors, ...lintIssues] };
+  const softWarnings = softLengthWarnings(parsed.blocks).map((message) => ({ message }));
+  return {
+    ...parsed,
+    warnings: [...parsed.warnings, ...softWarnings],
+    errors: [...parsed.errors, ...lintIssues],
+  };
 }
 
 export { slugify } from "./ids";

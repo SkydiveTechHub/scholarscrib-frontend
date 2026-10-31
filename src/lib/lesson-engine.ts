@@ -3,7 +3,10 @@ import type { MasteryLevel } from "@/types/learning";
 // Lesson Engine — the lesson block model, parsing, and the authoring lint the
 // admin upload preview runs. See docs/superpowers/specs/2026-08-01-lesson-engine-design.md.
 
-export const MAX_CARD_WORDS = 120;
+/** Hard limit: a block over this fails the lint and blocks the upload. */
+export const MAX_CARD_WORDS = 150;
+/** Soft target: a block over this (but within the hard limit) only earns a warning. */
+export const SOFT_CARD_WORDS = 120;
 
 export const EXAM_TYPES = ["WAEC", "JAMB", "NECO"] as const;
 export type ExamTypeTag = (typeof EXAM_TYPES)[number];
@@ -305,6 +308,25 @@ export function blockWordCount(block: LessonBlock): number {
     case "check":
       return wordCount(block.question);
   }
+}
+
+/**
+ * Advisory length check: blocks over SOFT_CARD_WORDS but within MAX_CARD_WORDS.
+ * These upload fine; the message nudges the author towards one idea per block.
+ */
+export function softLengthWarnings(blocks: LessonBlock[]): string[] {
+  const warnings: string[] = [];
+  for (const block of blocks) {
+    if (block.type === "check") continue;
+    const words = blockWordCount(block);
+    if (words > SOFT_CARD_WORDS && words <= MAX_CARD_WORDS) {
+      const name = block.type === "concept" && block.title ? `"${block.title}"` : `"${block.id}"`;
+      warnings.push(
+        `${name} is ${words} words — consider splitting it so each block carries one idea (aim for ≤ ${SOFT_CARD_WORDS}).`,
+      );
+    }
+  }
+  return warnings;
 }
 
 /**
