@@ -25,7 +25,8 @@ const SVG_ATTRS = new Set([
   "stroke-linecap", "stroke-linejoin", "stroke-dasharray", "opacity",
   "font-size", "font-family", "font-weight", "text-anchor", "dominant-baseline",
   "offset", "stop-color", "stop-opacity", "gradientunits", "marker-end",
-  "marker-start", "id", "class", "xmlns",
+  "marker-start", "markerwidth", "markerheight", "markerunits", "refx", "refy",
+  "orient", "id", "class", "xmlns",
 ]);
 
 type HostileToken = {

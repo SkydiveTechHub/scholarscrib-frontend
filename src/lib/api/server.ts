@@ -20,9 +20,10 @@ type FetchOptions = Omit<RequestInit, "body"> & {
   realm?: "student" | "admin";
 };
 
-const REQUEST_TIMEOUT_MS = 10_000;
+// Long enough for a scale-to-zero database to resume behind one request.
+const REQUEST_TIMEOUT_MS = 20_000;
 /** Pauses before each retry of a GET; its length is the retry count. */
-const RETRY_DELAYS_MS = [500, 1500];
+const RETRY_DELAYS_MS = [500, 1500, 3000, 5000];
 /** Gateway errors a sleeping or restarting backend returns. */
 const TRANSIENT_STATUSES = new Set([502, 503, 504]);
 

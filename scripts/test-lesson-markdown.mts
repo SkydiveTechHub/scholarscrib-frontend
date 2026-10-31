@@ -525,7 +525,7 @@ test("a split whose reveal pushes a card back over the cap says so in the warnin
   // existing draft) and it fails closed — the lint rejects the over-cap card.
   // What must not happen is the two disagreeing: a success-toned warning
   // beside an error naming a synthetic card id the author never wrote.
-  const para = WORD.repeat(80).trim();
+  const para = WORD.repeat(100).trim();
   const reveal = WORD.repeat(60).trim();
   const result = validateLessonMarkdown(
     `## Long\n\n${para}\n\n${para}\n\n### Reveal\n\n${reveal}`,
@@ -1583,7 +1583,7 @@ test("parseBlocks drops a short block with no model answer", () => {
 });
 
 test("a short block counts towards the card word cap and is linted", () => {
-  const long = WORD.repeat(130).trim();
+  const long = WORD.repeat(160).trim();
   const result = validateLessonMarkdown(
     ["## A", "", "Text.", "", "## Quiz", "", `1. Explain. *(Short answer: ${long})*`].join("\n"),
   );
@@ -1598,4 +1598,17 @@ test("a theory question with no model answer stays a plain card, not a short blo
     ["## A", "", "Text.", "", "## Quiz", "", "1. State ONE safety rule."].join("\n"),
   );
   assert.equal(shorts(result.blocks).length, 0);
+});
+
+test("a block between the soft and hard cap warns but is not an error", () => {
+  const body = WORD.repeat(135).trim();
+  const result = validateLessonMarkdown(`## Big\n\n${body}`);
+  assert.ok(!result.errors.some((e) => /cards must be/.test(e.message)));
+  assert.ok(result.warnings.some((w) => /135 words/.test(w.message) && /aim for ≤ 120/.test(w.message)));
+});
+
+test("a block within the soft cap has no length warning", () => {
+  const body = WORD.repeat(100).trim();
+  const result = validateLessonMarkdown(`## Fine\n\n${body}`);
+  assert.ok(!result.warnings.some((w) => /aim for/.test(w.message)));
 });

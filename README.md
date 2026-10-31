@@ -5,7 +5,7 @@ client of the FastAPI backend, which owns auth, the database, scoring, study
 plans, billing and push delivery. Nothing here talks to a database or holds a
 backend secret.
 
-## Getting started
+## Getting started.
 
 ```bash
 cp .env.example .env

@@ -15,6 +15,7 @@ import { API_URL } from "./config";
 import { endpoints } from "./endpoints";
 import { readErrorBody } from "./error-body";
 import { ApiError } from "./errors";
+import { beginWaking, endWaking } from "./waking";
 
 declare module "axios" {
   interface AxiosRequestConfig {
@@ -22,6 +23,8 @@ declare module "axios" {
     anonymous?: boolean;
     /** Which token to attach; defaults to a path-based guess. */
     realm?: "student" | "admin";
+    /** Internal: how many times this request has been replayed for a waking database. */
+    wakeAttempt?: number;
   }
 }
 
@@ -55,6 +58,11 @@ http.interceptors.request.use((config) => {
   return config;
 });
 
+/** Pauses before each retry of a request that hit a waking database. */
+const WAKE_RETRY_DELAYS_MS = [2000, 3000, 4000, 5000];
+
+const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+
 http.interceptors.response.use(undefined, async (error: unknown) => {
   if (!(error instanceof AxiosError) || !error.response) throw error;
 
@@ -63,6 +71,28 @@ http.interceptors.response.use(undefined, async (error: unknown) => {
   const apiError = new ApiError(status, body);
 
   const config = error.config;
+
+  // The backend answers 503 `db_waking` while its database resumes from sleep.
+  // Reads are safe to replay, so wait it out instead of surfacing an error.
+  if (
+    config &&
+    status === 503 &&
+    apiError.code === "db_waking" &&
+    (config.method ?? "get").toLowerCase() === "get" &&
+    !config.signal?.aborted
+  ) {
+    const attempt = config.wakeAttempt ?? 0;
+    if (attempt < WAKE_RETRY_DELAYS_MS.length) {
+      beginWaking();
+      try {
+        await sleep(WAKE_RETRY_DELAYS_MS[attempt]);
+        return await http.request({ ...config, wakeAttempt: attempt + 1 });
+      } finally {
+        endWaking();
+      }
+    }
+  }
+
   const path = config?.url ?? "";
   // Never redirect during a public/login flow: an "invalid credentials" 401
   // must show the form's error, not bounce the user around.
