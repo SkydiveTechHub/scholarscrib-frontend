@@ -12,6 +12,7 @@ import type { ProfileUser } from "@/components/ui/user-menu";
 import { daysUntilExam, examTargetFor } from "@/lib/exam-target";
 import { NOINDEX } from "@/lib/seo/metadata";
 import { needsProfileCompletion } from "@/lib/profile-completion";
+import { needsEmailVerification } from "@/lib/email-verification";
 import { tierOf } from "@/lib/entitlements";
 import { TutorShell } from "@/components/tutor/tutor-shell";
 
@@ -31,6 +32,12 @@ export default async function DashboardLayout({
   // authentication failure and this redirect.
   const user = await getSessionUser();
   if (!user?.id) redirect("/login");
+
+  // An unverified email stops here, before anything else. Decided purely by
+  // what the backend's session says: accounts it already marks verified
+  // (Google sign-ins) pass straight through. /verify-email sends the code for
+  // anyone who arrives without one (registration sends its own).
+  if (needsEmailVerification(user)) redirect("/verify-email");
 
   // Class, track and state come before anything else: most pages here assume
   // the first two, and Google sign-ups arrive with none of them.

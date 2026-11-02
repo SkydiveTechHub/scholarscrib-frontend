@@ -17,7 +17,8 @@ import { NIGERIAN_STATES } from "@/lib/constants/exam-types";
 import { Logo } from "@/components/ui/logo";
 import { cn } from "@/lib/utils";
 import { isApiError } from "@/lib/api/errors";
-import { useRegister } from "@/hooks/api/use-auth";
+import { useLogin, useRegister } from "@/hooks/api/use-auth";
+import { markFreshSignIn } from "@/lib/encouragement";
 
 // Two steps, not three. State was a single optional dropdown on a step of its
 // own, which read as a hurdle rather than a question — it now sits with the
@@ -30,8 +31,11 @@ export default function RegisterPage() {
   const router = useRouter();
   const [step, setStep] = useState(1);
   const register = useRegister();
-  // Stays true through the redirect so the button can't be pressed twice.
-  const loading = register.isPending || register.isSuccess;
+  const login = useLogin();
+  // Covers register, the automatic sign-in and the navigation after them, and
+  // stays true through the redirect so the button can't be pressed twice.
+  const [submitting, setSubmitting] = useState(false);
+  const loading = submitting;
   const [error, setError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [form, setForm] = useState({
@@ -93,16 +97,41 @@ export default function RegisterPage() {
     }
 
     setError("");
-    register.mutate(form, {
-      onSuccess: () => router.push("/login?registered=true"),
-      onError: (err) => {
-        if (isApiError(err)) {
-          setError(err.body?.error ?? err.message);
-        } else {
-          setError("Network error. Please check your connection and try again.");
-        }
-      },
-    });
+    setSubmitting(true);
+
+    try {
+      await register.mutateAsync(form);
+    } catch (err) {
+      if (isApiError(err)) {
+        setError(err.body?.error ?? err.message);
+      } else {
+        setError("Network error. Please check your connection and try again.");
+      }
+      setSubmitting(false);
+      return;
+    }
+
+    // The account exists and the backend has emailed the verification code.
+    // Sign in on the student's behalf instead of making them retype the
+    // credentials they just chose, then hand them to the verification step.
+    try {
+      const [{ setStudentToken }, data] = await Promise.all([
+        import("@/lib/client-session"),
+        login.mutateAsync({ email: form.email, password: form.password }),
+      ]);
+      setStudentToken(data.accessToken);
+      markFreshSignIn();
+
+      // A full navigation, as on the login page, so the proxy sees the fresh
+      // cookie. `sent=1` tells the page the code is already on its way: a
+      // second send would invalidate the one in the inbox. Stays in the
+      // loading state, since the page is about to be replaced.
+      window.location.assign("/verify-email?sent=1");
+    } catch {
+      // The account was created; only the automatic sign-in failed. Fall back
+      // to the login page, where signing in lands on the same verification step.
+      router.push("/login?registered=true");
+    }
   }
 
   const optionClass = (selected: boolean) =>

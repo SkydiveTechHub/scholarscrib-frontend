@@ -27,8 +27,6 @@ import { NextMoveCard } from "@/components/gamification/next-move-card";
 import { pickNextMove } from "@/lib/next-move";
 import { DailyQuestsSection } from "@/components/gamification/daily-quests-section";
 import { InstallBanner } from "@/components/pwa/install-banner";
-import { VerifyEmailBanner } from "@/components/auth/verify-email-banner";
-
 const STAT_CARDS = [
   {
     key: "questions",
@@ -165,9 +163,6 @@ export default async function DashboardPage({
         <AnnouncementBanner />
       </Suspense>
       <InstallBanner />
-      {!session.emailVerified && session.email && (
-        <VerifyEmailBanner email={session.email} />
-      )}
       {/* Hero */}
       <section className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-hero-from via-hero-via to-hero-to p-6 shadow-lift md:p-8">
         <div className="absolute -right-16 -top-24 h-64 w-64 rounded-full bg-white/10" />
