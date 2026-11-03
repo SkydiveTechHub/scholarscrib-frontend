@@ -4,7 +4,7 @@
  * address is how one of them ends up stale.
  */
 
-export const SUPPORT_EMAIL = "hello@scholarscrib.com";
+export const SUPPORT_EMAIL = "support@scholarscrib.com";
 
 /**
  * Digits only, international format without the "+" — e.g. "2348012345678".
@@ -15,7 +15,7 @@ export const SUPPORT_EMAIL = "hello@scholarscrib.com";
  * absent one, and a student who messages it and hears nothing does not come
  * back to try email.
  */
-export const WHATSAPP_NUMBER = "";
+export const WHATSAPP_NUMBER = "+2349126978009";
 
 export const SUPPORT_HOURS = "Monday to Saturday, 9am – 6pm WAT";
 export const SUPPORT_RESPONSE = "within one working day";

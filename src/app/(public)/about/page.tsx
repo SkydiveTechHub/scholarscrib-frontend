@@ -35,6 +35,22 @@ export default function AboutPage() {
       <AboutHero />
       <AboutStory />
       <AboutValues />
+      <section>
+        <div className="landing-container pb-20 lg:pb-28">
+          <div className="border-t hairline pt-7">
+            <h2 className="text-base font-extrabold tracking-tight ink">
+              Disclaimer
+            </h2>
+            <p className="mt-2 max-w-3xl text-sm leading-relaxed ink-muted">
+              ScholarsCrib is an independent learning platform. We are not
+              affiliated with, endorsed by, or sponsored by any examination
+              body, government agency, school or organisation, including WAEC,
+              NECO and JAMB. Exam names are used only to describe the
+              examinations our content helps students prepare for.
+            </p>
+          </div>
+        </div>
+      </section>
       <FinalCta />
     </>
   );
