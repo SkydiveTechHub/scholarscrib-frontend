@@ -2,6 +2,7 @@ import Image from "next/image";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { LuSparkles, LuClipboardCheck, LuCalendarClock } from "react-icons/lu";
+import { LaunchGate } from "@/components/auth/launch-gate";
 import { ACCESS_COOKIE } from "@/lib/api/config";
 import { getSession } from "@/lib/session";
 import { NOINDEX } from "@/lib/seo/metadata";
@@ -47,6 +48,7 @@ export default async function AuthLayout({
   }
 
   return (
+    <LaunchGate>
     <div className="flex min-h-full">
       {/* Left panel — branding */}
       <div className="relative hidden w-1/2 items-center justify-center overflow-hidden bg-gradient-to-br from-hero-from via-hero-via to-hero-to p-12 lg:flex">
@@ -96,5 +98,6 @@ export default async function AuthLayout({
         <div className="w-full max-w-md">{children}</div>
       </div>
     </div>
+    </LaunchGate>
   );
 }
