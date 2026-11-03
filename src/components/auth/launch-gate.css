@@ -1,216 +1,32 @@
-.lg-root {
-  position: relative;
-  min-height: 100dvh;
-  overflow: hidden;
-  color: #fff;
-  background:
-    radial-gradient(60rem 36rem at 85% -10%, #4f46e5 0%, transparent 60%),
-    radial-gradient(48rem 30rem at -10% 110%, #1d4ed8 0%, transparent 60%),
-    #0e1a5c;
-}
-
-/* Faint ruled lines, like the margin of an answer booklet. */
-.lg-grain {
-  position: absolute;
-  inset: 0;
-  background-image: repeating-linear-gradient(
-    to bottom,
-    rgb(255 255 255 / 0.045) 0 1px,
-    transparent 1px 44px
-  );
-  mask-image: linear-gradient(to bottom, transparent, #000 25%, #000 75%, transparent);
-  pointer-events: none;
-}
-
-.lg-inner {
-  position: relative;
-  display: flex;
-  min-height: 100dvh;
-  flex-direction: column;
-  padding: 1.75rem 1.5rem 2.5rem;
-  max-width: 64rem;
-  margin: 0 auto;
-}
-
-.lg-stage {
-  margin: auto 0;
-  padding: 3rem 0 1rem;
-}
-
-.lg-kicker {
-  font-size: 0.95rem;
-  font-weight: 700;
-  color: #dbeafe;
-}
-
-.lg-days {
-  margin-top: 0.75rem;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 0.25rem 1.25rem;
-  line-height: 0.85;
-}
-
-.lg-days-number {
-  font-size: clamp(7rem, 26vw, 16rem);
-  font-weight: 900;
-  letter-spacing: -0.06em;
-  font-variant-numeric: tabular-nums;
-  color: #fff;
-}
-
-.lg-days-word {
-  font-size: clamp(1.5rem, 4.5vw, 2.75rem);
-  font-weight: 800;
-  letter-spacing: -0.02em;
-  color: #ffc83d;
-}
-
-/* ── Answer sheet ───────────────────────────── */
-
-.lg-sheet {
-  margin-top: 2rem;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.6rem;
-  list-style: none;
-  padding: 0;
-}
-
-.lg-bubble {
-  position: relative;
-  width: 1.5rem;
-  height: 1.5rem;
-  border-radius: 9999px;
-  border: 2px solid rgb(255 255 255 / 0.55);
-}
-
-.lg-bubble::after {
-  content: "";
-  position: absolute;
-  inset: 3px;
-  border-radius: 9999px;
-  background: #ffc83d;
-  transform: scale(0);
-}
-
-.lg-bubble[data-filled="true"] {
-  border-color: #ffc83d;
-}
-
-.lg-bubble[data-filled="true"]::after {
-  transform: scale(1);
-}
-
-/* The one orchestrated moment: shade the bubbles in order on load. */
+/* Both effects are decorative, so they only run when motion is welcome. */
 @media (prefers-reduced-motion: no-preference) {
-  .lg-bubble[data-filled="true"]::after {
-    transform: scale(0);
-    animation: lg-shade 420ms cubic-bezier(0.3, 1.4, 0.5, 1) forwards;
-    animation-delay: calc(350ms + var(--i) * 90ms);
+  .lg-tick {
+    animation: lg-tick 320ms ease-out;
+  }
+
+  .lg-pulse {
+    animation: lg-pulse 2s ease-in-out infinite;
   }
 }
 
-@keyframes lg-shade {
+@keyframes lg-tick {
+  from {
+    opacity: 0;
+    transform: translateY(-35%);
+  }
   to {
-    transform: scale(1);
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 
-/* ── Clock ──────────────────────────────────── */
-
-.lg-clock {
-  margin-top: 2.25rem;
-  display: flex;
-  align-items: flex-start;
-  gap: 0.5rem;
-}
-
-.lg-unit {
-  display: flex;
-  min-width: 4.25rem;
-  flex-direction: column;
-}
-
-.lg-unit-value {
-  font-size: clamp(2.25rem, 8vw, 3.75rem);
-  font-weight: 900;
-  line-height: 1;
-  letter-spacing: -0.03em;
-  font-variant-numeric: tabular-nums;
-}
-
-.lg-unit-label {
-  margin-top: 0.4rem;
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: #dbeafe;
-}
-
-.lg-colon {
-  font-size: clamp(2.25rem, 8vw, 3.75rem);
-  font-weight: 900;
-  line-height: 1;
-  color: rgb(255 255 255 / 0.35);
-}
-
-.lg-copy {
-  margin-top: 2.25rem;
-  max-width: 30rem;
-  font-size: 1rem;
-  line-height: 1.65;
-  color: #dbeafe;
-}
-
-.lg-actions {
-  margin-top: 1.75rem;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.75rem;
-}
-
-.lg-btn {
-  border-radius: 0.75rem;
-  padding: 0.8rem 1.4rem;
-  font-size: 0.9rem;
-  font-weight: 800;
-  transition: background-color 150ms, transform 150ms;
-}
-
-.lg-btn:focus-visible {
-  outline: 3px solid #ffc83d;
-  outline-offset: 3px;
-}
-
-.lg-btn:active {
-  transform: scale(0.98);
-}
-
-.lg-btn-primary {
-  background: #ffc83d;
-  color: #0e1a5c;
-}
-
-.lg-btn-primary:hover {
-  background: #ffd56b;
-}
-
-.lg-btn-ghost {
-  border: 2px solid rgb(255 255 255 / 0.4);
-  color: #fff;
-}
-
-.lg-btn-ghost:hover {
-  background: rgb(255 255 255 / 0.1);
-}
-
-@media (max-width: 420px) {
-  .lg-unit {
-    min-width: 3.5rem;
+@keyframes lg-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, currentColor 0%, transparent);
+    opacity: 1;
   }
-  .lg-bubble {
-    width: 1.25rem;
-    height: 1.25rem;
+  50% {
+    opacity: 0.45;
   }
 }
