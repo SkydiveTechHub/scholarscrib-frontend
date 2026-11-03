@@ -8,8 +8,6 @@ const COLUMNS: { heading: string; links: { label: string; href: string }[] }[] =
       { label: "Product tour", href: "/#product" },
       { label: "Subjects", href: "/#subjects" },
       { label: "Pricing", href: "/#pricing" },
-      { label: "Browse subjects", href: "/learn" },
-      { label: "Past questions", href: "/past-questions" },
     ],
   },
   {

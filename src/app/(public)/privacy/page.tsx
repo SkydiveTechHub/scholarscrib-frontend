@@ -50,6 +50,14 @@ const SECTIONS: { heading: string; body: React.ReactNode }[] = [
           </a>
           .
         </p>
+        <p>
+          <strong>Disclaimer:</strong> ScholarsCrib is an independent service.
+          We are not affiliated with, endorsed by, or sponsored by any
+          examination body, government agency, school or organisation,
+          including WAEC, NECO and JAMB. Any personal data you give us is
+          handled by ScholarsCrib alone, under this policy, and is not
+          collected on behalf of any such body.
+        </p>
       </>
     ),
   },
