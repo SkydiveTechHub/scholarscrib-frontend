@@ -2,9 +2,9 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { hasWarning, practiceWarnings } from "../src/lib/practice-warnings";
 
-const physics = { name: "physics", category: "sciences", label: "Physics" };
-const economics = { name: "economics", category: "commercial", label: "Economics" };
-const english = { name: "english-language", category: "languages", label: "English" };
+const physics = { name: "physics", category: "SCIENCE", label: "Physics" };
+const economics = { name: "economics", category: "COMMERCIAL", label: "Economics" };
+const english = { name: "english-language", category: "CORE", label: "English" };
 
 test("SS1 and SS2 get the class warning, SS3 does not", () => {
   for (const classLevel of ["SS1", "SS2"]) {

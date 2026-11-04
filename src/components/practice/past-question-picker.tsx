@@ -8,13 +8,13 @@ import {
   subjectsForExam,
   yearsForExam,
 } from "@/lib/subject-coverage";
-import type { CoverageSubjectOut } from "@/lib/api/types";
+import type { CatalogueSubjectOut } from "@/lib/api/types";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Spinner } from "@/components/ui/spinner";
 import {
-  useCoverageSubjects,
-  useCoverageSubjectYears,
+  useCatalogueSubjects,
+  useCatalogueSubjectYears,
   usePastPaperHistory,
 } from "@/hooks/api/use-assessments";
 import { formatScore, summariseHistory } from "@/lib/past-paper-history";
@@ -30,13 +30,14 @@ const EXAM_BADGES: Record<string, "blue" | "green" | "purple" | "neutral"> = {
 };
 
 // Stable empty list, so the memos below don't recompute every render.
-const NO_SUBJECTS: CoverageSubjectOut[] = [];
+const NO_SUBJECTS: CatalogueSubjectOut[] = [];
 
 /**
- * Past questions, one subject at a time, straight from the question provider:
- * ① exam → ② the provider's subjects for that exam, narrowed to the student's
- * track → ③ the years the provider holds for that subject under that exam →
- * ④ the paper, fetched from the provider and sat as a recorded attempt.
+ * Past questions, one subject at a time, from our provider-neutral catalogue:
+ * ① exam → ② our subjects for that exam, narrowed to the student's track →
+ * ③ the years on offer for that subject under that exam (found lazily, so the
+ * first open can say it is still checking) → ④ the paper, sat as a recorded
+ * attempt. The subject key is our slug whichever provider is active.
  */
 export function PastQuestionPicker({
   track,
@@ -48,17 +49,17 @@ export function PastQuestionPicker({
   classLevel?: string | null;
   /** Deep link: start with this exam chosen (case-insensitive). */
   initialExam?: string | null;
-  /** Deep link: start with this subject chosen, by provider key or our slug. */
+  /** Deep link: start with this subject chosen, by our slug. */
   initialSubject?: string | null;
 }) {
-  const coverage = useCoverageSubjects();
-  const allSubjects = coverage.data?.data ?? NO_SUBJECTS;
-
   const [exam, setExam] = useState<string | null>(() => {
     const key = initialExam?.toLowerCase();
     return COVERAGE_EXAMS.some((e) => e.key === key) ? (key as string) : null;
   });
-  // The provider's subject key, e.g. "english-language".
+  const coverage = useCatalogueSubjects(exam, { enabled: Boolean(exam) });
+  const examSubjects = coverage.data?.data ?? NO_SUBJECTS;
+
+  // Our subject slug, e.g. "english-language".
   const [subjectName, setSubjectName] = useState<string | null>(
     initialExam && initialSubject ? initialSubject : null,
   );
@@ -70,34 +71,37 @@ export function PastQuestionPicker({
   // A year whose earlier sittings are being reviewed in the modal.
   const [reviewYear, setReviewYear] = useState<number | null>(null);
 
-  // ② Subjects the provider holds under the chosen exam.
+  // ② Our subjects offered under the chosen exam.
   const subjects = useMemo(
-    () => (exam ? subjectsForExam(allSubjects, exam) : []),
-    [allSubjects, exam],
+    () => (exam ? subjectsForExam(examSubjects, exam) : []),
+    [examSubjects, exam],
   );
 
-  // Our slugs don't always match the provider's keys (e.g. "english" vs
-  // "english-language"), so a deep-linked slug is matched against the key,
-  // the display name, or as a prefix of either.
+  // A deep link may spell the slug loosely (e.g. "english" for
+  // "english-language"), so it is matched against the slug, the display name,
+  // or as a prefix of either.
   const chosenSubject = useMemo(
     () => (subjectName ? findSubject(subjects, subjectName) : null),
     [subjects, subjectName],
   );
 
-  // A deep-linked subject the provider doesn't hold under this exam (e.g.
-  // Chemistry is JAMB-only): say so, and offer the exams that do have it.
+  // A deep-linked subject not offered under this exam (e.g. Chemistry is
+  // JAMB-only): say so, and offer the exams that do have it. Only then is the
+  // all-exams list worth fetching.
+  const needsLookup = Boolean(exam && subjectName && coverage.data && !chosenSubject);
+  const everySubject = useCatalogueSubjects(null, { enabled: needsLookup });
   const unavailable = useMemo(() => {
-    if (!subjectName || chosenSubject || !exam || !coverage.data) return null;
-    const subject = findSubject(allSubjects, subjectName);
+    if (!needsLookup || !subjectName || !exam) return null;
+    const subject = findSubject(everySubject.data?.data ?? NO_SUBJECTS, subjectName);
     if (!subject) return null;
     const otherExams = COVERAGE_EXAMS.filter(
       (e) => e.key !== exam && subject.examTypes.includes(e.key),
     );
     return { subject, otherExams };
-  }, [subjectName, chosenSubject, exam, coverage.data, allSubjects]);
+  }, [needsLookup, subjectName, exam, everySubject.data]);
 
-  const yearsQuery = useCoverageSubjectYears(chosenSubject?.name ?? null);
-  const historyQuery = usePastPaperHistory(exam, chosenSubject?.name ?? null);
+  const yearsQuery = useCatalogueSubjectYears(chosenSubject?.slug ?? null, exam);
+  const historyQuery = usePastPaperHistory(exam, chosenSubject?.slug ?? null);
   const history = useMemo(() => summariseHistory(historyQuery.data), [historyQuery.data]);
 
   function chooseExam(key: string | null) {
@@ -119,7 +123,7 @@ export function PastQuestionPicker({
         subjects: chosenSubject
           ? [
               {
-                name: chosenSubject.name,
+                name: chosenSubject.slug,
                 category: chosenSubject.category,
                 label: chosenSubject.displayName,
               },
@@ -145,23 +149,25 @@ export function PastQuestionPicker({
 
   const examLabel = COVERAGE_EXAMS.find((e) => e.key === exam)?.label ?? exam ?? "";
 
-  // ③ Years the provider holds for that subject under that exam.
+  // ③ Years on offer for that subject under that exam.
   const years = useMemo(
-    () => (exam && yearsQuery.data ? yearsForExam(yearsQuery.data.data, exam) : []),
-    [yearsQuery.data, exam],
+    () => (yearsQuery.data ? yearsForExam(yearsQuery.data.data) : []),
+    [yearsQuery.data],
   );
+  // Discovery is still running on the server: the list may grow.
+  const stillChecking = yearsQuery.data?.complete === false;
 
   // ④ The paper itself, sat in place of the picker. Leaving it lands back on
   // the year step with exam and subject still chosen. The past-paper
-  // endpoints take the provider's subject key.
+  // endpoints take our subject slug.
   if (exam && chosenSubject && year !== null) {
     return (
       <PastPaperExam
-        key={`${exam}:${chosenSubject.name}:${year}`}
+        key={`${exam}:${chosenSubject.slug}:${year}`}
         exam={exam}
         examLabel={examLabel}
         subject={{
-          slug: chosenSubject.name,
+          slug: chosenSubject.slug,
           name: chosenSubject.displayName,
           trackCategory: chosenSubject.category,
           years: years.map((y) => y.year),
@@ -250,7 +256,7 @@ export function PastQuestionPicker({
                 )}
               </div>
             )}
-            {unavailable ? null : coverage.isPending ? (
+            {unavailable ? null : coverage.isPending || (needsLookup && everySubject.isPending) ? (
               <Spinner label="Loading subjects..." />
             ) : coverage.isError ? (
               <RetryState title="Couldn't load subjects" onRetry={() => void coverage.refetch()} />
@@ -260,9 +266,9 @@ export function PastQuestionPicker({
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {visibleSubjects.map((s) => (
                   <button
-                    key={s.name}
+                    key={s.slug}
                     type="button"
-                    onClick={() => setSubjectName(s.name)}
+                    onClick={() => setSubjectName(s.slug)}
                     className="card card-interactive p-4 text-left"
                   >
                     <p className="text-sm font-semibold text-foreground">{s.displayName}</p>
@@ -277,9 +283,11 @@ export function PastQuestionPicker({
       {exam && chosenSubject && (
         <Step number={3} title="Choose a year">
           {yearsQuery.isPending ? (
-            <Spinner label="Loading years..." />
+            <Spinner label="Checking available years..." />
           ) : yearsQuery.isError ? (
             <RetryState title="Couldn't load years" onRetry={() => void yearsQuery.refetch()} />
+          ) : years.length === 0 && stillChecking ? (
+            <Spinner label="Checking available years..." />
           ) : years.length === 0 ? (
             <p className="text-sm text-muted">
               No {examLabel} {chosenSubject.displayName} papers available yet.
@@ -298,7 +306,9 @@ export function PastQuestionPicker({
                     <span className="block text-sm font-bold text-foreground group-hover:text-primary">
                       {y.year}
                     </span>
-                    <span className="block text-xs text-muted">{y.questionCount} questions</span>
+                    {y.questionCount !== null && (
+                      <span className="block text-xs text-muted">{y.questionCount} questions</span>
+                    )}
                     {past && (
                       <Badge variant="primary" className="mt-1.5 px-2 py-0.5 text-[11px]">
                         {past.count}× · best {formatScore(past, past.best ?? 0)}
@@ -344,14 +354,14 @@ export function PastQuestionPicker({
 const slugify = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-");
 
 function findSubject(
-  subjects: readonly CoverageSubjectOut[],
+  subjects: readonly CatalogueSubjectOut[],
   slug: string,
-): CoverageSubjectOut | null {
+): CatalogueSubjectOut | null {
   const want = slugify(slug);
   return (
-    subjects.find((s) => s.name === slug) ??
-    subjects.find((s) => slugify(s.name) === want || slugify(s.displayName) === want) ??
-    subjects.find((s) => slugify(s.name).startsWith(want) || want.startsWith(slugify(s.name))) ??
+    subjects.find((s) => s.slug === slug) ??
+    subjects.find((s) => slugify(s.slug) === want || slugify(s.displayName) === want) ??
+    subjects.find((s) => slugify(s.slug).startsWith(want) || want.startsWith(slugify(s.slug))) ??
     null
   );
 }

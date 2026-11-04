@@ -34,9 +34,9 @@ export const endpoints = {
     topicQuiz: "/api/questions/topic-quiz",
     topicAnswers: "/api/questions/topic-answers",
     explanation: (questionId: string) => `/api/questions/${seg(questionId)}/explanation`,
-    coverageSubjects: "/api/questions/coverage/subjects",
-    coverageSubjectYears: (subject: string) =>
-      `/api/questions/coverage/subjects/${seg(subject)}/years`,
+    catalogueSubjects: "/api/questions/catalogue/subjects",
+    catalogueSubjectYears: (subject: string) =>
+      `/api/questions/catalogue/subjects/${seg(subject)}/years`,
   },
   assessments: {
     generate: "/api/assessments/generate",
