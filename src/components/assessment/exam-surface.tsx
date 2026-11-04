@@ -91,6 +91,8 @@ export function ExamSurface({
     answeredCount,
     flaggedCount,
     lowTime,
+    showTimeWarning,
+    dismissTimeWarning,
     setShowConfirmSubmit,
     setFocusMode,
     setHideTimer,
@@ -121,7 +123,7 @@ export function ExamSurface({
   // window so the student can navigate the confirmation UI a slow or failed
   // submit produces; that navigation to the results page is the one
   // departure we must not interrupt.
-  const { pending, confirmLeave, cancelLeave } = useNavigationGuard({
+  const { pending, cancelLeave } = useNavigationGuard({
     armed: Boolean(attemptId),
     active: Boolean(attemptId) && !submitting,
     fallbackHref: backHref ?? "/practice",
@@ -329,6 +331,27 @@ export function ExamSurface({
             <span>{unanswered} remaining</span>
           </div>
         </div>
+
+        {/* Five-minute warning */}
+        {showTimeWarning && (
+          <div
+            role="alert"
+            className="mt-3 flex items-start gap-2.5 rounded-xl border border-warning/30 bg-warning-soft px-3.5 py-2.5 text-warning"
+          >
+            <LuTriangleAlert className="mt-0.5 h-4 w-4 flex-shrink-0" />
+            <p className="flex-1 text-sm font-semibold">
+              Less than 5 minutes left. Your answers will be submitted
+              automatically when time runs out.
+            </p>
+            <button
+              type="button"
+              onClick={dismissTimeWarning}
+              className="text-xs font-bold underline underline-offset-2"
+            >
+              Dismiss
+            </button>
+          </div>
+        )}
 
         {/* Subject jump tabs */}
         {groups && groups.length > 1 && (
@@ -719,9 +742,14 @@ export function ExamSurface({
 
       <LeaveExamDialog
         open={pending !== null}
-        untimed={untimed}
+        unanswered={unanswered}
         onStay={cancelLeave}
-        onLeave={confirmLeave}
+        onSubmit={() => {
+          // Leaving is submitting: grade the paper and land on its result
+          // rather than on the page the student was heading to.
+          cancelLeave();
+          void handleSubmit();
+        }}
       />
     </div>
   );
@@ -748,33 +776,30 @@ function MarkingOverlay() {
 }
 
 /**
- * Shown when a student clicks away mid-exam.
- *
- * Deliberately reassuring rather than accusing: leaving loses no answers, and
- * the only real cost — a timer that keeps running — is stated plainly instead
- * of threatened. Staying is the primary action; leaving stays one click away.
+ * Shown when a student clicks away mid-exam. Leaving an exam means submitting
+ * it, so this says so before anything is sent. Staying is the primary action.
  */
 function LeaveExamDialog({
   open,
-  untimed,
+  unanswered,
   onStay,
-  onLeave,
+  onSubmit,
 }: {
   open: boolean;
-  untimed: boolean;
+  unanswered: number;
   onStay: () => void;
-  onLeave: () => void;
+  onSubmit: () => void;
 }) {
   return (
     <Modal
       open={open}
-      title="Leave this exam?"
+      title="Leaving will submit your exam"
       onClose={onStay}
       className="max-w-sm"
       footer={
         <div className="flex gap-3">
-          <Button variant="outline" className="flex-1" onClick={onLeave}>
-            Leave anyway
+          <Button variant="outline" className="flex-1" onClick={onSubmit}>
+            Submit and leave
           </Button>
           <Button className="flex-1" onClick={onStay}>
             Stay in exam
@@ -784,13 +809,13 @@ function LeaveExamDialog({
     >
       <div className="space-y-2 text-sm leading-relaxed text-muted">
         <p>
-          Your answers are saved. You can come back and pick up exactly where
-          you left off.
+          If you leave now, your exam is submitted and marked with the answers
+          you have so far. You won&apos;t be able to come back to it.
         </p>
-        {!untimed && (
+        {unanswered > 0 && (
           <p className="rounded-lg bg-warning-soft px-3 py-2 font-medium text-warning">
-            The timer keeps running while you are away. If it runs out before
-            you return, your exam is submitted with the answers you have so far.
+            {unanswered} question{unanswered === 1 ? " is" : "s are"} still
+            unanswered and will be marked wrong.
           </p>
         )}
       </div>

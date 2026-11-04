@@ -21,6 +21,8 @@ import { formatScore, summariseHistory } from "@/lib/past-paper-history";
 import { PastPaperExam } from "./past-paper-exam";
 import { PastPaperHistoryModal } from "./past-paper-history-modal";
 import { PracticeWarningModal } from "./practice-warning-modal";
+import { TimedExamDialog } from "./timed-exam-dialog";
+import { pastPaperMinutes } from "@/lib/exam-duration";
 import { hasWarning, practiceWarnings } from "@/lib/practice-warnings";
 
 const EXAM_BADGES: Record<string, "blue" | "green" | "purple" | "neutral"> = {
@@ -67,6 +69,8 @@ export function PastQuestionPicker({
   const [year, setYear] = useState<number | null>(null);
   // A year waiting on the student's answer to the class/track warning.
   const [warnYear, setWarnYear] = useState<number | null>(null);
+  // A year waiting on the student to acknowledge the time limit.
+  const [timedYear, setTimedYear] = useState<number | null>(null);
 
   // A year whose earlier sittings are being reviewed in the modal.
   const [reviewYear, setReviewYear] = useState<number | null>(null);
@@ -111,6 +115,7 @@ export function PastQuestionPicker({
     setYear(null);
     setReviewYear(null);
     setWarnYear(null);
+    setTimedYear(null);
   }
 
   // Starting a paper is the one moment worth a warning: SS1/SS2 students may
@@ -133,9 +138,11 @@ export function PastQuestionPicker({
     [classLevel, track, chosenSubject],
   );
 
+  // Class/track warning first (when there is one), then the time briefing:
+  // opening the paper creates the attempt, which is what starts the clock.
   function startYear(y: number) {
     if (hasWarning(warnings)) setWarnYear(y);
-    else setYear(y);
+    else setTimedYear(y);
   }
 
   const trackSubjects = useMemo(
@@ -342,8 +349,20 @@ export function PastQuestionPicker({
           classLevel={classLevel}
           onCancel={() => setWarnYear(null)}
           onContinue={() => {
-            setYear(warnYear);
+            setTimedYear(warnYear);
             setWarnYear(null);
+          }}
+        />
+      )}
+
+      {timedYear !== null && exam && chosenSubject && (
+        <TimedExamDialog
+          minutes={pastPaperMinutes(exam, chosenSubject.slug)}
+          questionCount={years.find((y) => y.year === timedYear)?.questionCount}
+          onCancel={() => setTimedYear(null)}
+          onStart={() => {
+            setYear(timedYear);
+            setTimedYear(null);
           }}
         />
       )}

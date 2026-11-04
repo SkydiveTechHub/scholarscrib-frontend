@@ -3,6 +3,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSubmitAssessment } from "@/hooks/api/use-assessments";
+import { getAccessToken } from "@/lib/api/client";
+import { API_URL } from "@/lib/api/config";
+import { endpoints } from "@/lib/api/endpoints";
 import {
   STORAGE_VERSION,
   buildSubmission,
@@ -54,6 +57,9 @@ export type ExamPage = {
 
 /** What we hand back to the caller to drive the UI. */
 export type ExamSession = ReturnType<typeof useExamSession>;
+
+/** The student is warned, and the timer pulses, with this long left. */
+const LOW_TIME_SECONDS = 5 * 60;
 
 function readStored(sessionKey: string) {
   if (typeof window === "undefined") return null;
@@ -156,6 +162,7 @@ export function useExamSession({
 
   const [focusMode, setFocusMode] = useState(false);
   const [hideTimer, setHideTimer] = useState(false);
+  const [timeWarningDismissed, setTimeWarningDismissed] = useState(false);
 
   // The ref is the source of truth for answers: `handleSubmit` reads it
   // synchronously right after recording time on the current question, and React
@@ -508,19 +515,70 @@ export function useExamSession({
     submitRef.current();
   }, [timeRemaining, deadlineAt]);
 
-  // Warn before an accidental refresh or tab close. Answers are persisted, so
-  // this is a courtesy rather than the safety net.
+  // Closing the tab is leaving the exam, and leaving submits it. `beforeunload`
+  // gives the browser's own "leave site?" prompt; `pagehide` is where the
+  // student has actually gone, so that is where the submit is sent. The page
+  // cannot await anything by then, hence a `keepalive` request, which the
+  // browser finishes after the page is gone. The saved session is cleared so a
+  // reload does not resume a paper that has just been handed in.
   useEffect(() => {
     if (!attemptId) return;
     function onBeforeUnload(event: BeforeUnloadEvent) {
       if (submittedRef.current) return;
       event.preventDefault();
     }
+    function onPageHide() {
+      if (submittedRef.current) return;
+      submittedRef.current = true;
+      recordTimeOnQuestion();
+      const token = getAccessToken(endpoints.assessments.submit, "student");
+      try {
+        void fetch(`${API_URL}${endpoints.assessments.submit}`, {
+          method: "POST",
+          keepalive: true,
+          headers: {
+            "Content-Type": "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify({
+            attemptId,
+            answers: buildSubmission(questions, answersRef.current),
+            awayEvents: awayCountRef.current,
+            ...(practiceExit ? { practiceExit } : {}),
+          }),
+        }).catch(() => {});
+      } catch {
+        // The attempt stays open on the server and resumes on return.
+      }
+      clearStored(sessionKey);
+    }
+    // A page restored from the back/forward cache comes back frozen, already
+    // submitted: send the student to the result instead of an inert paper.
+    function onPageShow(event: PageTransitionEvent) {
+      if (event.persisted && submittedRef.current) {
+        router.replace(resultHref(attemptId));
+      }
+    }
     window.addEventListener("beforeunload", onBeforeUnload);
-    return () => window.removeEventListener("beforeunload", onBeforeUnload);
-  }, [attemptId]);
+    window.addEventListener("pagehide", onPageHide);
+    window.addEventListener("pageshow", onPageShow);
+    return () => {
+      window.removeEventListener("beforeunload", onBeforeUnload);
+      window.removeEventListener("pagehide", onPageHide);
+      window.removeEventListener("pageshow", onPageShow);
+    };
+  }, [
+    attemptId,
+    practiceExit,
+    questions,
+    recordTimeOnQuestion,
+    resultHref,
+    router,
+    sessionKey,
+  ]);
 
   // ── Derived ──────────────────────────────────────────────
+  const lowTime = timeRemaining > 0 && timeRemaining <= LOW_TIME_SECONDS;
   const { answeredCount, flaggedCount } = useMemo(
     () => countAnswered(questions, answers),
     [questions, answers],
@@ -558,8 +616,11 @@ export function useExamSession({
     flaggedCount,
     unanswered: Math.max(0, questions.length - answeredCount),
     progressPercent: progressPercent(questions, answers),
-    lowTime: timeRemaining > 0 && timeRemaining < 300,
+    lowTime,
+    /** Five minutes left: show the warning until the student dismisses it. */
+    showTimeWarning: lowTime && !timeWarningDismissed && !submitting,
     // actions
+    dismissTimeWarning: () => setTimeWarningDismissed(true),
     setShowConfirmSubmit,
     setFocusMode,
     setHideTimer,

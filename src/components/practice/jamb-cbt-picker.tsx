@@ -26,6 +26,7 @@ import { JAMB_SPEC, sharedYears } from "@/lib/jamb-cbt";
 import { formatScore, summariseHistory } from "@/lib/past-paper-history";
 import { PastPaperHistoryModal } from "./past-paper-history-modal";
 import { PracticeWarningModal } from "./practice-warning-modal";
+import { TimedExamDialog } from "./timed-exam-dialog";
 import { hasWarning, practiceWarnings } from "@/lib/practice-warnings";
 import { isTrackSubject } from "@/lib/subject-coverage";
 import type { JambSubjectOption } from "@/lib/jamb-availability";
@@ -200,11 +201,14 @@ export function JambCbtPicker({
     [classLevel, track, chosenSubjects],
   );
   const [warning, setWarning] = useState(false);
+  // Waiting on the student to acknowledge the time limit; `start` creates the
+  // attempt, which is what starts the clock.
+  const [briefing, setBriefing] = useState(false);
 
   function requestStart() {
     if (!year || !ready || !complete) return;
     if (hasWarning(warnings)) setWarning(true);
-    else void start();
+    else setBriefing(true);
   }
 
   async function start() {
@@ -527,6 +531,18 @@ export function JambCbtPicker({
           onCancel={() => setWarning(false)}
           onContinue={() => {
             setWarning(false);
+            setBriefing(true);
+          }}
+        />
+      )}
+
+      {briefing && (
+        <TimedExamDialog
+          minutes={JAMB_SPEC.durationMinutes}
+          questionCount={JAMB_SPEC.totalQuestions}
+          onCancel={() => setBriefing(false)}
+          onStart={() => {
+            setBriefing(false);
             void start();
           }}
         />

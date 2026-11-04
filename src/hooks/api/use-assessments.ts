@@ -46,6 +46,8 @@ export type MockExamScopeInput = {
   from: ScopePoint;
   to: ScopePoint;
   count: number;
+  /** Omitted for an untimed sitting. The server accepts 5 to 30. */
+  timeLimitMinutes?: number;
 };
 
 export function useGenerateMockExam() {
