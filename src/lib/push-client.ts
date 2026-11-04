@@ -154,6 +154,19 @@ export async function unsubscribeThisDevice(): Promise<void> {
   await Promise.race([work, new Promise((resolve) => setTimeout(resolve, 3000))]);
 }
 
+/**
+ * Drops this browser's push subscription without calling the API. For after
+ * account deletion, when the server already removed the rows and a request
+ * would only 401. Bounded to 3s like `unsubscribeThisDevice`.
+ */
+export async function unsubscribeThisDeviceLocally(): Promise<void> {
+  const work = (async () => {
+    const subscription = await currentSubscription();
+    await subscription?.unsubscribe().catch(() => undefined);
+  })().catch(() => undefined);
+  await Promise.race([work, new Promise((resolve) => setTimeout(resolve, 3000))]);
+}
+
 function sameKey(subscription: PushSubscription, base64: string): boolean {
   const current = subscription.options.applicationServerKey;
   if (!current) return true; // Unknown: assume fine rather than churn the endpoint.

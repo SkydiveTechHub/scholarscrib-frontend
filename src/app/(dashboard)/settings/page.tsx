@@ -7,6 +7,7 @@ import { SettingsTabs } from "@/components/settings/settings-tabs";
 import { ProfileForm } from "@/components/settings/profile-form";
 import { AcademicForm } from "@/components/settings/academic-form";
 import { PasswordForm } from "@/components/settings/password-form";
+import { DeleteAccountSection } from "@/components/settings/delete-account-section";
 import { NotificationsSection } from "@/components/settings/notifications-section";
 import { PageHeader } from "@/components/ui/page-header";
 export const metadata: Metadata = {
@@ -57,6 +58,12 @@ export default async function SettingsPage({
 
                   {/* Google-only accounts have no password to change. */}
                   {user.hasPassword && <PasswordForm />}
+
+                  <DeleteAccountSection
+                    email={user.email ?? null}
+                    hasPassword={user.hasPassword}
+                  />
+
                 </>
               ),
             },

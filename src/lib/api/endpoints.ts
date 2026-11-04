@@ -24,6 +24,7 @@ export const endpoints = {
     password: "/api/user/password",
     notificationPreferences: "/api/user/notification-preferences",
     avatar: "/api/user/avatar",
+    deleteAccount: "/api/user/account/delete",
   },
   subjects: {
     list: "/api/subjects",

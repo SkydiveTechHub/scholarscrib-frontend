@@ -127,6 +127,16 @@ function LoginForm() {
         </div>
       )}
 
+      {searchParams.get("deleted") === "1" && (
+        <div
+          role="status"
+          className="mt-6 flex items-start gap-2 rounded-xl border border-success/25 bg-success-soft p-3.5 text-sm font-medium text-success animate-fade-in"
+        >
+          <LuArrowRight className="mt-0.5 h-4 w-4 flex-shrink-0" />
+          Your account has been deleted.
+        </div>
+      )}
+
       {signedOutElsewhere && (
         <div
           role="status"
