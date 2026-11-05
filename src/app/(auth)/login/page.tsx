@@ -38,9 +38,13 @@ function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const login = useLogin();
-  const [error, setError] = useState(searchParams.get("error") === "google"
+  const googleError = searchParams.get("error");
+  const [error, setError] = useState(
+    googleError === "google"
       ? "Google sign-in failed. Please try again."
-      : "",
+      : googleError === "google_cancelled"
+        ? "Google sign-in was cancelled. You can try again or sign in with your email."
+        : "",
   );
 
   const [fieldErrors, setFieldErrors] = useState<FieldErrors<LoginField>>({});

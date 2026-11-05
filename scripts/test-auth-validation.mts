@@ -76,3 +76,10 @@ test("reset password checks the password, then the confirmation", () => {
   assert.match(validateResetPassword({ password: "secret1", confirm: "secret2" }).confirm!, /don't match/);
   assert.match(validateResetPassword({ password: "p".repeat(26), confirm: "p".repeat(26) }).password!, /longer than 25/);
 });
+
+import { loginPathForGoogleError } from "../src/lib/google-oauth-state";
+
+test("cancelling Google consent returns to login with a neutral message code", () => {
+  assert.equal(loginPathForGoogleError("access_denied"), "/login?error=google_cancelled");
+  assert.equal(loginPathForGoogleError("server_error"), "/login?error=google");
+});
