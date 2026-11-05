@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { classifyAdminPath } from "@/lib/admin-route";
-import { isPublicPath } from "@/lib/public-routes";
+import { isKnownRootPath, isPublicPath } from "@/lib/public-routes";
 import {
   hasAdminTokenCookie,
   hasStudentTokenCookie,
@@ -63,6 +63,10 @@ export default async function proxy(req: NextRequest) {
   // The public surface: marketing page, the indexable /learn and
   // /past-questions trees, and the crawler-facing metadata files.
   if (isPublicPath(pathname)) return NextResponse.next();
+
+  // Not a route we have: let Next render the 404 page rather than asking a
+  // signed-out visitor to sign in for a page that doesn't exist.
+  if (!isKnownRootPath(pathname)) return NextResponse.next();
 
   if (pathname.startsWith("/api/")) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

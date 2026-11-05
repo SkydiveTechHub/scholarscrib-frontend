@@ -178,3 +178,37 @@ test("opening the PWA surface did not open anything else", () => {
   // Not a ".js" rule — only these two files.
   assert.equal(isPublicPath("/admin/sw.js"), false);
 });
+
+import { readdirSync } from "node:fs";
+import { join } from "node:path";
+import { isKnownRootPath } from "../src/lib/public-routes";
+
+test("unknown paths are not 'known'; real app segments are", () => {
+  assert.equal(isKnownRootPath("/this-does-not-exist"), false);
+  assert.equal(isKnownRootPath("/aboutus"), false);
+  assert.equal(isKnownRootPath("/dashboard/x"), true);
+  assert.equal(isKnownRootPath("/"), true);
+});
+
+test("every top-level route segment in src/app is listed as known", () => {
+  // Guards the proxy: a new route under an unlisted segment would skip the
+  // optimistic gate for signed-out visitors.
+  const appDir = join(import.meta.dirname, "../src/app");
+  const segments = new Set<string>();
+  const walk = (dir: string, top: boolean) => {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      if (!entry.isDirectory()) continue;
+      const name = entry.name;
+      if (name.startsWith("_") || name.startsWith("@")) continue;
+      if (name.startsWith("(") && name.endsWith(")")) {
+        walk(join(dir, name), top); // route group: not a URL segment
+      } else if (top) {
+        segments.add(name);
+      }
+    }
+  };
+  walk(appDir, true);
+  for (const segment of segments) {
+    assert.equal(isKnownRootPath(`/${segment}`), true, `/${segment} missing from KNOWN_ROOT_SEGMENTS`);
+  }
+});

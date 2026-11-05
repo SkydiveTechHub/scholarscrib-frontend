@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
+import { validateNewPassword } from "@/lib/auth-validation";
 import { useChangePassword } from "@/hooks/api/use-user";
 import {
   FormMessage,
@@ -31,6 +32,12 @@ export function PasswordForm() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+
+    const passwordError = validateNewPassword(form.newPassword);
+    if (passwordError) {
+      setError(passwordError);
+      return;
+    }
 
     // Confirmation is a client-side concern only — the API never sees it.
     if (form.newPassword !== form.confirmPassword) {
@@ -90,9 +97,8 @@ export function PasswordForm() {
               value={form.newPassword}
               onChange={(e) => update("newPassword", e.target.value)}
               required
-              minLength={6}
               className={inputClass}
-              placeholder="At least 6 characters"
+              placeholder="6 to 25 characters"
             />
           </div>
           <div>
@@ -106,7 +112,6 @@ export function PasswordForm() {
               value={form.confirmPassword}
               onChange={(e) => update("confirmPassword", e.target.value)}
               required
-              minLength={6}
               className={inputClass}
             />
           </div>

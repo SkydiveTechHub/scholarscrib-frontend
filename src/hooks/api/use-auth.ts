@@ -6,6 +6,11 @@ import { request } from "@/lib/api/http";
 
 type TokenOut = { accessToken: string };
 
+// Without a ceiling a stalled connection leaves the sign-in/sign-up button
+// spinning forever; a timeout surfaces as a no-response error the forms report
+// as a connection problem, and the button re-enables for a retry.
+const AUTH_TIMEOUT_MS = 20_000;
+
 export type RegisterInput = {
   role: string;
   firstName: string;
@@ -23,6 +28,7 @@ export function useRegister() {
       request<{ ok: boolean; message: string }>({
         method: "POST",
         url: endpoints.auth.register,
+        timeout: AUTH_TIMEOUT_MS,
         data: input,
         anonymous: true,
       }),
@@ -35,6 +41,7 @@ export function useLogin() {
       request<TokenOut>({
         method: "POST",
         url: endpoints.auth.login,
+        timeout: AUTH_TIMEOUT_MS,
         data: input,
         anonymous: true,
       }),
@@ -61,6 +68,7 @@ export function useForgotPassword() {
       request<MessageOut>({
         method: "POST",
         url: endpoints.auth.forgotPassword,
+        timeout: AUTH_TIMEOUT_MS,
         data: input,
         anonymous: true,
       }),
@@ -73,6 +81,7 @@ export function useResetPassword() {
       request<MessageOut>({
         method: "POST",
         url: endpoints.auth.resetPassword,
+        timeout: AUTH_TIMEOUT_MS,
         data: input,
         anonymous: true,
       }),

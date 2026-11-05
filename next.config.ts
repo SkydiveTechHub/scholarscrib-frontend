@@ -39,10 +39,27 @@ const nextConfig: NextConfig = {
     optimizePackageImports: ["react-icons", "lucide-react", "recharts"],
   },
 
+  // See app/sitemap-index.xml/route.ts. beforeFiles so it wins over the
+  // reserved /sitemap.xml metadata path, which serves nothing once
+  // generateSitemaps is in use.
+  async rewrites() {
+    return {
+      beforeFiles: [{ source: "/sitemap.xml", destination: "/sitemap-index.xml" }],
+      afterFiles: [],
+      fallback: [],
+    };
+  },
+
   // The section moved from /subjects to /classroom. Permanent so bookmarks,
   // browser history and anything already shared keep working.
   async redirects() {
     return [
+      // The sitemap index lives at /sitemap.xml; /sitemap is the natural guess.
+      {
+        source: "/sitemap",
+        destination: "/sitemap.xml",
+        permanent: true,
+      },
       {
         source: "/subjects",
         destination: "/classroom",

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useState, Suspense } from "react";
+import { useRef, useState, Suspense } from "react";
 import {
   LuMail,
   LuLock,
@@ -13,7 +13,14 @@ import {
 import { Logo } from "@/components/ui/logo";
 import { cn } from "@/lib/utils";
 import { useLogin } from "@/hooks/api/use-auth";
+import { isApiError } from "@/lib/api/errors";
 import { markFreshSignIn } from "@/lib/encouragement";
+import { FieldError, INVALID_INPUT } from "@/components/ui/field-error";
+import {
+  validateLogin,
+  type FieldErrors,
+  type LoginField,
+} from "@/lib/auth-validation";
 
 function LoginForm() {
   const searchParams = useSearchParams();
@@ -36,16 +43,45 @@ function LoginForm() {
       : "",
   );
 
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors<LoginField>>({});
+  const inFlight = useRef(false);
+  const emailRef = useRef<HTMLInputElement>(null);
+  const passwordRef = useRef<HTMLInputElement>(null);
+
+  // Re-check a single field once the user has left it, so the message
+  // appears when they move on rather than while they are still typing.
+  function validateField(field: LoginField) {
+    const message = validateLogin({ email, password })[field];
+    setFieldErrors((prev) => ({ ...prev, [field]: message }));
+  }
+
+  function clearFieldError(field: LoginField) {
+    setFieldErrors((prev) => (prev[field] ? { ...prev, [field]: undefined } : prev));
+    setError("");
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    // The ref closes the gap before `loading` re-renders the button disabled,
+    // so a fast double-click or Enter-repeat can't send two requests.
+    if (inFlight.current) return;
+
+    const errors = validateLogin({ email, password });
+    setFieldErrors(errors);
+    if (Object.keys(errors).length > 0) {
+      setError("");
+      (errors.email ? emailRef : passwordRef).current?.focus();
+      return;
+    }
+
+    inFlight.current = true;
     setLoading(true);
     setError("");
 
-    const [{ isApiError }, { setStudentToken }] = await Promise.all([
-      import("@/lib/api/errors"),
-      import("@/lib/client-session"),
-    ]);
     try {
+      // Inside the try: a failed chunk load while offline must reset the
+      // button too, not leave "Signing in…" spinning forever.
+      const { setStudentToken } = await import("@/lib/client-session");
       const data = await login.mutateAsync({ email, password });
       setStudentToken(data.accessToken);
       markFreshSignIn();
@@ -70,8 +106,11 @@ function LoginForm() {
           setError("Something went wrong. Please try again.");
         }
       } else {
-        setError("Something went wrong. Please try again.");
+        setError(
+          "We couldn't reach the server. Check your internet connection and try again.",
+        );
       }
+      inFlight.current = false;
       setLoading(false);
     }
   }
@@ -193,7 +232,7 @@ function LoginForm() {
         </div>
 
         {/* Email/Password Form */}
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} noValidate className="space-y-4">
           <div>
             <label
               htmlFor="email"
@@ -204,19 +243,25 @@ function LoginForm() {
             <div className="relative">
               <LuMail className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
               <input
+                ref={emailRef}
                 id="email"
                 type="email"
                 autoComplete="email"
                 value={email}
                 onChange={(e) => {
                   setEmail(e.target.value);
-                  setError("");
+                  clearFieldError("email");
                 }}
+                onBlur={() => email && validateField("email")}
                 required
+                aria-required="true"
+                aria-invalid={fieldErrors.email ? true : undefined}
+                aria-describedby={fieldErrors.email ? "email-error" : undefined}
                 placeholder="you@example.com"
-                className="input pl-10"
+                className={cn("input pl-10", fieldErrors.email && INVALID_INPUT)}
               />
             </div>
+            <FieldError id="email" message={fieldErrors.email} />
           </div>
 
           <div>
@@ -229,17 +274,21 @@ function LoginForm() {
             <div className="relative">
               <LuLock className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
               <input
+                ref={passwordRef}
                 id="password"
                 type={showPassword ? "text" : "password"}
                 autoComplete="current-password"
                 value={password}
                 onChange={(e) => {
                   setPassword(e.target.value);
-                  setError("");
+                  clearFieldError("password");
                 }}
                 required
+                aria-required="true"
+                aria-invalid={fieldErrors.password ? true : undefined}
+                aria-describedby={fieldErrors.password ? "password-error" : undefined}
                 placeholder="Enter your password"
-                className="input pl-10 pr-11"
+                className={cn("input pl-10 pr-11", fieldErrors.password && INVALID_INPUT)}
               />
               <button
                 type="button"
@@ -256,6 +305,7 @@ function LoginForm() {
                 )}
               </button>
             </div>
+            <FieldError id="password" message={fieldErrors.password} />
             <div className="mt-2 text-right">
               <Link
                 href="/forgot-password"
