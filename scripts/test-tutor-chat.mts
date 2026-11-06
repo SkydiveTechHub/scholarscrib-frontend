@@ -499,6 +499,28 @@ test("status steps advance and clear once the reply is done", () => {
   assert.equal(s.phase, "idle");
 });
 
+test("consecutive status steps with the same label collapse into one row", () => {
+  const s = run(
+    [
+      { type: "status", status: { node: "classify_intent" } },
+      { type: "status", status: { node: "unknown_a" } },
+      { type: "status", status: { node: "unknown_b" } },
+      { type: "status", status: { node: "grade_documents" } },
+      { type: "status", status: { node: "unknown_c" } },
+    ],
+    sent(),
+  );
+  assert.deepEqual(
+    s.steps.map((step) => [step.label, step.phase]),
+    [
+      ["Understanding your question…", "done"],
+      ["Thinking…", "done"],
+      ["Checking lesson notes…", "done"],
+      ["Thinking…", "active"],
+    ],
+  );
+});
+
 test("tool phases update in place and stay on the final reply", () => {
   const tool = {
     id: "t1",
