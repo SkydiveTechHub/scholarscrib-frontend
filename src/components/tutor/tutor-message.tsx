@@ -23,13 +23,11 @@ import {
 } from "@/lib/tutor/actions";
 import type {
   ActionProposal,
-  GroundedOn,
   TutorAction,
   TutorMessage,
   TutorToolCall,
   TutorUiBlock,
 } from "@/lib/tutor/types";
-import { useTutorStore } from "@/stores/tutor-store";
 import { AstraAvatar } from "./astra-avatar";
 import { TutorMarkdown } from "./tutor-markdown";
 
@@ -137,7 +135,6 @@ export function TutorMessageView({
   const awaiting = Boolean(message.actionProposal);
   const finished =
     !streaming && message.text !== "" && !message.stopped && !awaiting;
-  const sources = message.groundedOn?.filter(Boolean) ?? [];
 
   return (
     <div className="flex items-start gap-2.5">
@@ -186,10 +183,6 @@ export function TutorMessageView({
 
         {message.stopped && (
           <p className="mt-1 px-1 text-xs text-muted">Stopped</p>
-        )}
-
-        {finished && sources.length > 0 && (
-          <SourcesRow sources={sources} />
         )}
 
         {finished && (
@@ -455,57 +448,6 @@ function ActionCard({
           </div>
         )}
       </Modal>
-    </div>
-  );
-}
-
-function SourcesRow({ sources }: { sources: GroundedOn[] }) {
-  const openPanel = useTutorStore((s) => s.openPanel);
-
-  return (
-    <div className="mt-1.5 flex flex-wrap gap-1.5" aria-label="Sources">
-      <span className="text-[11px] font-semibold uppercase tracking-wide text-muted">
-        Sources
-      </span>
-      {sources.map((src, i) => {
-        const label = src.title?.trim() || src.sourceType || "Source";
-        const title = src.excerpt?.trim() || label;
-        const key = `${src.docId ?? src.lessonId ?? src.questionId ?? src.resourceId ?? i}-${label}`;
-
-        if (src.sourceType === "question" && src.questionId) {
-          return (
-            <button
-              key={key}
-              type="button"
-              title={title}
-              onClick={() =>
-                openPanel({
-                  context: {
-                    type: "question",
-                    questionId: src.questionId!,
-                    subjectId: src.subjectId,
-                    topicId: src.topicId,
-                  },
-                  label,
-                })
-              }
-              className="max-w-full truncate rounded-full border border-border bg-card px-2.5 py-0.5 text-xs font-medium text-primary hover:bg-primary-soft"
-            >
-              {label}
-            </button>
-          );
-        }
-
-        return (
-          <span
-            key={key}
-            title={title}
-            className="max-w-full truncate rounded-full border border-border bg-card px-2.5 py-0.5 text-xs font-medium text-foreground"
-          >
-            {label}
-          </span>
-        );
-      })}
     </div>
   );
 }
