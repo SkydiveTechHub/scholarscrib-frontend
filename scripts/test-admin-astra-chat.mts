@@ -55,6 +55,26 @@ test("status steps advance and clear once the reply is done", () => {
   assert.equal(state.phase, "idle");
 });
 
+test("consecutive status steps with the same label collapse into one row", () => {
+  let state = apply(initialAstraState([]), { type: "status", node: "chitchat" });
+  state = apply(state, { type: "status", node: "unknown_a" });
+  state = apply(state, { type: "status", node: "unknown_b" });
+  assert.deepEqual(
+    state.steps.map((step) => [step.label, step.phase]),
+    [["Thinking…", "active"]],
+  );
+  state = apply(state, { type: "status", node: "pick_domain" });
+  state = apply(state, { type: "status", node: "unknown_c" });
+  assert.deepEqual(
+    state.steps.map((step) => [step.label, step.phase]),
+    [
+      ["Thinking…", "done"],
+      ["Choosing the area…", "done"],
+      ["Thinking…", "active"],
+    ],
+  );
+});
+
 test("tool phases update in place and stay on the final reply", () => {
   let state = apply(initialAstraState([]), {
     type: "tool",

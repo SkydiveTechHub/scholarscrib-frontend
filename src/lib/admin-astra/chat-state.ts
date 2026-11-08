@@ -232,6 +232,13 @@ function replaceById(messages: AstraMessage[], next: AstraMessage): AstraMessage
 }
 
 function pushStep(steps: AstraStep[], node: string, label: string): AstraStep[] {
+  // Collapse consecutive identical labels (e.g. several "Thinking…") into one row.
+  const last = steps[steps.length - 1];
+  if (last && last.label === label) {
+    return steps.map((step, i) =>
+      i === steps.length - 1 ? { ...step, node, phase: "active" } : step,
+    );
+  }
   const existing = steps.findIndex((step) => step.node === node);
   const done = (step: AstraStep): AstraStep =>
     step.phase === "active" ? { ...step, phase: "done" } : step;

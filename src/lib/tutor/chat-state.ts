@@ -1,3 +1,4 @@
+import { statusLabel } from "./context";
 import { mapApiMessage } from "./map";
 import type {
   ActionProposal,
@@ -296,6 +297,13 @@ function applyAssistant(state: ChatState, assistant: TutorMessage): TutorMessage
 }
 
 function pushStep(steps: TutorStep[], node: string, label: string): TutorStep[] {
+  // Collapse consecutive identical labels (e.g. several "Thinking…") into one row.
+  const last = steps[steps.length - 1];
+  if (last && last.label === label) {
+    return steps.map((step, i) =>
+      i === steps.length - 1 ? { ...step, node, phase: "active" } : step,
+    );
+  }
   const existing = steps.findIndex((step) => step.node === node);
   const done = (step: TutorStep): TutorStep =>
     step.phase === "active" ? { ...step, phase: "done" } : step;
@@ -386,7 +394,7 @@ export function chatReducer(incoming: ChatState, action: ChatAction): ChatState 
           };
         }
         case "status": {
-          const label = statusLineFor(event.status.node);
+          const label = statusLabel(event.status.node);
           return {
             ...state,
             statusLine: label,
@@ -603,20 +611,5 @@ export function chatReducer(incoming: ChatState, action: ChatAction): ChatState 
           m.id === action.messageId ? { ...m, rating: action.rating } : m,
         ),
       };
-  }
-}
-
-function statusLineFor(node: string): string {
-  switch (node) {
-    case "classify_intent":
-      return "Understanding your question…";
-    case "grade_documents":
-      return "Checking lesson notes…";
-    case "ground_answer":
-      return "Verifying the answer…";
-    case "remember":
-      return "Saving what helps you…";
-    default:
-      return "Thinking…";
   }
 }
