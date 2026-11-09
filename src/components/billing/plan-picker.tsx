@@ -1,22 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { StatusBanner } from "@/components/admin/status-banner";
 import { isApiError } from "@/lib/api/errors";
-import { useCheckout } from "@/hooks/api/use-billing";
-import {
-  BILLING_PERIODS,
-  PERIOD_LABELS,
-  TIER_DISPLAY_NAMES,
-  formatNaira,
-  planFor,
-  type BillingPeriod,
-  type SubscriptionTier,
-} from "@/lib/subscription";
-
-const BUYABLE: SubscriptionTier[] = ["STANDARD", "PREMIUM"];
+import { useBillingPlans, useCheckout } from "@/hooks/api/use-billing";
+import { amountLabel } from "@/lib/billing-plans";
+import type { SubscriptionTier } from "@/lib/subscription";
 
 /** How long to keep re-checking before giving up and telling the buyer to wait. */
 const SETTLE_POLL_MS = 3_000;
@@ -34,17 +25,16 @@ export function PlanPicker({
 }) {
   const router = useRouter();
   const checkout = useCheckout();
-  const [period, setPeriod] = useState<BillingPeriod>("YEARLY");
+  const { plans } = useBillingPlans();
   const [busy, setBusy] = useState<SubscriptionTier | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [gaveUp, setGaveUp] = useState(false);
 
-  // A charge confirmed by the webhook rather than the browser callback lands
-  // after this page rendered. Re-running the server component is enough to pick
-  // it up — it is `force-dynamic` and reads the entitlement rows directly — so
-  // the buyer sees the new plan without touching anything. Without this the
-  // page sits on "still confirming" with live buy buttons, which is precisely
-  // where someone pays a second time.
+  const buyable = useMemo(
+    () => plans.filter((p) => p.isPurchasable && p.amountKobo > 0),
+    [plans],
+  );
+
   useEffect(() => {
     if (!awaitingSettlement) return;
 
@@ -65,12 +55,7 @@ export function PlanPicker({
     setBusy(tier);
     setError(null);
     try {
-      const data = await checkout.mutateAsync({ tier, period });
-      // Paystack hosts the payment page; we never touch card details.
-      // `assign` rather than setting `location.href`: the React Compiler lint
-      // treats the assignment as mutating a value defined outside the component.
-      // The button stays busy through the navigation — clearing it would invite
-      // a second click against a transaction already on its way.
+      const data = await checkout.mutateAsync({ tier, period: "MONTHLY" });
       window.location.assign(data.authorizationUrl);
     } catch (error) {
       setError(isApiError(error) ? error.message : "Could not reach the server");
@@ -87,8 +72,6 @@ export function PlanPicker({
     );
   }
 
-  // Buying is closed while a charge is in flight. This is the whole point of
-  // the pending state: the money may already be gone.
   const settling = awaitingSettlement && !gaveUp;
 
   return (
@@ -113,35 +96,19 @@ export function PlanPicker({
         />
       )}
 
-      <div className="flex gap-2" role="group" aria-label="Billing period">
-        {BILLING_PERIODS.map((value) => (
-          <Button
-            key={value}
-            variant={period === value ? "primary" : "outline"}
-            aria-pressed={period === value}
-            onClick={() => setPeriod(value)}
-          >
-            {PERIOD_LABELS[value]}
-          </Button>
-        ))}
-      </div>
-
-      <p className="mt-4 text-sm text-muted">
-        One student per account. Your study plan, weak areas and unseen
-        questions are built from your answers alone.
+      <p className="mt-2 text-sm text-muted">
+        Monthly plans renew automatically via Paystack. One student per account.
+        Manage or cancel anytime here.
       </p>
 
       <div className="mt-4 grid gap-4 sm:grid-cols-2">
-        {BUYABLE.map((tier) => {
-          const plan = planFor(tier, period);
-          const isCurrent = tier === currentTier;
+        {buyable.map((plan) => {
+          const isCurrent = plan.tier === currentTier;
 
           return (
-            <div key={tier} className="card p-5">
+            <div key={plan.code} className="card p-5">
               <div className="flex items-center gap-2">
-                <h3 className="text-base font-bold text-foreground">
-                  {TIER_DISPLAY_NAMES[tier]}
-                </h3>
+                <h3 className="text-base font-bold text-foreground">{plan.name}</h3>
                 {isCurrent && (
                   <span className="rounded-full bg-success-soft px-2 py-0.5 text-xs font-semibold text-success">
                     Current plan
@@ -149,26 +116,26 @@ export function PlanPicker({
                 )}
               </div>
 
+              {plan.blurb ? (
+                <p className="mt-1 text-sm text-muted">{plan.blurb}</p>
+              ) : null}
+
               <p className="mt-1 text-2xl font-extrabold text-foreground">
-                {formatNaira(plan.amountKobo)}
-                <span className="ml-1 text-sm font-medium text-muted">
-                  /{period === "YEARLY" ? "year" : "month"}
-                </span>
+                {amountLabel(plan.amountKobo)}
+                <span className="ml-1 text-sm font-medium text-muted">/month</span>
               </p>
 
               <Button
                 className="mt-4 w-full"
                 variant={isCurrent ? "outline" : "primary"}
-                onClick={() => buy(tier)}
-                // Never offer the plan they are already on: re-buying it is the
-                // easiest way to pay twice by accident.
+                onClick={() => buy(plan.tier)}
                 disabled={isCurrent || settling || busy !== null}
               >
                 {isCurrent
                   ? "Your plan"
-                  : busy === tier
+                  : busy === plan.tier
                     ? "Starting…"
-                    : `Get ${TIER_DISPLAY_NAMES[tier]}`}
+                    : `Get ${plan.name}`}
               </Button>
             </div>
           );

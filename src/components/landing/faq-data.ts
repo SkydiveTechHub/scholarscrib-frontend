@@ -11,7 +11,7 @@ export const FAQS = [
   {
     question: "What does it cost?",
     answer:
-      "The Free plan costs nothing to start. Basic adds flashcards and the study planner, and Premium adds the full library and subject-level analytics. Current prices are on the pricing section of this page.",
+      "New accounts get Standard free for the first month. After that you stay on Free (past questions with answers, class notes, 2 AI tutor requests a day) unless you upgrade. Standard is ₦3,000/month (explanations, study plan, 20 tutor requests). Premium is ₦10,000/month (AI explanations, subject analytics, classroom PDFs, 60 tutor requests). See /pricing for the full list.",
   },
   {
     question: "Can I study offline?",

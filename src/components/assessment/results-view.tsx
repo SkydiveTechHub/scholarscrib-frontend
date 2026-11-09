@@ -29,6 +29,7 @@ import { reviewPrompt } from "@/lib/tutor/review-prompt";
 import { AchievementUnlockBanner } from "@/components/achievements/unlock-banner";
 import { XpAwardBanner } from "@/components/gamification/xp-award-banner";
 import { ImprovementNote } from "@/components/gamification/improvement-note";
+import type { SubscriptionTier } from "@/lib/subscription";
 
 type QuestionResult = {
   questionId: string;
@@ -143,6 +144,7 @@ function topicBadge(status: string) {
 export function ResultsView({
   result,
   onBack,
+  tier = "FREEMIUM",
 }: {
   result: ResultData;
   /**
@@ -151,6 +153,7 @@ export function ResultsView({
    * since the picker is already the page on screen.
    */
   onBack?: () => void;
+  tier?: SubscriptionTier;
 }) {
   const router = useRouter();
 
@@ -608,7 +611,11 @@ export function ResultsView({
         )}
       </div>
 
-      <ExplanationModal question={explaining} onClose={() => setExplaining(null)} />
+      <ExplanationModal
+        question={explaining}
+        onClose={() => setExplaining(null)}
+        tier={tier}
+      />
     </div>
   );
 }

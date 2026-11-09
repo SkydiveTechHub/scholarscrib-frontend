@@ -384,3 +384,89 @@ export async function listAcademicTerms(): Promise<AcademicTermRow[]> {
     };
   });
 }
+
+export type BillingFeatureRow = {
+  code: string;
+  name: string;
+  valueType: "boolean" | "integer" | "select" | string;
+  selectOptions: string[] | null;
+  gateKey: string | null;
+  description: string | null;
+  enabled: boolean;
+  value: unknown;
+};
+
+export type BillingPlanRow = {
+  code: string;
+  displayName: string;
+  amountKobo: number;
+  currency: string;
+  interval: string;
+  isPurchasable: boolean;
+  rank: number;
+  active: boolean;
+  blurb: string | null;
+  lagoPlanCode: string;
+  features: BillingFeatureRow[];
+};
+
+export type BillingCatalog = {
+  plans: BillingPlanRow[];
+  featureCatalog: Omit<BillingFeatureRow, "enabled" | "value">[];
+};
+
+/** Editable plan/feature matrix for Admin → Billing. */
+export async function listBillingCatalog(): Promise<BillingCatalog> {
+  const out = await api<unknown>(endpoints.admin.billing.plans, { realm: "admin" });
+  const root = rowAs(out);
+  const plansRaw = (root.plans as unknown[] | undefined) ?? [];
+  const featuresRaw = (root.featureCatalog as unknown[] | undefined) ?? [];
+
+  const plans: BillingPlanRow[] = plansRaw.map((raw) => {
+    const r = rowAs(raw);
+    const features = ((r.features as unknown[]) ?? []).map((fRaw) => {
+      const f = rowAs(fRaw);
+      const options = f.selectOptions;
+      return {
+        code: asString(f.code),
+        name: asString(f.name),
+        valueType: asString(f.valueType, "boolean"),
+        selectOptions: Array.isArray(options)
+          ? options.map((o) => String(o))
+          : null,
+        gateKey: nullableString(f.gateKey),
+        description: nullableString(f.description),
+        enabled: Boolean(f.enabled),
+        value: f.value,
+      };
+    });
+    return {
+      code: asString(r.code),
+      displayName: asString(r.displayName),
+      amountKobo: asFiniteNumber(r.amountKobo),
+      currency: asString(r.currency, "NGN"),
+      interval: asString(r.interval, "monthly"),
+      isPurchasable: Boolean(r.isPurchasable),
+      rank: asFiniteNumber(r.rank),
+      active: r.active !== false,
+      blurb: nullableString(r.blurb),
+      lagoPlanCode: asString(r.lagoPlanCode),
+      features,
+    };
+  });
+
+  const featureCatalog = featuresRaw.map((raw) => {
+    const f = rowAs(raw);
+    const options = f.selectOptions;
+    return {
+      code: asString(f.code),
+      name: asString(f.name),
+      valueType: asString(f.valueType, "boolean"),
+      selectOptions: Array.isArray(options) ? options.map((o) => String(o)) : null,
+      gateKey: nullableString(f.gateKey),
+      description: nullableString(f.description),
+    };
+  });
+
+  return { plans, featureCatalog };
+}
