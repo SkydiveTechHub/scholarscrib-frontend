@@ -7,7 +7,7 @@ import { StatusBanner } from "@/components/admin/status-banner";
 import { isApiError } from "@/lib/api/errors";
 import { useBillingPlans, useCheckout } from "@/hooks/api/use-billing";
 import { amountLabel } from "@/lib/billing-plans";
-import type { SubscriptionTier } from "@/lib/subscription";
+import { hasAtLeast, type SubscriptionTier } from "@/lib/subscription";
 
 /** How long to keep re-checking before giving up and telling the buyer to wait. */
 const SETTLE_POLL_MS = 3_000;
@@ -104,6 +104,8 @@ export function PlanPicker({
       <div className="mt-4 grid gap-4 sm:grid-cols-2">
         {buyable.map((plan) => {
           const isCurrent = plan.tier === currentTier;
+          // Same or lower than what they already hold — no second checkout.
+          const alreadyCovered = hasAtLeast({ tier: currentTier }, plan.tier);
 
           return (
             <div key={plan.code} className="card p-5">
@@ -127,15 +129,17 @@ export function PlanPicker({
 
               <Button
                 className="mt-4 w-full"
-                variant={isCurrent ? "outline" : "primary"}
+                variant={alreadyCovered ? "outline" : "primary"}
                 onClick={() => buy(plan.tier)}
-                disabled={isCurrent || settling || busy !== null}
+                disabled={alreadyCovered || settling || busy !== null}
               >
                 {isCurrent
                   ? "Your plan"
-                  : busy === plan.tier
-                    ? "Starting…"
-                    : `Get ${plan.name}`}
+                  : alreadyCovered
+                    ? "Included"
+                    : busy === plan.tier
+                      ? "Starting…"
+                      : `Get ${plan.name}`}
               </Button>
             </div>
           );
