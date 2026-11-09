@@ -4,11 +4,16 @@ import { LuCheck, LuX } from "react-icons/lu";
 import { cn } from "@/lib/utils";
 import { isApiError } from "@/lib/api/errors";
 import { useQuestionExplanation } from "@/hooks/api/use-assessments";
+import { UpgradePrompt } from "@/components/billing/upgrade-prompt";
 import { Markdown } from "@/components/lesson/markdown";
 import { Modal } from "@/components/ui/modal";
 import { RichText } from "@/components/ui/rich-text";
 import { QuestionImage } from "@/components/ui/question-image";
 import { Spinner } from "@/components/ui/spinner";
+import {
+  pastQuestionsDetail,
+  type SubscriptionTier,
+} from "@/lib/subscription";
 
 export type ExplainedQuestion = {
   questionId: string;
@@ -27,25 +32,38 @@ export type ExplainedQuestion = {
  * A question's explanation in a modal. The result payload's own explanation is
  * shown when it has one; otherwise it is fetched from
  * `GET /api/questions/{id}/explanation`, and only once the modal is open.
+ *
+ * Freemium sees answers only (API 403 → upgrade). Standard gets the bank
+ * explanation. Premium also gets the AI "in simple terms" rewrite.
  */
 export function ExplanationModal({
   question,
   onClose,
+  tier = "FREEMIUM",
 }: {
   question: ExplainedQuestion | null;
   onClose: () => void;
+  tier?: SubscriptionTier;
 }) {
+  const detail = pastQuestionsDetail(tier);
+  const canFetch = detail === "explanation" || detail === "ai_explanation";
   const inline = question?.explanation?.trim() ? question.explanation : null;
   const fetched = useQuestionExplanation(
     question?.questionId ?? "",
-    Boolean(question) && !inline,
+    Boolean(question) && !inline && canFetch,
   );
 
   const text = inline ?? fetched.data?.explanation ?? null;
   const imageUrl = inline
     ? question?.explanationImageUrl
     : (fetched.data?.solutionImageUrl ?? question?.explanationImageUrl);
-  const simplified = inline ? null : fetched.data?.simplifiedExplanation?.trim() || null;
+  const simplified =
+    detail === "ai_explanation" && !inline
+      ? fetched.data?.simplifiedExplanation?.trim() || null
+      : null;
+  const blocked =
+    !canFetch ||
+    (isApiError(fetched.error) && fetched.error.isForbidden);
 
   return (
     <Modal
@@ -56,7 +74,13 @@ export function ExplanationModal({
       className="max-w-2xl"
     >
       {question && <QuestionContext question={question} />}
-      {text ? (
+      {blocked && !inline ? (
+        <UpgradePrompt
+          feature="Past-question explanations"
+          requiredTier="STANDARD"
+          description="Free shows the correct answer. Upgrade to Standard for full explanations, or Premium for an AI rewrite in simple terms."
+        />
+      ) : text ? (
         <div className="space-y-4 text-sm leading-relaxed text-foreground">
           <h4 className="section-label">Explanation</h4>
           <Markdown content={text} />
@@ -67,6 +91,11 @@ export function ExplanationModal({
                 <Markdown content={simplified} />
               </div>
             </div>
+          )}
+          {detail === "explanation" && (
+            <p className="text-xs text-muted">
+              Premium adds an AI rewrite in simpler language for every explanation.
+            </p>
           )}
           {imageUrl && (
             <QuestionImage src={imageUrl} alt="Diagram supporting this explanation" />

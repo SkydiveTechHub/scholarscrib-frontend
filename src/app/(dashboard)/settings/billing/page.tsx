@@ -6,6 +6,8 @@ import { isBillingEnabled } from "@/lib/features";
 import { currentEntitlement } from "@/lib/billing/subscription-data";
 import { TIER_DISPLAY_NAMES } from "@/lib/subscription";
 import { PlanPicker } from "@/components/billing/plan-picker";
+import { CancelPlanControls } from "@/components/billing/cancel-plan";
+import { BillingReturnSettler } from "@/components/billing/billing-return";
 import { StatusBanner } from "@/components/admin/status-banner";
 import { PageHeader } from "@/components/ui/page-header";
 
@@ -17,7 +19,7 @@ export const metadata: Metadata = {
 // served from a cache.
 export const dynamic = "force-dynamic";
 
-/** The outcomes `/api/billing/callback` can redirect back with. */
+/** Outcomes shown after Paystack returns (or after `/api/billing/verify`). */
 const NOTICES: Record<
   string,
   { tone: "success" | "error" | "info"; title: string }
@@ -28,25 +30,35 @@ const NOTICES: Record<
     title: "That payment did not go through. Nothing was charged.",
   },
   // `pending` is deliberately absent: PlanPicker owns that state, because it
-  // also has to close the buy buttons and poll until the webhook settles.
+  // also has to close the buy buttons and poll until the charge settles.
   missing: { tone: "error", title: "We could not identify that payment." },
 };
 
 export default async function BillingPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string }>;
+  searchParams: Promise<{
+    status?: string;
+    reference?: string;
+    trxref?: string;
+  }>;
 }) {
   const session = await getSessionUser();
   const userId = session?.id;
   if (!userId) redirect("/login");
 
-  const { status } = await searchParams;
+  const params = await searchParams;
+  const reference = params.reference || params.trxref;
+  // Paystack lands with `reference` only; settle client-side into `?status=`.
+  const status = params.status ?? (reference ? "pending" : undefined);
   const notice = status ? NOTICES[status] : undefined;
-  const { tier, expiresAt } = await currentEntitlement(userId);
+  const { tier, expiresAt, billingStatus } = await currentEntitlement(userId);
 
   return (
     <div className="animate-fade-in">
+      {reference && !params.status ? (
+        <BillingReturnSettler reference={reference} />
+      ) : null}
       <PageHeader
         title="Billing"
         description="Choose the plan that fits how you study."
@@ -57,6 +69,7 @@ export default async function BillingPage({
 
         <p className="text-sm text-foreground">
           You are on <strong>{TIER_DISPLAY_NAMES[tier]}</strong>
+          {billingStatus === "canceling" ? " (cancels at period end)" : ""}
           {expiresAt
             ? `, until ${expiresAt.toLocaleDateString("en-NG", {
                 day: "numeric",
@@ -66,16 +79,22 @@ export default async function BillingPage({
             : "."}
         </p>
         <p className="text-sm text-muted">
-          Plans are prepaid for 1 or 12 months and do not renew automatically.
-          When a plan ends, your account returns to Free until you buy again. If
-          you buy while a plan is active, the new period starts when the current
-          one ends.
+          New accounts include one free month of Standard. Paid Standard
+          (₦3,000) and Premium (₦10,000) renew monthly via Paystack. Update your
+          card or change plans here anytime; failed renewals move you to Free
+          after a short grace period.
         </p>
 
         <PlanPicker
           enabled={isBillingEnabled()}
           currentTier={tier}
           awaitingSettlement={status === "pending"}
+        />
+
+        <CancelPlanControls
+          tier={tier}
+          billingStatus={billingStatus}
+          accessUntil={expiresAt}
         />
 
         <Link
