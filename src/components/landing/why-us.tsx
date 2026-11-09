@@ -6,16 +6,17 @@ import {
   LuChartLine,
   LuTarget,
   LuTrophy,
+  LuWandSparkles,
 } from "react-icons/lu";
 import { SectionHeader } from "./section";
 import { Reveal } from "./reveal";
 
 const FEATURES = [
-  // {
-  //   icon: LuWandSparkles,
-  //   title: "AI Tutor",
-  //   text: "Ask any question in plain English and get a step-by-step explanation, whenever you're stuck — day or night.",
-  // },
+  {
+    icon: LuWandSparkles,
+    title: "AI Tutor",
+    text: "Ask any question in plain English and get a step-by-step explanation, whenever you're stuck — day or night.",
+  },
   {
     icon: LuBookOpen,
     title: "Interactive Lesson Notes",
