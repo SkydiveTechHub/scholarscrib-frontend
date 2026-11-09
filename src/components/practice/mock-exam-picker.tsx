@@ -13,11 +13,14 @@ import { cn } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { mockExamOptionsQuery } from "@/hooks/api/use-assessments";
 import {
+  MOCK_EXAM_MAX_MINUTES,
   MOCK_EXAM_MIN_QUESTIONS,
+  MOCK_EXAM_TIME_OPTIONS,
   scopedMockExamCount,
 } from "@/lib/mock-exam";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
+import { TimedExamDialog } from "./timed-exam-dialog";
 import {
   CLASS_LEVELS,
   TERMS,
@@ -73,6 +76,9 @@ export function MockExamPicker({
   );
 
   const [count, setCount] = useState<number>(40);
+  // Untimed unless the student opts in.
+  const [timed, setTimed] = useState(false);
+  const [minutes, setMinutes] = useState<number>(MOCK_EXAM_MAX_MINUTES);
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState("");
 
@@ -113,8 +119,18 @@ export function MockExamPicker({
   // start. `examCount` already gates a scope that is empty or too thin, and a
   // generation that does fail surfaces on the session screen, which has a way
   // back here.
+  // An untimed mock goes straight in; a timed one is briefed first.
+  const [briefing, setBriefing] = useState(false);
+
+  function requestStart() {
+    if (!subjectId || examCount === null) return;
+    if (timed) setBriefing(true);
+    else start();
+  }
+
   function start() {
     if (!subjectId || examCount === null) return;
+    setBriefing(false);
     setStarting(true);
     setError("");
     const params = new URLSearchParams({
@@ -124,6 +140,7 @@ export function MockExamPicker({
       toClass: effectiveTo.classLevel,
       toTerm: effectiveTo.term,
       count: String(examCount),
+      ...(timed ? { minutes: String(minutes) } : {}),
     });
     router.push(`/practice/mock-exam/session?${params.toString()}`);
   }
@@ -274,6 +291,50 @@ export function MockExamPicker({
         </section>
       )}
 
+      {/* Time limit */}
+      {subject && examCount !== null && (
+        <section className="animate-slide-up">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <h2 className="section-label">4 · Time limit</h2>
+            <label className="flex cursor-pointer items-center gap-2 text-xs font-semibold text-muted">
+              <input
+                type="checkbox"
+                checked={timed}
+                onChange={(e) => setTimed(e.target.checked)}
+                className="h-4 w-4 rounded border-border accent-[var(--app-primary)]"
+              />
+              Time this exam
+            </label>
+          </div>
+          {timed ? (
+            <div className="flex flex-wrap gap-2">
+              {MOCK_EXAM_TIME_OPTIONS.map((option) => (
+                <button
+                  key={option}
+                  type="button"
+                  onClick={() => setMinutes(option)}
+                  aria-pressed={minutes === option}
+                  className={cn(
+                    "rounded-xl border px-4 py-2 text-sm font-bold transition-colors",
+                    minutes === option
+                      ? "border-primary bg-primary text-primary-foreground"
+                      : "border-border bg-card text-foreground hover:border-primary/40",
+                  )}
+                >
+                  {option} min
+                </button>
+              ))}
+            </div>
+          ) : (
+            <p className="text-xs text-muted">
+              No clock by default. Turn it on to pick a limit of up to{" "}
+              {MOCK_EXAM_MAX_MINUTES} minutes; the exam is submitted
+              automatically when time runs out.
+            </p>
+          )}
+        </section>
+      )}
+
       {subject && examCount === null && (
         <div className="flex items-start gap-2.5 rounded-xl border border-warning/25 bg-warning-soft px-4 py-3 text-sm text-warning">
           <LuTriangleAlert className="mt-0.5 h-4 w-4 flex-shrink-0" />
@@ -312,7 +373,7 @@ export function MockExamPicker({
           chosen scope.
         </p>
         <Button
-          onClick={start}
+          onClick={requestStart}
           size="lg"
           disabled={!subjectId || examCount === null || starting}
         >
@@ -320,6 +381,15 @@ export function MockExamPicker({
           {!starting && <LuArrowRight className="h-4 w-4" />}
         </Button>
       </div>
+
+      {briefing && examCount !== null && (
+        <TimedExamDialog
+          minutes={minutes}
+          questionCount={examCount}
+          onCancel={() => setBriefing(false)}
+          onStart={start}
+        />
+      )}
     </div>
   );
 }

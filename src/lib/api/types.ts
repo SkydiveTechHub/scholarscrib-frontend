@@ -125,19 +125,18 @@ export type JambSpecOut = {
   totalMarks: number;
 };
 
-/** A subject the question provider carries for JAMB. */
+/** A subject the question provider carries for JAMB. Years load per subject. */
 export type JambSubjectOut = {
   id: string;
   name: string;
   slug: string;
   code?: string | null;
-  /** The provider's key and category (sciences, arts, commercial, ...). */
+  /** The key the provider is asked by (our slug). */
   providerKey: string;
+  /** Our track category (CORE, SCIENCE, ...). */
   category?: string | null;
   /** Questions it contributes to a sitting: 60 for English, 40 otherwise. */
   questions: number;
-  /** Years the provider holds a full paper for, newest first. */
-  years: number[];
 };
 
 export type JambOptionsOut = {
@@ -209,14 +208,18 @@ export type BankQuestionPageOut = {
   } | null;
 };
 
-/** A subject as the provider's coverage listing spells it. */
-export type CoverageSubjectOut = {
+/**
+ * A subject as the provider-neutral catalogue lists it: ours, keyed by our slug,
+ * whichever question provider is active.
+ */
+export type CatalogueSubjectOut = {
+  slug: string;
   name: string;
   displayName: string;
+  /** Our track category: CORE, SCIENCE, ARTS, COMMERCIAL or VOCATIONAL. */
   category: string;
+  /** The exams (lower-case keys) the subject is offered for. */
   examTypes: string[];
-  questionCount: number;
-  yearRange: { min: number; max: number };
 };
 
 /** `GET /api/questions/{questionId}/explanation`. */
@@ -229,19 +232,26 @@ export type ExplanationOut = {
   source: string;
 };
 
-/** `GET /api/questions/coverage/subjects`. */
-export type CoverageSubjectsOut = { provider: string; data: CoverageSubjectOut[] };
+/** `GET /api/questions/catalogue/subjects`. */
+export type CatalogueSubjectsOut = { provider: string; data: CatalogueSubjectOut[] };
 
-/** One year of `GET /api/questions/coverage/subjects/{subject}/years`. */
-export type CoverageYearOut = {
+/** One year of `GET /api/questions/catalogue/subjects/{subject}/years`. */
+export type CatalogueYearOut = {
   year: number;
-  questionCount: number;
-  examTypes: string[];
-  /** Questions per exam key, e.g. `{ jamb: 50, waec: 40 }`. */
-  breakdown?: Record<string, number>;
+  /** Null when the paper is known to exist but nothing is stored to count yet. */
+  questionCount: number | null;
+  /** Whether the paper is already in our own bank. */
+  cached: boolean;
 };
 
-export type CoverageYearsOut = { provider: string; data: CoverageYearOut[] };
+export type CatalogueYearsOut = {
+  provider: string;
+  subject: { slug: string; name: string };
+  exam: string;
+  /** False while years are still being discovered: asking again may add more. */
+  complete: boolean;
+  data: CatalogueYearOut[];
+};
 
 /** One completed sitting of a past paper. */
 export type PastPaperAttemptOut = {

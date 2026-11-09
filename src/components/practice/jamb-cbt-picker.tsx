@@ -17,6 +17,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   useGenerateJambCbt,
+  useCatalogueSubjectsYears,
   useJambCbtHistory,
   usePrepareJambCbt,
 } from "@/hooks/api/use-assessments";
@@ -25,6 +26,7 @@ import { JAMB_SPEC, sharedYears } from "@/lib/jamb-cbt";
 import { formatScore, summariseHistory } from "@/lib/past-paper-history";
 import { PastPaperHistoryModal } from "./past-paper-history-modal";
 import { PracticeWarningModal } from "./practice-warning-modal";
+import { TimedExamDialog } from "./timed-exam-dialog";
 import { hasWarning, practiceWarnings } from "@/lib/practice-warnings";
 import { isTrackSubject } from "@/lib/subject-coverage";
 import type { JambSubjectOption } from "@/lib/jamb-availability";
@@ -58,7 +60,7 @@ function message(error: unknown): string {
  * The UTME sitting builder. English is fixed; the student adds three subjects
  * from the ones the question provider carries for JAMB (their track's first,
  * everything else a click away), then picks from the years all four share a
- * full paper for. Picking a year syncs its four papers into the bank, so
+ * paper for (loaded per subject, only once the four are chosen). Picking a year syncs its four papers into the bank, so
  * "ready" means the paper is really there to sit.
  */
 export function JambCbtPicker({
@@ -88,7 +90,7 @@ export function JambCbtPicker({
   const trackSubjects = useMemo(
     () =>
       subjects.filter((s) =>
-        isTrackSubject({ name: s.providerKey, category: s.category }, track),
+        isTrackSubject({ category: s.category }, track),
       ),
     [subjects, track],
   );
@@ -117,20 +119,34 @@ export function JambCbtPicker({
   const [reviewYear, setReviewYear] = useState<number | null>(null);
   const reviewSummary = reviewYear !== null ? history.get(reviewYear) : undefined;
 
-  // A sitting is one year across all four papers.
-  const years = useMemo(
-    () => (english && complete ? sharedYears([english, ...chosenSubjects]) : []),
+  // Years load per subject, only for the four in the sitting (English plus the
+  // three chosen), through the neutral catalogue endpoint.
+  const sitting = useMemo(
+    () => (english && complete ? [english, ...chosenSubjects] : []),
     [english, complete, chosenSubjects],
   );
+  const yearQueries = useCatalogueSubjectsYears(
+    sitting.map((s) => s.providerKey),
+    "jamb",
+  );
+  const yearsLoading = yearQueries.some((q) => q.isPending);
+  const yearsFailed = yearQueries.some((q) => q.isError);
+  const yearsIncomplete = yearQueries.some((q) => q.data?.complete === false);
+  const subjectYears = sitting.map((subject, i) => ({
+    subject,
+    years: (yearQueries[i]?.data?.data ?? []).map((y) => y.year),
+  }));
+
+  // A sitting is one year across all four papers.
+  const years = sharedYears(subjectYears);
   // When nothing is shared, name the subject with the fewest years: it is the
   // one most worth swapping.
-  const narrowest = useMemo(
-    () =>
-      complete && years.length === 0
-        ? [...chosenSubjects].sort((a, b) => a.years.length - b.years.length)[0]
-        : null,
-    [complete, years, chosenSubjects],
-  );
+  const narrowest =
+    complete && !yearsLoading && years.length === 0
+      ? [...subjectYears]
+          .filter((s) => s.subject !== english)
+          .sort((a, b) => a.years.length - b.years.length)[0]
+      : null;
 
   /** Drops any selected year and the coverage report that went with it. */
   function clearYear() {
@@ -185,11 +201,14 @@ export function JambCbtPicker({
     [classLevel, track, chosenSubjects],
   );
   const [warning, setWarning] = useState(false);
+  // Waiting on the student to acknowledge the time limit; `start` creates the
+  // attempt, which is what starts the clock.
+  const [briefing, setBriefing] = useState(false);
 
   function requestStart() {
     if (!year || !ready || !complete) return;
     if (hasWarning(warnings)) setWarning(true);
-    else void start();
+    else setBriefing(true);
   }
 
   async function start() {
@@ -306,11 +325,6 @@ export function JambCbtPicker({
                       <LuCheck className="h-4 w-4 flex-shrink-0 text-primary" />
                     )}
                   </div>
-                  <p className="mt-1 text-xs text-muted">
-                    {subject.years.length === 0
-                      ? "No full papers yet"
-                      : `${subject.years.length} full paper${subject.years.length === 1 ? "" : "s"}`}
-                  </p>
                 </button>
               );
             })}
@@ -323,18 +337,38 @@ export function JambCbtPicker({
         <section className="animate-slide-up">
           <h2 className="section-label mb-1">Choose the year</h2>
           <p className="mb-3 text-xs text-muted">
-            Years with a full paper in all four subjects.
+            Years with a paper in all four subjects.
           </p>
 
-          {years.length === 0 ? (
+          {yearsLoading || (years.length === 0 && yearsIncomplete) ? (
+            <Spinner label="Checking available years..." />
+          ) : yearsFailed && years.length === 0 ? (
+            <div
+              role="alert"
+              className="flex items-start gap-2.5 rounded-xl border border-danger/25 bg-danger-soft px-4 py-3 text-sm text-danger"
+            >
+              <LuTriangleAlert className="mt-0.5 h-4 w-4 flex-shrink-0" />
+              <div>
+                <p className="font-medium">Couldn&apos;t load the available years.</p>
+                <button
+                  type="button"
+                  onClick={() => yearQueries.forEach((q) => void q.refetch())}
+                  className="mt-1.5 inline-flex items-center gap-1.5 font-semibold underline underline-offset-2"
+                >
+                  <LuRotateCcw className="h-3.5 w-3.5" />
+                  Try again
+                </button>
+              </div>
+            </div>
+          ) : years.length === 0 ? (
             <div className="flex items-start gap-2.5 rounded-xl border border-warning/25 bg-warning-soft px-4 py-3 text-sm text-warning">
               <LuTriangleAlert className="mt-0.5 h-4 w-4 flex-shrink-0" />
               <p className="leading-relaxed">
-                These four subjects don&apos;t share a full paper in any year.
+                These four subjects don&apos;t share a paper in any year.
                 {narrowest && (
                   <>
                     {" "}
-                    {narrowest.name} has the fewest (
+                    {narrowest.subject.name} has the fewest (
                     {narrowest.years.length === 0
                       ? "none"
                       : narrowest.years.join(", ")}
@@ -497,6 +531,18 @@ export function JambCbtPicker({
           onCancel={() => setWarning(false)}
           onContinue={() => {
             setWarning(false);
+            setBriefing(true);
+          }}
+        />
+      )}
+
+      {briefing && (
+        <TimedExamDialog
+          minutes={JAMB_SPEC.durationMinutes}
+          questionCount={JAMB_SPEC.totalQuestions}
+          onCancel={() => setBriefing(false)}
+          onStart={() => {
+            setBriefing(false);
             void start();
           }}
         />

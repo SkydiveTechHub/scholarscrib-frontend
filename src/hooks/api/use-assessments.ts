@@ -1,13 +1,13 @@
 "use client";
 
-import { queryOptions, useMutation, useQuery } from "@tanstack/react-query";
+import { queryOptions, useMutation, useQueries, useQuery } from "@tanstack/react-query";
 import { endpoints } from "@/lib/api/endpoints";
 import { request } from "@/lib/api/http";
 import { queryKeys } from "@/lib/api/query-keys";
 import type { GeneratedExam } from "@/components/assessment/use-exam-session";
 import type {
-  CoverageSubjectsOut,
-  CoverageYearsOut,
+  CatalogueSubjectsOut,
+  CatalogueYearsOut,
   ExplanationOut,
   PastPaperHistoryOut,
 } from "@/lib/api/types";
@@ -46,6 +46,8 @@ export type MockExamScopeInput = {
   from: ScopePoint;
   to: ScopePoint;
   count: number;
+  /** Omitted for an untimed sitting. The server accepts 5 to 30. */
+  timeLimitMinutes?: number;
 };
 
 export function useGenerateMockExam() {
@@ -169,32 +171,51 @@ export function useQuestionExplanation(questionId: string, enabled: boolean) {
 
 // ─── Past papers ────────────────────────────────────────────
 
-/** Every subject the question provider holds, with the exams it covers. */
-export function useCoverageSubjects() {
+/**
+ * Our subjects that the active question provider also holds, for one exam, or
+ * for every exam when `exam` is null.
+ */
+export function useCatalogueSubjects(exam: string | null, { enabled = true } = {}) {
   return useQuery({
-    queryKey: queryKeys.questions.coverageSubjects(),
+    queryKey: queryKeys.questions.catalogueSubjects(exam ?? ""),
     queryFn: () =>
-      request<CoverageSubjectsOut>({
+      request<CatalogueSubjectsOut>({
         method: "GET",
-        url: endpoints.questions.coverageSubjects,
-        anonymous: true,
+        url: endpoints.questions.catalogueSubjects,
+        params: exam ? { exam } : undefined,
       }),
+    enabled,
     staleTime: 60 * 60 * 1000,
   });
 }
 
-/** The years the provider holds for one subject (its provider key), every exam. */
-export function useCoverageSubjectYears(subject: string | null) {
-  return useQuery({
-    queryKey: queryKeys.questions.coverageSubjectYears(subject ?? ""),
+function catalogueYearsOptions(subject: string, exam: string) {
+  return queryOptions({
+    queryKey: queryKeys.questions.catalogueSubjectYears(subject, exam),
     queryFn: () =>
-      request<CoverageYearsOut>({
+      request<CatalogueYearsOut>({
         method: "GET",
-        url: endpoints.questions.coverageSubjectYears(subject ?? ""),
-        anonymous: true,
+        url: endpoints.questions.catalogueSubjectYears(subject),
+        params: { exam },
       }),
-    enabled: Boolean(subject),
-    staleTime: 60 * 60 * 1000,
+    // While discovery is unfinished the list can grow, so check again soon.
+    staleTime: (query) => (query.state.data?.complete === false ? 15 * 1000 : 60 * 60 * 1000),
+    refetchInterval: (query) => (query.state.data?.complete === false ? 10 * 1000 : false),
+  });
+}
+
+/** The papers on offer for one subject (our slug) and exam, newest first. */
+export function useCatalogueSubjectYears(subject: string | null, exam: string | null) {
+  return useQuery({
+    ...catalogueYearsOptions(subject ?? "", exam ?? ""),
+    enabled: Boolean(subject && exam),
+  });
+}
+
+/** Years for several subjects at once (the JAMB sitting's four picks). */
+export function useCatalogueSubjectsYears(subjects: readonly string[], exam: string) {
+  return useQueries({
+    queries: subjects.map((subject) => catalogueYearsOptions(subject, exam)),
   });
 }
 

@@ -26,3 +26,14 @@ export function consumeGoogleState(returned: string | null): boolean {
   }
   return !!returned && !!expected && returned === expected;
 }
+
+/**
+ * Where to send the user when Google returns `?error=` instead of a code.
+ * `access_denied` is the user pressing Cancel/Deny on the consent screen —
+ * not a failure, so it gets its own neutral message on the login page.
+ */
+export function loginPathForGoogleError(error: string): string {
+  return error === "access_denied"
+    ? "/login?error=google_cancelled"
+    : "/login?error=google";
+}

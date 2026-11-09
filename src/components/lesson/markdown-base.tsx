@@ -91,8 +91,18 @@ export function MarkdownBase({
           case "heading":
             return (
               <h3 key={idx} className="text-base font-semibold text-foreground pt-1">
-                {segment.text}
+                {renderInline(segment.text, renderMath)}
               </h3>
+            );
+
+          case "quote":
+            return (
+              <blockquote
+                key={idx}
+                className="whitespace-pre-line border-l-2 border-primary/60 pl-3 text-sm italic text-foreground/80 leading-relaxed"
+              >
+                {renderInline(segment.text, renderMath)}
+              </blockquote>
             );
 
           case "rule":

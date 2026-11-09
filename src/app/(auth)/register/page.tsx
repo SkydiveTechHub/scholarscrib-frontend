@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   LuMail,
   LuLock,
@@ -19,6 +19,13 @@ import { cn } from "@/lib/utils";
 import { isApiError } from "@/lib/api/errors";
 import { useLogin, useRegister } from "@/hooks/api/use-auth";
 import { markFreshSignIn } from "@/lib/encouragement";
+import { FieldError, INVALID_INPUT } from "@/components/ui/field-error";
+import {
+  REGISTER_STEP_FIELDS,
+  validateRegisterStep,
+  type FieldErrors,
+  type RegisterField,
+} from "@/lib/auth-validation";
 
 // Two steps, not three. State was a single optional dropdown on a step of its
 // own, which read as a hurdle rather than a question — it now sits with the
@@ -49,64 +56,83 @@ export default function RegisterPage() {
     state: "",
   });
 
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors<RegisterField>>({});
+  const inFlight = useRef(false);
+
   function update(field: string, value: string) {
     setForm((prev) => ({ ...prev, [field]: value }));
+    setFieldErrors((prev) =>
+      prev[field as RegisterField] ? { ...prev, [field]: undefined } : prev,
+    );
     setError("");
   }
 
+  // Re-check one field once the user leaves it (and only if they typed
+  // something, so tabbing past an empty field isn't scolded early).
+  function validateOnBlur(field: RegisterField) {
+    if (!form[field]) return;
+    const message = validateRegisterStep(step as 1 | 2, form)[field];
+    setFieldErrors((prev) => ({ ...prev, [field]: message }));
+  }
+
+  function focusField(field: RegisterField) {
+    const el = document.getElementById(field);
+    // Button groups (class, track) focus their first option.
+    (el?.matches("input, select") ? el : el?.querySelector("button"))?.focus();
+  }
+
+  function goToStep(next: number) {
+    setFieldErrors({});
+    setError("");
+    setStep(next);
+  }
+
   function validateStep(): boolean {
-    if (step === 1) {
-      if (!form.firstName.trim() || !form.lastName.trim()) {
-        setError("Please enter your first and last name.");
-        return false;
-      }
-      if (!form.email.trim()) {
-        setError("Please enter your email address.");
-        return false;
-      }
-      if (form.password.length < 6) {
-        setError("Password must be at least 6 characters.");
-        return false;
-      }
-    }
-    if (step === 2) {
-      if (!form.classLevel) {
-        setError("Please select your class level.");
-        return false;
-      }
-      if (!form.track) {
-        setError("Please select your track.");
-        return false;
-      }
-      if (!form.state) {
-        setError("Please select your state.");
-        return false;
-      }
+    const errors = validateRegisterStep(step as 1 | 2, form);
+    setFieldErrors(errors);
+    const first = REGISTER_STEP_FIELDS[step as 1 | 2].find((f) => errors[f]);
+    if (first) {
+      setError("");
+      focusField(first);
+      return false;
     }
     return true;
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    // The ref closes the gap before `submitting` re-renders the button
+    // disabled, so a fast double-click can't create the account twice.
+    if (inFlight.current) return;
 
     if (!validateStep()) return;
 
     if (step < LAST_STEP) {
-      setStep(step + 1);
+      goToStep(step + 1);
       return;
     }
 
+    inFlight.current = true;
     setError("");
     setSubmitting(true);
 
     try {
       await register.mutateAsync(form);
     } catch (err) {
+      // Only 4xx bodies are written for the user (e.g. "email already in
+      // use"); a 5xx message is a server detail, so show a generic one.
       if (isApiError(err)) {
-        setError(err.body?.error ?? err.message);
+        setError(
+          err.status < 500 && err.body?.error
+            ? err.body.error
+            : "Something went wrong on our end. Please try again in a moment.",
+        );
       } else {
-        setError("Network error. Please check your connection and try again.");
+        setError(
+          "We couldn't reach the server. Check your internet connection and try again.",
+        );
       }
+      inFlight.current = false;
       setSubmitting(false);
       return;
     }
@@ -186,12 +212,14 @@ export default function RegisterPage() {
       </ol>
 
       {error && (
-        <div className="mt-5 rounded-xl border border-danger/25 bg-danger-soft p-3.5 text-sm font-medium text-danger animate-fade-in">
+        <div
+          role="alert"
+          className="mt-5 rounded-xl border border-danger/25 bg-danger-soft p-3.5 text-sm font-medium text-danger animate-fade-in">
           {error}
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+      <form onSubmit={handleSubmit} noValidate className="mt-6 space-y-4">
         {/* Step 1: Personal info */}
         {step === 1 && (
           <>
@@ -226,67 +254,101 @@ export default function RegisterPage() {
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="mb-1.5 block text-sm font-semibold text-foreground">
+                <label
+                  htmlFor="firstName"
+                  className="mb-1.5 block text-sm font-semibold text-foreground"
+                >
                   First name
                 </label>
                 <div className="relative">
                   <LuUser className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
                   <input
+                    id="firstName"
                     type="text"
                     autoComplete="given-name"
                     value={form.firstName}
                     onChange={(e) => update("firstName", e.target.value)}
+                    onBlur={() => validateOnBlur("firstName")}
                     required
-                    className="input pl-10"
+                    aria-required="true"
+                    aria-invalid={fieldErrors.firstName ? true : undefined}
+                    aria-describedby={fieldErrors.firstName ? "firstName-error" : undefined}
+                    className={cn("input pl-10", fieldErrors.firstName && INVALID_INPUT)}
                   />
                 </div>
+                <FieldError id="firstName" message={fieldErrors.firstName} />
               </div>
               <div>
-                <label className="mb-1.5 block text-sm font-semibold text-foreground">
+                <label
+                  htmlFor="lastName"
+                  className="mb-1.5 block text-sm font-semibold text-foreground"
+                >
                   Last name
                 </label>
                 <input
+                  id="lastName"
                   type="text"
                   autoComplete="family-name"
                   value={form.lastName}
                   onChange={(e) => update("lastName", e.target.value)}
+                  onBlur={() => validateOnBlur("lastName")}
                   required
-                  className="input"
+                  aria-required="true"
+                  aria-invalid={fieldErrors.lastName ? true : undefined}
+                  aria-describedby={fieldErrors.lastName ? "lastName-error" : undefined}
+                  className={cn("input", fieldErrors.lastName && INVALID_INPUT)}
                 />
+                <FieldError id="lastName" message={fieldErrors.lastName} />
               </div>
             </div>
             <div>
-              <label className="mb-1.5 block text-sm font-semibold text-foreground">
+              <label
+                htmlFor="email"
+                className="mb-1.5 block text-sm font-semibold text-foreground"
+              >
                 Email
               </label>
               <div className="relative">
                 <LuMail className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
                 <input
+                  id="email"
                   type="email"
                   autoComplete="email"
                   value={form.email}
                   onChange={(e) => update("email", e.target.value)}
+                  onBlur={() => validateOnBlur("email")}
                   required
+                  aria-required="true"
+                  aria-invalid={fieldErrors.email ? true : undefined}
+                  aria-describedby={fieldErrors.email ? "email-error" : undefined}
                   placeholder="you@example.com"
-                  className="input pl-10"
+                  className={cn("input pl-10", fieldErrors.email && INVALID_INPUT)}
                 />
               </div>
+              <FieldError id="email" message={fieldErrors.email} />
             </div>
             <div>
-              <label className="mb-1.5 block text-sm font-semibold text-foreground">
+              <label
+                htmlFor="password"
+                className="mb-1.5 block text-sm font-semibold text-foreground"
+              >
                 Password
               </label>
               <div className="relative">
                 <LuLock className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
                 <input
+                  id="password"
                   type={showPassword ? "text" : "password"}
                   autoComplete="new-password"
                   value={form.password}
                   onChange={(e) => update("password", e.target.value)}
+                  onBlur={() => validateOnBlur("password")}
                   required
-                  minLength={6}
-                  placeholder="At least 6 characters"
-                  className="input pl-10 pr-11"
+                  aria-required="true"
+                  aria-invalid={fieldErrors.password ? true : undefined}
+                  aria-describedby={fieldErrors.password ? "password-error" : undefined}
+                  placeholder="6 to 25 characters"
+                  className={cn("input pl-10 pr-11", fieldErrors.password && INVALID_INPUT)}
                 />
                 <button
                   type="button"
@@ -301,6 +363,7 @@ export default function RegisterPage() {
                   )}
                 </button>
               </div>
+              <FieldError id="password" message={fieldErrors.password} />
             </div>
           </>
         )}
@@ -309,10 +372,19 @@ export default function RegisterPage() {
         {step === 2 && (
           <>
             <div>
-              <span className="mb-3 block text-sm font-semibold text-foreground">
+              <span
+                id="classLevel-label"
+                className="mb-3 block text-sm font-semibold text-foreground"
+              >
                 What class are you in?
               </span>
-              <div className="grid grid-cols-3 gap-3">
+              <div
+                id="classLevel"
+                role="group"
+                aria-labelledby="classLevel-label"
+                aria-describedby={fieldErrors.classLevel ? "classLevel-error" : undefined}
+                className="grid grid-cols-3 gap-3"
+              >
                 {["SS1", "SS2", "SS3"].map((level) => (
                   <button
                     key={level}
@@ -325,12 +397,22 @@ export default function RegisterPage() {
                   </button>
                 ))}
               </div>
+              <FieldError id="classLevel" message={fieldErrors.classLevel} />
             </div>
             <div>
-              <span className="mb-3 block text-sm font-semibold text-foreground">
+              <span
+                id="track-label"
+                className="mb-3 block text-sm font-semibold text-foreground"
+              >
                 What track are you in?
               </span>
-              <div className="grid grid-cols-3 gap-3">
+              <div
+                id="track"
+                role="group"
+                aria-labelledby="track-label"
+                aria-describedby={fieldErrors.track ? "track-error" : undefined}
+                className="grid grid-cols-3 gap-3"
+              >
                 {[
                   { value: "SCIENCE", label: "Science" },
                   { value: "ARTS", label: "Arts" },
@@ -347,6 +429,7 @@ export default function RegisterPage() {
                   </button>
                 ))}
               </div>
+              <FieldError id="track" message={fieldErrors.track} />
             </div>
             <div>
               <label
@@ -360,7 +443,10 @@ export default function RegisterPage() {
                 value={form.state}
                 onChange={(e) => update("state", e.target.value)}
                 required
-                className="input"
+                aria-required="true"
+                aria-invalid={fieldErrors.state ? true : undefined}
+                aria-describedby={fieldErrors.state ? "state-error" : undefined}
+                className={cn("input", fieldErrors.state && INVALID_INPUT)}
               >
                 <option value="">Select your state</option>
                 {NIGERIAN_STATES.map((state) => (
@@ -369,6 +455,7 @@ export default function RegisterPage() {
                   </option>
                 ))}
               </select>
+              <FieldError id="state" message={fieldErrors.state} />
             </div>
 
             <p className="rounded-xl bg-secondary/60 p-3.5 text-xs leading-relaxed text-muted">
@@ -382,7 +469,7 @@ export default function RegisterPage() {
           {step > 1 && (
             <button
               type="button"
-              onClick={() => setStep(step - 1)}
+              onClick={() => goToStep(step - 1)}
               className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-border bg-card px-4 py-3 text-sm font-bold text-foreground transition-all hover:bg-secondary active:scale-[0.99]"
             >
               <LuArrowLeft className="h-4 w-4" />

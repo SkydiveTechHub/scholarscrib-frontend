@@ -2,13 +2,18 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useState } from "react";
+import { Suspense, useRef, useState } from "react";
 import { LuLock, LuEye, LuEyeOff, LuArrowRight } from "react-icons/lu";
 import { Logo } from "@/components/ui/logo";
 import { useResetPassword } from "@/hooks/api/use-auth";
 import { isApiError } from "@/lib/api/errors";
-
-const MIN_LENGTH = 6;
+import { FieldError, INVALID_INPUT } from "@/components/ui/field-error";
+import {
+  validateResetPassword,
+  type FieldErrors,
+  type ResetPasswordField,
+} from "@/lib/auth-validation";
+import { cn } from "@/lib/utils";
 
 function ResetPasswordForm() {
   const router = useRouter();
@@ -21,19 +26,40 @@ function ResetPasswordForm() {
   const [confirm, setConfirm] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors<ResetPasswordField>>({});
   const reset = useResetPassword();
+  const inFlight = useRef(false);
+  const passwordRef = useRef<HTMLInputElement>(null);
+  const confirmRef = useRef<HTMLInputElement>(null);
+
+  function clearFieldError(field: ResetPasswordField) {
+    setFieldErrors((prev) => (prev[field] ? { ...prev, [field]: undefined } : prev));
+    setError("");
+  }
+
+  // Check a field once the user leaves it, but only if they typed something.
+  function validateOnBlur(field: ResetPasswordField) {
+    const value = field === "password" ? password : confirm;
+    if (!value) return;
+    const message = validateResetPassword({ password, confirm })[field];
+    setFieldErrors((prev) => ({ ...prev, [field]: message }));
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    // The ref closes the gap before isPending re-renders the button disabled.
+    if (inFlight.current) return;
+
+    const errors = validateResetPassword({ password, confirm });
+    setFieldErrors(errors);
+    if (errors.password || errors.confirm) {
+      setError("");
+      (errors.password ? passwordRef : confirmRef).current?.focus();
+      return;
+    }
+
+    inFlight.current = true;
     setError("");
-    if (password.length < MIN_LENGTH) {
-      setError(`Password must be at least ${MIN_LENGTH} characters.`);
-      return;
-    }
-    if (password !== confirm) {
-      setError("Passwords do not match.");
-      return;
-    }
     try {
       await reset.mutateAsync({ email, token, newPassword: password });
       router.replace("/login?reset=true");
@@ -43,9 +69,15 @@ function ResetPasswordForm() {
       } else if (isApiError(err) && err.status === 400 && err.message) {
         // "Invalid or expired reset token", "New password cannot be the same…"
         setError(err.message);
+      } else if (isApiError(err)) {
+        setError("Something went wrong on our end. Please try again in a moment.");
       } else {
-        setError("Something went wrong. Please try again.");
+        setError(
+          "We couldn't reach the server. Check your internet connection and try again.",
+        );
       }
+    } finally {
+      inFlight.current = false;
     }
   }
 
@@ -93,7 +125,7 @@ function ResetPasswordForm() {
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="mt-8 space-y-4">
+          <form onSubmit={handleSubmit} noValidate className="mt-8 space-y-4">
             <div>
               <label
                 htmlFor="password"
@@ -104,18 +136,24 @@ function ResetPasswordForm() {
               <div className="relative">
                 <LuLock className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
                 <input
+                  ref={passwordRef}
                   id="password"
                   type={showPassword ? "text" : "password"}
                   autoComplete="new-password"
                   value={password}
                   onChange={(e) => {
                     setPassword(e.target.value);
-                    setError("");
+                    clearFieldError("password");
+                    // A stale mismatch message shouldn't outlive the edit.
+                    clearFieldError("confirm");
                   }}
+                  onBlur={() => validateOnBlur("password")}
                   required
-                  minLength={MIN_LENGTH}
-                  placeholder="At least 6 characters"
-                  className="input pl-10 pr-11"
+                  aria-required="true"
+                  aria-invalid={fieldErrors.password ? true : undefined}
+                  aria-describedby={fieldErrors.password ? "password-error" : undefined}
+                  placeholder="6 to 25 characters"
+                  className={cn("input pl-10 pr-11", fieldErrors.password && INVALID_INPUT)}
                 />
                 <button
                   type="button"
@@ -130,6 +168,7 @@ function ResetPasswordForm() {
                   )}
                 </button>
               </div>
+              <FieldError id="password" message={fieldErrors.password} />
             </div>
 
             <div>
@@ -142,19 +181,25 @@ function ResetPasswordForm() {
               <div className="relative">
                 <LuLock className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
                 <input
+                  ref={confirmRef}
                   id="confirm"
                   type={showPassword ? "text" : "password"}
                   autoComplete="new-password"
                   value={confirm}
                   onChange={(e) => {
                     setConfirm(e.target.value);
-                    setError("");
+                    clearFieldError("confirm");
                   }}
+                  onBlur={() => validateOnBlur("confirm")}
                   required
+                  aria-required="true"
+                  aria-invalid={fieldErrors.confirm ? true : undefined}
+                  aria-describedby={fieldErrors.confirm ? "confirm-error" : undefined}
                   placeholder="Re-enter your password"
-                  className="input pl-10"
+                  className={cn("input pl-10", fieldErrors.confirm && INVALID_INPUT)}
                 />
               </div>
+              <FieldError id="confirm" message={fieldErrors.confirm} />
             </div>
 
             <button

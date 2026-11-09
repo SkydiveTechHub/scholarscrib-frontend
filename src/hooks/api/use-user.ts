@@ -89,6 +89,22 @@ export function useChangePassword() {
   });
 }
 
+/**
+ * Permanently deletes the signed-in student. Send `password` for accounts that
+ * have one, or `confirmEmail` for Google-only accounts. Nothing is invalidated:
+ * the caller ends the session with a full navigation.
+ */
+export function useDeleteAccount() {
+  return useMutation({
+    mutationFn: (input: { password?: string; confirmEmail?: string }) =>
+      request<{ ok: boolean }>({
+        method: "POST",
+        url: endpoints.user.deleteAccount,
+        data: input,
+      }),
+  });
+}
+
 export function useUpdateNotificationPreferences() {
   return useMutation({
     mutationFn: (input: Partial<NotificationPreferences>) =>

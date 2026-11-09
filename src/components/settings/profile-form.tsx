@@ -5,6 +5,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { useUpdateProfile } from "@/hooks/api/use-user";
 import { NIGERIAN_STATES } from "@/lib/constants/exam-types";
+import { validateName } from "@/lib/auth-validation";
 import { AvatarUpload } from "./avatar-upload";
 import {
   FormMessage,
@@ -55,6 +56,12 @@ export function ProfileForm({
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    const nameError =
+      validateName(form.firstName, "first") ?? validateName(form.lastName, "last");
+    if (nameError) {
+      setError(nameError);
+      return;
+    }
     setLoading(true);
     setError("");
 

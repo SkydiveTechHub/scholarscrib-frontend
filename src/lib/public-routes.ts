@@ -71,3 +71,57 @@ export function isPublicPath(pathname: string): boolean {
 
   return SITEMAP_SHARD.test(path) || ROOT_OG_IMAGE.test(path);
 }
+
+/**
+ * Every top-level segment a real route lives under. A signed-out request for
+ * anything else cannot be a page, so the proxy lets it through to render the
+ * 404 page instead of bouncing it to /login — otherwise a mistyped URL looks
+ * like "you must sign in" and the 404 is only ever seen when signed in.
+ *
+ * Letting an unknown path through exposes nothing: no route exists there. A
+ * route added under a new segment but missing from this list is still guarded
+ * by its own layout's session check (the proxy is an optimistic gate only);
+ * scripts/test-public-routes.mts fails if src/app gains a segment that is not
+ * listed here.
+ */
+export const KNOWN_ROOT_SEGMENTS: readonly string[] = [
+  "api",
+  "admin",
+  "dashboard",
+  "classroom",
+  "practice",
+  "flashcards",
+  "performance",
+  "study-plan",
+  "achievements",
+  "library",
+  "notifications",
+  "settings",
+  "login",
+  "register",
+  "forgot-password",
+  "reset-password",
+  "complete-profile",
+  "verify-email",
+  // Redirects to /classroom (next.config.ts), so it must reach the redirect.
+  "subjects",
+  "learn",
+  "past-questions",
+  "about",
+  "contact",
+  "terms",
+  "privacy",
+  "offline",
+  "signed-out",
+  "sitemap",
+  "sitemap-index.xml",
+];
+
+export function isKnownRootPath(pathname: string): boolean {
+  const [segment] = pathname.split("/").filter(Boolean);
+  // "/" and anything that looks like a file (sitemap.xml, robots.txt, sw.js,
+  // manifest.webmanifest, opengraph-image…) is handled by isPublicPath or the
+  // static layer; only real app segments count as "known" here.
+  if (!segment) return true;
+  return KNOWN_ROOT_SEGMENTS.includes(segment);
+}

@@ -8,6 +8,7 @@
 export type Segment =
   | { kind: "heading"; text: string }
   | { kind: "p"; text: string }
+  | { kind: "quote"; text: string }
   | { kind: "ul"; items: string[] }
   | { kind: "ol"; items: string[] }
   | { kind: "table"; header: string[]; rows: string[][] }
@@ -18,6 +19,9 @@ export type Segment =
 const RULE_RE = /^\s*(-{3,}|\*{3,}|_{3,})\s*$/;
 const UL_RE = /^\s*[-*]\s+(.*)$/;
 const OL_RE = /^\s*\d+[.)]\s+(.*)$/;
+const HEADING_RE = /^\s{0,3}#{1,6}\s+(.*?)(?:\s+#+)?\s*$/;
+// `> quoted`, or a bare `>` that keeps a multi-paragraph quote together.
+const QUOTE_RE = /^\s{0,3}>\s?(.*)$/;
 // A line that is only `![alt](url)`. The URL must be http(s) or site-relative
 // (never `javascript:`, `data:` or protocol-relative `//host`): this text is
 // untrusted, and the URL ends up in an <img src>.
@@ -109,11 +113,15 @@ function readTable(lines: string[]): Segment | null {
   };
 }
 
-type LineKind = "rule" | "ul" | "ol" | "table" | "image" | "text";
+type LineKind = "rule" | "heading" | "quote" | "ul" | "ol" | "table" | "image" | "text";
 
 function lineKind(line: string): LineKind {
   if (IMAGE_RE.test(line)) return "image";
   if (RULE_RE.test(line)) return "rule";
+  // Headings are recognised per line: model replies routinely put the body on
+  // the very next line (`### Formula:\n$$…$$`) with no blank line between.
+  if (HEADING_RE.test(line)) return "heading";
+  if (QUOTE_RE.test(line)) return "quote";
   if (UL_RE.test(line)) return "ul";
   if (OL_RE.test(line)) return "ol";
   if (isTableRow(line)) return "table";
@@ -150,6 +158,17 @@ export function segmentMarkdown(content: string): Segment[] {
         case "rule":
           run.forEach(() => segments.push({ kind: "rule" }));
           break;
+        case "heading":
+          for (const line of run) {
+            segments.push({ kind: "heading", text: (HEADING_RE.exec(line) as RegExpExecArray)[1] });
+          }
+          break;
+        case "quote":
+          segments.push({
+            kind: "quote",
+            text: run.map((line) => (QUOTE_RE.exec(line) as RegExpExecArray)[1]).join("\n"),
+          });
+          break;
         case "image":
           for (const line of run) {
             const m = IMAGE_RE.exec(line) as RegExpExecArray;
@@ -174,12 +193,8 @@ export function segmentMarkdown(content: string): Segment[] {
           segments.push(table ?? { kind: "p", text: run.join("\n") });
           break;
         }
-        default: {
-          const text = run.join("\n");
-          const heading = /^#{1,6}\s+(.*)$/.exec(text.trim());
-          if (heading && run.length === 1) segments.push({ kind: "heading", text: heading[1] });
-          else segments.push({ kind: "p", text });
-        }
+        default:
+          segments.push({ kind: "p", text: run.join("\n") });
       }
       run = [];
       runKind = null;

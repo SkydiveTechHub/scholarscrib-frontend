@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { useGenerateMockExam } from "@/hooks/api/use-assessments";
 import {
   MOCK_EXAM_MIN_QUESTIONS,
+  parseMockExamMinutes,
   scopedMockExamCount,
 } from "@/lib/mock-exam";
 import { ExamSurface } from "@/components/assessment/exam-surface";
@@ -23,6 +24,8 @@ function MockExamSession() {
   // Same rule as the picker. A hand-built link with count under 5 must not
   // reach the API, which would answer with a validation error.
   const count = scopedMockExamCount(requested, requested);
+  // Untimed unless the student chose a clock on the picker.
+  const minutes = parseMockExamMinutes(searchParams.get("minutes"));
 
   const from = useMemo<ScopePoint>(
     () => ({
@@ -52,8 +55,9 @@ function MockExamSession() {
         to.classLevel,
         to.term,
         count ?? requested,
+        minutes ?? "untimed",
       ].join(":"),
-    [examType, subjectId, from, to, count, requested],
+    [examType, subjectId, from, to, count, requested, minutes],
   );
 
   // mutateAsync is stable, so `generate` only changes with the scope.
@@ -64,8 +68,15 @@ function MockExamSession() {
         `A mock exam needs at least ${MOCK_EXAM_MIN_QUESTIONS} questions. Go back and choose a wider scope.`,
       );
     }
-    return generateMockExam({ examType, subjectId, from, to, count });
-  }, [generateMockExam, examType, subjectId, from, to, count]);
+    return generateMockExam({
+      examType,
+      subjectId,
+      from,
+      to,
+      count,
+      ...(minutes !== null ? { timeLimitMinutes: minutes } : {}),
+    });
+  }, [generateMockExam, examType, subjectId, from, to, count, minutes]);
 
   const toResult = useCallback(
     (attemptId: string) => `/practice/results/${attemptId}`,
@@ -76,7 +87,8 @@ function MockExamSession() {
     sessionKey,
     generate,
     resultHref: toResult,
-    defaultTimeLimitMinutes: Math.ceil((count ?? MOCK_EXAM_MIN_QUESTIONS) * 1.5),
+    // The server's deadline decides; 0 stops an untimed paper inventing one.
+    defaultTimeLimitMinutes: 0,
   });
 
   return (

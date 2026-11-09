@@ -1,12 +1,11 @@
-// Pure helpers for the past-question picker's coverage data
-// (`/api/questions/coverage/subjects`). The provider groups subjects into its
-// own categories, not our SCIENCE / ARTS / COMMERCIAL tracks, so the mapping
-// between the two lives here.
+// Pure helpers for the past-question picker's catalogue data
+// (`/api/questions/catalogue/*`). Subjects are ours, so the track filter uses
+// our own `track_category` directly, whichever provider is active.
 
-import type { CoverageSubjectOut, CoverageYearOut } from "@/lib/api/types";
-import { TRACK_CATEGORIES, type TrackCategory } from "@/lib/subjects";
+import type { CatalogueSubjectOut, CatalogueYearOut } from "@/lib/api/types";
+import { isRelevantSubject } from "@/lib/subjects";
 
-/** The exams a student can pick, keyed as the coverage data spells them. */
+/** The exams a student can pick, keyed as the catalogue data spells them. */
 export const COVERAGE_EXAMS = [
   { key: "jamb", label: "JAMB" },
   { key: "waec", label: "WAEC" },
@@ -15,64 +14,36 @@ export const COVERAGE_EXAMS = [
   // ExamType, which has no Post-UTME value.
 ] as const;
 
-/**
- * Provider categories that belong to each track. Social sciences sit with
- * both Arts and Commercial: Government, Geography and Civic Education are
- * offered on either side.
- */
-const TRACK_TO_COVERAGE: Record<TrackCategory, readonly string[]> = {
-  CORE: [],
-  SCIENCE: ["sciences"],
-  ARTS: ["arts", "social-sciences", "languages"],
-  COMMERCIAL: ["commercial", "social-sciences"],
-  VOCATIONAL: ["general"],
-};
-
-/** Every candidate sits these, whatever their track. */
-const COMPULSORY_SUBJECTS = ["english-language", "mathematics"];
-
 export function subjectsForExam(
-  subjects: readonly CoverageSubjectOut[],
+  subjects: readonly CatalogueSubjectOut[],
   exam: string,
-): CoverageSubjectOut[] {
+): CatalogueSubjectOut[] {
   return subjects
     .filter((s) => s.examTypes.includes(exam))
     .sort((a, b) => a.displayName.localeCompare(b.displayName));
 }
 
 /**
- * Whether a subject belongs on a student's track. A student with no track
- * (or one we don't recognise) is shown everything rather than a guess.
+ * Whether a subject belongs on a student's track. CORE subjects (English,
+ * Maths) are always included. A student with no track (or one we don't
+ * recognise) is shown everything rather than a guess.
  */
 export function isTrackSubject(
-  subject: Pick<CoverageSubjectOut, "name" | "category">,
+  subject: Pick<CatalogueSubjectOut, "category">,
   track?: string | null,
 ): boolean {
-  if (!track || !TRACK_CATEGORIES.includes(track as TrackCategory)) return true;
-  if (COMPULSORY_SUBJECTS.includes(subject.name)) return true;
-  return TRACK_TO_COVERAGE[track as TrackCategory].includes(subject.category);
-}
-
-/** Every year in the subject's range, newest first. */
-export function coverageYears(subject: CoverageSubjectOut): number[] {
-  const { min, max } = subject.yearRange;
-  if (!Number.isInteger(min) || !Number.isInteger(max) || min > max) return [];
-  const years: number[] = [];
-  for (let y = max; y >= min; y--) years.push(y);
-  return years;
+  return isRelevantSubject(subject.category, track);
 }
 
 /**
- * The years the provider holds a paper for under one exam, newest first, with
- * that exam's question count (falling back to the year's total).
+ * The years on offer for an exam, newest first. A year whose question count is
+ * unknown (null) is kept: the paper exists, we just haven't counted it yet.
  */
 export function yearsForExam(
-  years: readonly CoverageYearOut[],
-  exam: string,
-): { year: number; questionCount: number }[] {
+  years: readonly CatalogueYearOut[],
+): { year: number; questionCount: number | null }[] {
   return years
-    .filter((y) => y.examTypes.includes(exam))
-    .map((y) => ({ year: y.year, questionCount: y.breakdown?.[exam] ?? y.questionCount }))
-    .filter((y) => y.questionCount > 0)
+    .filter((y) => y.questionCount === null || y.questionCount > 0)
+    .map((y) => ({ year: y.year, questionCount: y.questionCount }))
     .sort((a, b) => b.year - a.year);
 }

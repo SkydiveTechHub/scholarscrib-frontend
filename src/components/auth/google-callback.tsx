@@ -4,7 +4,10 @@ import { useEffect } from "react";
 import { useGoogleTokens } from "@/hooks/api/use-auth";
 import { markFreshSignIn } from "@/lib/encouragement";
 import { setStudentToken } from "@/lib/client-session";
-import { consumeGoogleState } from "@/lib/google-oauth-state";
+import {
+  consumeGoogleState,
+  loginPathForGoogleError,
+} from "@/lib/google-oauth-state";
 
 // Google redirects back to the site root with ?code=. A code is single-use,
 // and React strict mode runs effects twice in dev, so remember what was sent.
@@ -22,6 +25,22 @@ export function GoogleCallback() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const code = params.get("code");
+
+    // The user pressed Cancel/Deny on Google's consent screen (or Google
+    // refused): it comes back here with ?error= and our state, no code. Send
+    // them back to the login page rather than stranding them on the landing
+    // page. Only acted on when the state is ours, so a stray ?error= on this
+    // URL from anywhere else is left alone.
+    const oauthError = params.get("error");
+    if (!code && oauthError) {
+      const returnedState = params.get("state");
+      window.history.replaceState(null, "", window.location.pathname);
+      if (consumeGoogleState(returnedState)) {
+        window.location.replace(loginPathForGoogleError(oauthError));
+      }
+      return;
+    }
+
     // `iss` distinguishes a Google redirect from any other ?code= on this URL.
     if (!code || params.get("iss") !== "https://accounts.google.com") return;
     if (sentCodes.has(code)) return;

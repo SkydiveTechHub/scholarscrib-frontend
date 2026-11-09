@@ -74,6 +74,16 @@ export async function studentLogout(callbackUrl = "/login"): Promise<void> {
 }
 
 /**
+ * Ends the student session locally after the account was deleted. No logout
+ * request: the user no longer exists, so the backend would only answer 401.
+ */
+export function studentAccountDeleted(callbackUrl = "/login?deleted=1"): void {
+  clearStudentToken();
+  resetPostHog();
+  window.location.replace(callbackUrl);
+}
+
+/**
  * Ends the admin session on the backend, clears the local token and leaves
  * the visitor on the admin login page. The student token is untouched.
  */

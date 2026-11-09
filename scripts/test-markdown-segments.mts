@@ -167,3 +167,35 @@ test("unsafe image URLs stay as plain text", () => {
     assert.equal(segments[0].kind, "p");
   }
 });
+
+test("a heading followed by text on the next line is still a heading", () => {
+  const segments = segmentMarkdown(
+    "### What is Buoyancy?\n**Buoyancy** is the upward force.",
+  );
+  assert.deepEqual(segments, [
+    { kind: "heading", text: "What is Buoyancy?" },
+    { kind: "p", text: "**Buoyancy** is the upward force." },
+  ]);
+});
+
+test("a heading followed by a formula line splits off the heading", () => {
+  const segments = segmentMarkdown("### Formula:\n$$U = W_a - W_f$$");
+  assert.equal(segments[0].kind, "heading");
+  assert.equal(segments.length, 2);
+  assert.ok(!JSON.stringify(segments[1]).includes("###"));
+});
+
+test("consecutive > lines become one quote segment", () => {
+  const segments = segmentMarkdown(
+    'Intro\n> "When a body is wholly\n> immersed in a fluid."',
+  );
+  assert.deepEqual(segments, [
+    { kind: "p", text: "Intro" },
+    { kind: "quote", text: '"When a body is wholly\nimmersed in a fluid."' },
+  ]);
+});
+
+test("a bare > line inside a quote keeps the quote together", () => {
+  const segments = segmentMarkdown("> *first*\n>\n> second");
+  assert.deepEqual(segments, [{ kind: "quote", text: "*first*\n\nsecond" }]);
+});
