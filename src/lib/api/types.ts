@@ -70,6 +70,9 @@ export type SettingsProfileOut = {
   image?: string | null;
   tier: string;
   tierExpiresAt?: string | null;
+  /** trialing | active | canceling | past_due | freemium */
+  billingStatus?: string | null;
+  nextBillingAt?: string | null;
   hasPassword: boolean;
   emailVerified?: string | null;
   notificationPreferences: NotificationPreferences;
@@ -514,6 +517,29 @@ export type PracticeResultOut = { result?: Record<string, unknown> | null };
 // ─── Billing ───────────────────────────────────────────────────────────────
 
 export type CheckoutOut = { authorizationUrl: string };
+
+/** Public catalog row from GET /api/billing/plans. */
+export type PublicBillingFeature = {
+  code: string;
+  enabled: boolean;
+  value: unknown;
+  gateKey: string | null;
+};
+
+export type PublicBillingPlan = {
+  code: string;
+  tier: string;
+  displayName: string;
+  amountKobo: number;
+  currency: string;
+  interval: string;
+  isPurchasable: boolean;
+  rank: number;
+  blurb: string | null;
+  features: PublicBillingFeature[];
+};
+
+export type PublicBillingPlansOut = { plans: PublicBillingPlan[] };
 
 // ─── Admin / Auth ──────────────────────────────────────────────────────────
 

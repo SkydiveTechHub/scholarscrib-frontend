@@ -3,12 +3,6 @@
  *
  * The tier union mirrors the backend's `SubscriptionTier` enum. The backend
  * enforces entitlements; these rules decide what the UI shows or hides.
- *
- * What each tier UNLOCKS is deliberately not defined here yet. When that
- * decision is made it becomes one table in this file; call sites only ever ask
- * `hasAtLeast`, so none of them change.
- *
- * See docs/superpowers/specs/2026-08-27-admin-console-structure-design.md
  */
 
 export const SUBSCRIPTION_TIERS = ["FREEMIUM", "STANDARD", "PREMIUM"] as const;
@@ -43,11 +37,6 @@ export function isSubscriptionTier(
   );
 }
 
-/**
- * The single predicate every future entitlement gate calls.
- *
- * Equal tiers pass: a STANDARD feature is available to a STANDARD subscriber.
- */
 export function hasAtLeast(
   account: { tier: SubscriptionTier },
   required: SubscriptionTier,
@@ -62,21 +51,12 @@ export function describeTier(account: { tier: SubscriptionTier }): {
   return { label: TIER_LABELS[account.tier], tone: TIER_TONE[account.tier] };
 }
 
-// ─── Billing ──────────────────────────────────────────────
-//
-// Mirrors the backend's billing enums.
-
 export const BILLING_PERIODS = ["MONTHLY", "YEARLY"] as const;
 export type BillingPeriod = (typeof BILLING_PERIODS)[number];
 
-/**
- * What the marketing site calls each tier. Deliberately different from
- * TIER_LABELS: the landing page sells "Basic", the admin console says
- * "Standard", and both are correct for their audience.
- */
 export const TIER_DISPLAY_NAMES: Record<SubscriptionTier, string> = {
   FREEMIUM: "Free",
-  STANDARD: "Basic",
+  STANDARD: "Standard",
   PREMIUM: "Premium",
 };
 
@@ -85,14 +65,14 @@ export const PERIOD_LABELS: Record<BillingPeriod, string> = {
   YEARLY: "Yearly",
 };
 
-/** Kobo, because that is the unit the Paystack API takes. */
+/** Fallback prices (kobo). Live catalog comes from GET /api/billing/plans. */
 const PLAN_PRICES_KOBO: Record<
   SubscriptionTier,
   Record<BillingPeriod, number>
 > = {
   FREEMIUM: { MONTHLY: 0, YEARLY: 0 },
-  STANDARD: { MONTHLY: 250_000, YEARLY: 2_400_000 },
-  PREMIUM: { MONTHLY: 500_000, YEARLY: 5_000_000 },
+  STANDARD: { MONTHLY: 300_000, YEARLY: 300_000 },
+  PREMIUM: { MONTHLY: 1_000_000, YEARLY: 1_000_000 },
 };
 
 export type Plan = {
@@ -102,11 +82,11 @@ export type Plan = {
   displayName: string;
 };
 
-export function planFor(tier: SubscriptionTier, period: BillingPeriod): Plan {
+export function planFor(tier: SubscriptionTier, period: BillingPeriod = "MONTHLY"): Plan {
   return {
     tier,
-    period,
-    amountKobo: PLAN_PRICES_KOBO[tier][period],
+    period: "MONTHLY",
+    amountKobo: PLAN_PRICES_KOBO[tier].MONTHLY,
     displayName: TIER_DISPLAY_NAMES[tier],
   };
 }
@@ -115,18 +95,6 @@ export function formatNaira(kobo: number): string {
   return `₦${Math.round(kobo / 100).toLocaleString("en-NG")}`;
 }
 
-/**
- * What each tier unlocks — PRD open decision #2, "one table in subscription.ts".
- *
- * Derived from what `src/components/landing/pricing.tsx` sells, because that is
- * the promise buyers act on. Change this table and the landing copy together or
- * the site is advertising something the app will not grant.
- *
- * Only yes/no gates live here. The Free tier's numeric caps — 3 subjects, 25
- * practice questions a day, 1 mock exam — are deliberately absent: they need
- * usage metering that does not exist yet, and adding them later means adding
- * rows here, not changing any call site.
- */
 export const GATED_FEATURES = [
   "flashcards",
   "studyPlanner",
@@ -142,39 +110,37 @@ export const PAID_ENTITLEMENTS: Record<GatedFeature, SubscriptionTier> = {
   studyPlanner: "STANDARD",
   premiumLibrary: "PREMIUM",
   advancedAnalytics: "PREMIUM",
-  aiTutor: "PREMIUM",
+  // Tutor is on every plan; daily caps differ. Gate stays FREEMIUM so UI opens.
+  aiTutor: "FREEMIUM",
 };
 
-/**
- * Beta: open to every tier while testers try the product. Ending the beta is
- * emptying this list (and `BETA_OPEN_FEATURES` in the backend's `domain.py`);
- * `PAID_ENTITLEMENTS` is untouched.
- */
-export const BETA_OPEN_FEATURES: readonly GatedFeature[] = [
-  "flashcards",
-  "studyPlanner",
-  "advancedAnalytics",
-  "aiTutor",
-];
+/** Beta opens emptied — gates follow paid ranks. */
+export const BETA_OPEN_FEATURES: readonly GatedFeature[] = [];
 
 export const ENTITLEMENTS: Record<GatedFeature, SubscriptionTier> = {
   ...PAID_ENTITLEMENTS,
-  ...Object.fromEntries(
-    BETA_OPEN_FEATURES.map((feature) => [feature, "FREEMIUM" as const]),
-  ),
 };
 
-/**
- * The one predicate every gate calls. Built on `hasAtLeast`, so it inherits
- * rank comparison: a richer tier can never lose a feature a poorer one has.
- */
 export function can(tier: SubscriptionTier, feature: GatedFeature): boolean {
   return hasAtLeast({ tier }, ENTITLEMENTS[feature]);
 }
 
-/** The cheapest tier that unlocks a feature — for "Upgrade to X" copy. */
 export function requiredTierFor(feature: GatedFeature): SubscriptionTier {
   return ENTITLEMENTS[feature];
+}
+
+export type PastQuestionsDetail = "answers" | "explanation" | "ai_explanation";
+
+export function pastQuestionsDetail(tier: SubscriptionTier): PastQuestionsDetail {
+  if (tier === "PREMIUM") return "ai_explanation";
+  if (tier === "STANDARD") return "explanation";
+  return "answers";
+}
+
+export function aiTutorDailyLimit(tier: SubscriptionTier): number {
+  if (tier === "PREMIUM") return 60;
+  if (tier === "STANDARD") return 20;
+  return 2;
 }
 
 export const SUBSCRIPTION_STATUSES = [
@@ -186,5 +152,5 @@ export const SUBSCRIPTION_STATUSES = [
 ] as const;
 export type SubscriptionStatus = (typeof SUBSCRIPTION_STATUSES)[number];
 
-export const SUBSCRIPTION_SOURCES = ["PAYSTACK", "COMP"] as const;
+export const SUBSCRIPTION_SOURCES = ["PAYSTACK", "COMP", "LAGO"] as const;
 export type SubscriptionSource = (typeof SUBSCRIPTION_SOURCES)[number];

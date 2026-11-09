@@ -26,6 +26,11 @@ export async function currentEntitlement(
     tier: isSubscriptionTier(profile.tier)
       ? (profile.tier as SubscriptionTier)
       : "FREEMIUM",
-    expiresAt: profile.tierExpiresAt ? new Date(profile.tierExpiresAt) : null,
+    expiresAt: profile.tierExpiresAt
+      ? new Date(profile.tierExpiresAt)
+      : profile.nextBillingAt
+        ? new Date(profile.nextBillingAt)
+        : null,
+    billingStatus: profile.billingStatus ?? null,
   };
 }
