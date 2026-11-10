@@ -17,7 +17,7 @@ export const NAV_GROUPS = [
       { name: "Dashboard", href: "/dashboard", icon: LuHouse },
       { name: "Classroom", href: "/classroom", icon: LuBookOpen },
       { name: "Flashcards", href: "/flashcards", icon: LuSparkles },
-      { name: "Library", href: "/library", icon: LuBook },
+      // { name: "Library", href: "/library", icon: LuBook },
     ],
   },
   {
