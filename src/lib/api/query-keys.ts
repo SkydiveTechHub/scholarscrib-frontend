@@ -56,6 +56,10 @@ export const queryKeys = {
   announcements: {
     all: ["announcements"] as const,
   },
+  billing: {
+    all: ["billing"] as const,
+    plans: () => [...queryKeys.billing.all, "plans"] as const,
+  },
   notifications: {
     all: ["notifications"] as const,
     unreadCount: () => [...queryKeys.notifications.all, "unread-count"] as const,
@@ -84,5 +88,6 @@ export const queryKeys = {
       [...queryKeys.admin.all, "curriculum-topics", curriculumId] as const,
     academicTerms: () => [...queryKeys.admin.all, "academic-terms"] as const,
     announcements: () => [...queryKeys.admin.all, "announcements"] as const,
+    billingCatalog: () => [...queryKeys.admin.all, "billing-catalog"] as const,
   },
 } as const;

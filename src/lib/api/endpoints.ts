@@ -127,7 +127,11 @@ export const endpoints = {
       `/api/classroom/subjects/${seg(slug)}/topics/${seg(topicSlug)}${suffix}`,
   },
   billing: {
+    plans: "/api/billing/plans",
     checkout: "/api/billing/checkout",
+    cancel: "/api/billing/cancel",
+    resume: "/api/billing/resume",
+    verify: "/api/billing/verify",
   },
   push: {
     subscription: "/api/push/subscription",
@@ -214,6 +218,14 @@ export const endpoints = {
       preview: "/admin/api/announcements/preview",
       test: "/admin/api/announcements/test",
       cancel: (id: string) => `/admin/api/announcements/${seg(id)}/cancel`,
+    },
+    billing: {
+      plans: "/admin/api/billing/plans",
+      seed: "/admin/api/billing/plans/seed",
+      features: "/admin/api/billing/features",
+      plan: (code: string) => `/admin/api/billing/plans/${seg(code)}`,
+      entitlement: (code: string, featureCode: string) =>
+        `/admin/api/billing/plans/${seg(code)}/entitlements/${seg(featureCode)}`,
     },
   },
 } as const;

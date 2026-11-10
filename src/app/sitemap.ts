@@ -17,6 +17,7 @@ async function recordsFor(shard: SitemapShard): Promise<SitemapRecord[]> {
       { path: "/", changeFrequency: "weekly", priority: 1 },
       { path: "/learn", changeFrequency: "weekly", priority: 0.8 },
       { path: "/past-questions", changeFrequency: "weekly", priority: 0.8 },
+      { path: "/pricing", changeFrequency: "monthly", priority: 0.7 },
       { path: "/about", changeFrequency: "yearly", priority: 0.5 },
       { path: "/contact", changeFrequency: "yearly", priority: 0.5 },
     ];

@@ -1,5 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import { getSessionUser } from "@/lib/session";
+import { tierOfSession } from "@/lib/entitlements";
 import { buildAttemptResult } from "@/lib/attempt-results";
 import { ResultsView } from "@/components/assessment/results-view";
 
@@ -19,5 +20,7 @@ export default async function ResultsPage({
   const result = await buildAttemptResult(attemptId, session.id);
   if (!result) notFound();
 
-  return <ResultsView result={result} />;
+  return (
+    <ResultsView result={result} tier={tierOfSession({ user: session })} />
+  );
 }
