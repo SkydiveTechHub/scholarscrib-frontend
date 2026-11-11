@@ -213,6 +213,12 @@ const SECTIONS: { heading: string; body: React.ReactNode }[] = [
           <li>
             Messaging providers — to send emails, SMS and push notifications.
           </li>
+          <li>
+            Tawk.to — live chat support. When you are signed in and open chat,
+            we send your name, email, account id and study context (class,
+            track, state and plan) so our support team can help you. Chat
+            messages you send are processed by Tawk.to.
+          </li>
         </ul>
         <p>
           We may also disclose data where the law requires it, to protect
@@ -338,8 +344,9 @@ const SECTIONS: { heading: string; body: React.ReactNode }[] = [
         <p>
           We use cookies and local storage that are strictly necessary to keep
           you signed in, protect your account and remember your preferences.
-          If we add analytics or advertising cookies, we will ask for your
-          consent first.
+          The live-chat widget (Tawk.to) may also set its own cookies so a
+          conversation can continue across pages. If we add analytics or
+          advertising cookies, we will ask for your consent first.
         </p>
         <p>
           ScholarsCrib can be installed as an app on your device and can work

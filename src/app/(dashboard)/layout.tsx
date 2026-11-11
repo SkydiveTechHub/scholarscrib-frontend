@@ -7,6 +7,7 @@ import { MobileHeader } from "@/components/ui/mobile-header";
 import { PostHogIdentify } from "@/components/analytics/posthog-identify";
 import { SessionGuard } from "@/components/auth/session-guard";
 import { PushSync } from "@/components/push/push-sync";
+import { TawkIdentify } from "@/components/support/tawk-identify";
 import { EncouragementModal } from "@/components/ui/encouragement-modal";
 import type { ProfileUser } from "@/components/ui/user-menu";
 import { daysUntilExam, examTargetFor } from "@/lib/exam-target";
@@ -14,6 +15,8 @@ import { NOINDEX } from "@/lib/seo/metadata";
 import { needsProfileCompletion } from "@/lib/profile-completion";
 import { needsEmailVerification } from "@/lib/email-verification";
 import { tierOf } from "@/lib/entitlements";
+import { createTawkLoginHash } from "@/lib/tawk-secure";
+import { isTawkConfigured } from "@/lib/tawk-config";
 import { TutorShell } from "@/components/tutor/tutor-shell";
 
 // Nothing under here is useful in a search result, and an indexed login wall
@@ -49,6 +52,8 @@ export default async function DashboardLayout({
   const now = new Date();
   const examTarget = examTargetFor({ classLevel: user.classLevel, now });
   const daysToExam = daysUntilExam(examTarget, now);
+  const tawkOn = isTawkConfigured();
+  const tawkHash = tawkOn ? createTawkLoginHash(user.id) : null;
 
   return (
     <div className="min-h-full">
@@ -59,6 +64,19 @@ export default async function DashboardLayout({
         state={user.state}
         tier={user.tier}
       />
+      {tawkOn ? (
+        <TawkIdentify
+          userId={user.id}
+          hash={tawkHash}
+          email={user.email}
+          firstName={user.firstName}
+          lastName={user.lastName}
+          classLevel={user.classLevel}
+          track={user.track}
+          state={user.state}
+          tier={user.tier}
+        />
+      ) : null}
       <SessionGuard realm="student" />
       <PushSync />
       <Toaster position="top-center" closeButton />

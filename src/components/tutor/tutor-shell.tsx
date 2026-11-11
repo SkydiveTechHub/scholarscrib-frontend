@@ -5,12 +5,17 @@ import { useEffect } from "react";
 import { LuStar } from "react-icons/lu";
 import { useExamActive } from "@/stores/exam-store";
 import { useTutorStore } from "@/stores/tutor-store";
+import { isTawkConfigured } from "@/lib/tawk-config";
+import { syncTawkVisibility } from "@/lib/tawk-browser";
 import type { SubscriptionTier } from "@/lib/subscription";
 import { cn } from "@/lib/utils";
 
 // The panel, KaTeX and the chat code load on first open, not with the page:
 // most students are on metered data and most page views never open Astra.
 const TutorPanel = dynamic(() => import("./tutor-panel"), { ssr: false });
+
+// Lift Ask Astra above the Tawk bubble (~4.5rem) when the embed is enabled.
+const tawkOn = isTawkConfigured();
 
 export function TutorShell({
   tier,
@@ -33,6 +38,12 @@ export function TutorShell({
     if (examActive) closePanel();
   }, [examActive, closePanel]);
 
+  // Hide Tawk while Astra owns the corner (open panel or mid-exam).
+  useEffect(() => {
+    if (!tawkOn) return;
+    syncTawkVisibility({ tutorOpen: open && !examActive, examActive });
+  }, [open, examActive]);
+
   const visible = open && !examActive;
 
   return (
@@ -47,7 +58,12 @@ export function TutorShell({
           type="button"
           data-astra-trigger
           onClick={() => openPanel()}
-          className="fixed bottom-[calc(5.5rem+env(safe-area-inset-bottom))] right-4 z-30 flex min-h-11 items-center gap-2 rounded-full bg-primary px-4 text-sm font-bold text-primary-foreground shadow-lg lg:bottom-6"
+          className={cn(
+            "fixed right-4 z-30 flex min-h-11 items-center gap-2 rounded-full bg-primary px-4 text-sm font-bold text-primary-foreground shadow-lg",
+            tawkOn
+              ? "bottom-[calc(10rem+env(safe-area-inset-bottom))] lg:bottom-[calc(1.5rem+4.5rem)]"
+              : "bottom-[calc(5.5rem+env(safe-area-inset-bottom))] lg:bottom-6",
+          )}
         >
           <LuStar className="h-4 w-4" aria-hidden />
           Ask Astra

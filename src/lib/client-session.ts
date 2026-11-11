@@ -14,6 +14,7 @@ import { ACCESS_COOKIE, ADMIN_ACCESS_COOKIE } from "@/lib/api/config";
 import { endpoints } from "@/lib/api/endpoints";
 import { request } from "@/lib/api/http";
 import { resetPostHog } from "@/lib/posthog-browser";
+import { logoutTawkVisitor } from "@/lib/tawk-browser";
 
 const MAX_AGE_SECONDS = 60 * 60 * 24 * 30;
 
@@ -69,6 +70,7 @@ export async function studentLogout(callbackUrl = "/login"): Promise<void> {
   await postLogout(endpoints.auth.logout, "student");
   clearStudentToken();
   resetPostHog();
+  logoutTawkVisitor();
   // replace, not assign: Back must not land on the signed-in page.
   window.location.replace(callbackUrl);
 }
@@ -80,6 +82,7 @@ export async function studentLogout(callbackUrl = "/login"): Promise<void> {
 export function studentAccountDeleted(callbackUrl = "/login?deleted=1"): void {
   clearStudentToken();
   resetPostHog();
+  logoutTawkVisitor();
   window.location.replace(callbackUrl);
 }
 

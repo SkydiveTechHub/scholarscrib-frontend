@@ -5,6 +5,9 @@ import { ServiceWorkerRegistrar } from "@/components/pwa/service-worker-registra
 import { PostHogRoute } from "@/components/analytics/posthog-route";
 import { BackendWakingBanner } from "@/components/providers/backend-waking-banner";
 import { QueryProvider } from "@/components/providers/query-provider";
+import { TawkRoute } from "@/components/support/tawk-route";
+import { TawkTo } from "@/components/support/tawk-to";
+import { isTawkConfigured } from "@/lib/tawk-config";
 import "./globals.css";
 // KaTeX markup is unreadable without its stylesheet -- fractions collapse onto
 // one line and radicals lose their bar. The dependency was already installed
@@ -61,13 +64,22 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const tawkOn = isTawkConfigured();
+
   return (
-    <html lang="en" className={`${nunito.variable} h-full`} data-scroll-behavior="smooth">
+    <html
+      lang="en"
+      className={`${nunito.variable} h-full`}
+      data-scroll-behavior="smooth"
+      {...(tawkOn ? { "data-tawk": "on" } : {})}
+    >
       <body className="h-full">
         <PostHogRoute />
+        <TawkRoute />
         <QueryProvider>{children}</QueryProvider>
         <BackendWakingBanner />
         <ServiceWorkerRegistrar />
+        <TawkTo />
       </body>
     </html>
   );
