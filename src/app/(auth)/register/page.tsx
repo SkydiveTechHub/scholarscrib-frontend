@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useRef, useState } from "react";
 import {
   LuMail,
   LuLock,
@@ -17,11 +17,12 @@ import { NIGERIAN_STATES } from "@/lib/constants/exam-types";
 import { Logo } from "@/components/ui/logo";
 import { cn } from "@/lib/utils";
 import { isApiError } from "@/lib/api/errors";
-import { useLogin, useRegister } from "@/hooks/api/use-auth";
+import { useLogin, useRegister, useTutorLogin } from "@/hooks/api/use-auth";
 import { markFreshSignIn } from "@/lib/encouragement";
 import { FieldError, INVALID_INPUT } from "@/components/ui/field-error";
 import {
   REGISTER_STEP_FIELDS,
+  REGISTER_TUTOR_STEP_FIELDS,
   validateRegisterStep,
   type FieldErrors,
   type RegisterField,
@@ -29,16 +30,24 @@ import {
 
 // Two steps, not three. State was a single optional dropdown on a step of its
 // own, which read as a hurdle rather than a question — it now sits with the
-// other academic details.
-const STEPS = [{ label: "Your details" }, { label: "Class & track" }];
+// other academic details (students) or alone (tutors).
+const STUDENT_STEPS = [{ label: "Your details" }, { label: "Class & track" }];
+const TUTOR_STEPS = [{ label: "Your details" }, { label: "Location" }];
 
-const LAST_STEP = STEPS.length;
-
-export default function RegisterPage() {
+function RegisterForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const requested = searchParams.get("callbackUrl");
+  const callbackUrl =
+    requested &&
+    requested.startsWith("/") &&
+    !requested.startsWith("//")
+      ? requested
+      : null;
   const [step, setStep] = useState(1);
   const register = useRegister();
   const login = useLogin();
+  const tutorLogin = useTutorLogin();
   // Covers register, the automatic sign-in and the navigation after them, and
   // stays true through the redirect so the button can't be pressed twice.
   const [submitting, setSubmitting] = useState(false);
@@ -56,11 +65,26 @@ export default function RegisterPage() {
     state: "",
   });
 
+  const isTutor = form.role === "TUTOR";
+  const STEPS = isTutor ? TUTOR_STEPS : STUDENT_STEPS;
+  const LAST_STEP = STEPS.length;
+  const stepFields = isTutor ? REGISTER_TUTOR_STEP_FIELDS : REGISTER_STEP_FIELDS;
+
   const [fieldErrors, setFieldErrors] = useState<FieldErrors<RegisterField>>({});
   const inFlight = useRef(false);
 
   function update(field: string, value: string) {
-    setForm((prev) => ({ ...prev, [field]: value }));
+    setForm((prev) => {
+      const next = { ...prev, [field]: value };
+      // Switching role resets step-2 academic fields so a tutor never submits
+      // leftover student class/track from a prior selection.
+      if (field === "role") {
+        next.classLevel = "";
+        next.track = "";
+      }
+      return next;
+    });
+    if (field === "role" && step > 1) setStep(1);
     setFieldErrors((prev) =>
       prev[field as RegisterField] ? { ...prev, [field]: undefined } : prev,
     );
@@ -90,7 +114,7 @@ export default function RegisterPage() {
   function validateStep(): boolean {
     const errors = validateRegisterStep(step as 1 | 2, form);
     setFieldErrors(errors);
-    const first = REGISTER_STEP_FIELDS[step as 1 | 2].find((f) => errors[f]);
+    const first = stepFields[step as 1 | 2].find((f) => errors[f]);
     if (first) {
       setError("");
       focusField(first);
@@ -116,8 +140,20 @@ export default function RegisterPage() {
     setError("");
     setSubmitting(true);
 
+    const payload =
+      form.role === "TUTOR"
+        ? {
+            role: "TUTOR",
+            firstName: form.firstName,
+            lastName: form.lastName,
+            email: form.email,
+            password: form.password,
+            state: form.state,
+          }
+        : form;
+
     try {
-      await register.mutateAsync(form);
+      await register.mutateAsync(payload);
     } catch (err) {
       // Only 4xx bodies are written for the user (e.g. "email already in
       // use"); a 5xx message is a server detail, so show a generic one.
@@ -137,10 +173,25 @@ export default function RegisterPage() {
       return;
     }
 
-    // The account exists and the backend has emailed the verification code.
-    // Sign in on the student's behalf instead of making them retype the
-    // credentials they just chose, then hand them to the verification step.
+    // The account exists. Sign in on their behalf instead of making them
+    // retype credentials. Both roles hit verify-email next (`sent=1` so we
+    // do not re-send the OTP registration already emailed). Tutors use the
+    // center JWT realm + `/center/verify-email` (cookie path `/center`).
     try {
+      if (form.role === "TUTOR") {
+        const [{ setTutorToken }, data] = await Promise.all([
+          import("@/lib/client-session"),
+          tutorLogin.mutateAsync({
+            email: form.email,
+            password: form.password,
+          }),
+        ]);
+        setTutorToken(data.accessToken);
+        markFreshSignIn();
+        window.location.assign("/center/verify-email?sent=1");
+        return;
+      }
+
       const [{ setStudentToken }, data] = await Promise.all([
         import("@/lib/client-session"),
         login.mutateAsync({ email: form.email, password: form.password }),
@@ -148,15 +199,29 @@ export default function RegisterPage() {
       setStudentToken(data.accessToken);
       markFreshSignIn();
 
+      // Keep /join/… (etc.) across verify-email, then land there once verified.
+      const { rememberPostAuthRedirect } = await import(
+        "@/lib/post-auth-redirect"
+      );
+      rememberPostAuthRedirect(callbackUrl);
+
       // A full navigation, as on the login page, so the proxy sees the fresh
       // cookie. `sent=1` tells the page the code is already on its way: a
       // second send would invalidate the one in the inbox. Stays in the
       // loading state, since the page is about to be replaced.
-      window.location.assign("/verify-email?sent=1");
+      const verifyQs = new URLSearchParams({ sent: "1" });
+      if (callbackUrl) verifyQs.set("callbackUrl", callbackUrl);
+      window.location.assign(`/verify-email?${verifyQs.toString()}`);
     } catch {
       // The account was created; only the automatic sign-in failed. Fall back
-      // to the login page, where signing in lands on the same verification step.
-      router.push("/login?registered=true");
+      // to the matching login page (preserving join callback when present).
+      const loginQs = new URLSearchParams({ registered: "true" });
+      if (callbackUrl) loginQs.set("callbackUrl", callbackUrl);
+      router.push(
+        form.role === "TUTOR"
+          ? "/center/login?registered=true"
+          : `/login?${loginQs.toString()}`,
+      );
     }
   }
 
@@ -176,7 +241,11 @@ export default function RegisterPage() {
       <h2 className="text-2xl font-bold tracking-tight text-foreground">
         Create your account
       </h2>
-      <p className="mt-1 text-muted">Free to start for students.</p>
+      <p className="mt-1 text-muted">
+        {isTutor
+          ? "Register as a tutor to run your center."
+          : "Free to start for students."}
+      </p>
 
       {/* Stepper */}
       <ol className="mt-8 flex items-center gap-2">
@@ -236,19 +305,13 @@ export default function RegisterPage() {
                 >
                   Student
                 </button>
-
-                {/* Teacher capabilities are not built yet. Disabled rather than hidden so
-                    the path is visibly planned — and the API rejects TEACHER regardless. */}
                 <button
                   type="button"
-                  disabled
-                  aria-disabled="true"
-                  className={`${optionClass(false)} cursor-not-allowed opacity-50`}
+                  aria-pressed={form.role === "TUTOR"}
+                  onClick={() => update("role", "TUTOR")}
+                  className={optionClass(form.role === "TUTOR")}
                 >
-                  Teacher
-                  <span className="ml-1.5 rounded bg-secondary px-1.5 py-0.5 text-[10px] font-semibold uppercase text-muted">
-                    Coming soon
-                  </span>
+                  Tutor / Center owner
                 </button>
               </div>
             </div>
@@ -368,75 +431,85 @@ export default function RegisterPage() {
           </>
         )}
 
-        {/* Step 2: Class level & track */}
+        {/* Step 2: students — class/track/state; tutors — state only */}
         {step === 2 && (
           <>
-            <div>
-              <span
-                id="classLevel-label"
-                className="mb-3 block text-sm font-semibold text-foreground"
-              >
-                What class are you in?
-              </span>
-              <div
-                id="classLevel"
-                role="group"
-                aria-labelledby="classLevel-label"
-                aria-describedby={fieldErrors.classLevel ? "classLevel-error" : undefined}
-                className="grid grid-cols-3 gap-3"
-              >
-                {["SS1", "SS2", "SS3"].map((level) => (
-                  <button
-                    key={level}
-                    type="button"
-                    aria-pressed={form.classLevel === level}
-                    onClick={() => update("classLevel", level)}
-                    className={optionClass(form.classLevel === level)}
+            {!isTutor && (
+              <>
+                <div>
+                  <span
+                    id="classLevel-label"
+                    className="mb-3 block text-sm font-semibold text-foreground"
                   >
-                    {level}
-                  </button>
-                ))}
-              </div>
-              <FieldError id="classLevel" message={fieldErrors.classLevel} />
-            </div>
-            <div>
-              <span
-                id="track-label"
-                className="mb-3 block text-sm font-semibold text-foreground"
-              >
-                What track are you in?
-              </span>
-              <div
-                id="track"
-                role="group"
-                aria-labelledby="track-label"
-                aria-describedby={fieldErrors.track ? "track-error" : undefined}
-                className="grid grid-cols-3 gap-3"
-              >
-                {[
-                  { value: "SCIENCE", label: "Science" },
-                  { value: "ARTS", label: "Arts" },
-                  { value: "COMMERCIAL", label: "Commercial" },
-                ].map((track) => (
-                  <button
-                    key={track.value}
-                    type="button"
-                    aria-pressed={form.track === track.value}
-                    onClick={() => update("track", track.value)}
-                    className={optionClass(form.track === track.value)}
+                    What class are you in?
+                  </span>
+                  <div
+                    id="classLevel"
+                    role="group"
+                    aria-labelledby="classLevel-label"
+                    aria-describedby={
+                      fieldErrors.classLevel ? "classLevel-error" : undefined
+                    }
+                    className="grid grid-cols-3 gap-3"
                   >
-                    {track.label}
-                  </button>
-                ))}
-              </div>
-              <FieldError id="track" message={fieldErrors.track} />
-            </div>
+                    {["SS1", "SS2", "SS3"].map((level) => (
+                      <button
+                        key={level}
+                        type="button"
+                        aria-pressed={form.classLevel === level}
+                        onClick={() => update("classLevel", level)}
+                        className={optionClass(form.classLevel === level)}
+                      >
+                        {level}
+                      </button>
+                    ))}
+                  </div>
+                  <FieldError id="classLevel" message={fieldErrors.classLevel} />
+                </div>
+                <div>
+                  <span
+                    id="track-label"
+                    className="mb-3 block text-sm font-semibold text-foreground"
+                  >
+                    What track are you in?
+                  </span>
+                  <div
+                    id="track"
+                    role="group"
+                    aria-labelledby="track-label"
+                    aria-describedby={
+                      fieldErrors.track ? "track-error" : undefined
+                    }
+                    className="grid grid-cols-3 gap-3"
+                  >
+                    {[
+                      { value: "SCIENCE", label: "Science" },
+                      { value: "ARTS", label: "Arts" },
+                      { value: "COMMERCIAL", label: "Commercial" },
+                    ].map((track) => (
+                      <button
+                        key={track.value}
+                        type="button"
+                        aria-pressed={form.track === track.value}
+                        onClick={() => update("track", track.value)}
+                        className={optionClass(form.track === track.value)}
+                      >
+                        {track.label}
+                      </button>
+                    ))}
+                  </div>
+                  <FieldError id="track" message={fieldErrors.track} />
+                </div>
+              </>
+            )}
             <div>
               <label
                 htmlFor="state"
                 className="mb-1.5 block text-sm font-semibold text-foreground"
               >
-                Which state do you live in?
+                {isTutor
+                  ? "Which state is your center in?"
+                  : "Which state do you live in?"}
               </label>
               <select
                 id="state"
@@ -459,8 +532,9 @@ export default function RegisterPage() {
             </div>
 
             <p className="rounded-xl bg-secondary/60 p-3.5 text-xs leading-relaxed text-muted">
-              Your track shapes which subjects and past questions are shown first.
-              You can change this later in settings.
+              {isTutor
+                ? "Your state is shown to invited students with your center name. You can change this later."
+                : "Your track shapes which subjects and past questions are shown first. You can change this later in settings."}
             </p>
           </>
         )}
@@ -493,7 +567,16 @@ export default function RegisterPage() {
 
       <p className="mt-6 text-center text-sm text-muted">
         Already have an account?{" "}
-        <Link href="/login" className="font-bold text-primary hover:underline">
+        <Link
+          href={
+            isTutor
+              ? "/center/login"
+              : callbackUrl
+                ? `/login?callbackUrl=${encodeURIComponent(callbackUrl)}`
+                : "/login"
+          }
+          className="font-bold text-primary hover:underline"
+        >
           Sign in
         </Link>
       </p>
@@ -510,5 +593,13 @@ export default function RegisterPage() {
         .
       </p>
     </div>
+  );
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense>
+      <RegisterForm />
+    </Suspense>
   );
 }

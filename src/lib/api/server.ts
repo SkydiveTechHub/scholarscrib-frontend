@@ -7,17 +7,25 @@
 import "server-only";
 
 import { cookies } from "next/headers";
-import { API_URL, accessCookieFor } from "./config";
+import {
+  ACCESS_COOKIE,
+  ADMIN_ACCESS_COOKIE,
+  API_URL,
+  TUTOR_ACCESS_COOKIE,
+  accessCookieFor,
+} from "./config";
 import { ApiError } from "./errors";
 import type { ApiErrorBody } from "./types";
+
+type AuthRealm = "student" | "admin" | "tutor";
 
 type FetchOptions = Omit<RequestInit, "body"> & {
   params?: Record<string, string | number | boolean | null | undefined>;
   body?: unknown;
   /** Fetch without the token cookie (public endpoints). */
   anonymous?: boolean;
-  /** Send the other realm's token (admin calls from a student context is never valid). */
-  realm?: "student" | "admin";
+  /** Send the other realm's token (cross-realm calls are never valid). */
+  realm?: AuthRealm | "auto";
 };
 
 // Long enough for a scale-to-zero database to resume behind one request.
@@ -29,16 +37,23 @@ const TRANSIENT_STATUSES = new Set([502, 503, 504]);
 
 const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
+function cookieNameForRealm(path: string, realm: AuthRealm): string {
+  if (realm === "admin" && !path.startsWith("/admin")) {
+    return ADMIN_ACCESS_COOKIE;
+  }
+  if (realm === "tutor" && !path.startsWith("/center")) {
+    return TUTOR_ACCESS_COOKIE;
+  }
+  if (realm === "student") return ACCESS_COOKIE;
+  return accessCookieFor(path);
+}
+
 async function resolveToken(
   path: string,
-  realm: "student" | "admin",
+  realm: AuthRealm,
 ): Promise<string | null> {
   const store = await cookies();
-  const name =
-    realm === "admin" && !path.startsWith("/admin")
-      ? "sc.admin_access_token"
-      : accessCookieFor(path);
-  return store.get(name)?.value ?? null;
+  return store.get(cookieNameForRealm(path, realm))?.value ?? null;
 }
 
 function buildUrl(path: string, params?: FetchOptions["params"]): string {
@@ -67,9 +82,13 @@ export async function api<T>(
   options: FetchOptions = {},
 ): Promise<T> {
   const { params, body, anonymous = false, realm = "auto", ...init } = options;
-  const resolvedRealm: "student" | "admin" =
+  const resolvedRealm: AuthRealm =
     realm === "auto"
-      ? (path.startsWith("/admin") ? "admin" : "student")
+      ? path.startsWith("/admin")
+        ? "admin"
+        : path.startsWith("/center")
+          ? "tutor"
+          : "student"
       : realm;
   const token = await resolveToken(path, resolvedRealm);
 

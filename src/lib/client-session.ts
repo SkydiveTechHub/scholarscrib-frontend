@@ -10,7 +10,14 @@
 "use client";
 
 import { getAccessToken } from "@/lib/api/client";
-import { ACCESS_COOKIE, ADMIN_ACCESS_COOKIE } from "@/lib/api/config";
+import type { AuthRealm } from "@/lib/api/client";
+import {
+  ACCESS_COOKIE,
+  ADMIN_ACCESS_COOKIE,
+  LEGACY_TUTOR_ACCESS_COOKIE,
+  TUTOR_ACCESS_COOKIE,
+  TUTOR_ACCESS_COOKIE_PATH,
+} from "@/lib/api/config";
 import { endpoints } from "@/lib/api/endpoints";
 import { request } from "@/lib/api/http";
 import { resetPostHog } from "@/lib/posthog-browser";
@@ -18,9 +25,9 @@ import { logoutTawkVisitor } from "@/lib/tawk-browser";
 
 const MAX_AGE_SECONDS = 60 * 60 * 24 * 30;
 
-function writeCookie(name: string, value: string): void {
+function writeCookie(name: string, value: string, path = "/"): void {
   const secure = typeof location !== "undefined" && location.protocol === "https:";
-  document.cookie = `${name}=${encodeURIComponent(value)}; path=/; max-age=${MAX_AGE_SECONDS}; SameSite=Lax${secure ? "; Secure" : ""}`;
+  document.cookie = `${name}=${encodeURIComponent(value)}; path=${path}; max-age=${MAX_AGE_SECONDS}; SameSite=Lax${secure ? "; Secure" : ""}`;
 }
 
 export function setStudentToken(token: string): void {
@@ -31,9 +38,16 @@ export function setAdminToken(token: string): void {
   writeCookie(ADMIN_ACCESS_COOKIE, token);
 }
 
-function clearCookie(name: string): void {
+export function setTutorToken(token: string): void {
+  // Match BE cookie path so the proxy gate on /center/* sees the same cookie.
+  writeCookie(TUTOR_ACCESS_COOKIE, token, TUTOR_ACCESS_COOKIE_PATH);
+  // Drop the M0 mismatched name if a prior session left it behind.
+  clearCookie(LEGACY_TUTOR_ACCESS_COOKIE, "/");
+}
+
+function clearCookie(name: string, path = "/"): void {
   const secure = typeof location !== "undefined" && location.protocol === "https:";
-  document.cookie = `${name}=; Max-Age=0; path=/; SameSite=Lax${secure ? "; Secure" : ""}`;
+  document.cookie = `${name}=; Max-Age=0; path=${path}; SameSite=Lax${secure ? "; Secure" : ""}`;
 }
 
 export function clearStudentToken(): void {
@@ -44,7 +58,12 @@ export function clearAdminToken(): void {
   clearCookie(ADMIN_ACCESS_COOKIE);
 }
 
-async function postLogout(path: string, realm: "student" | "admin"): Promise<void> {
+export function clearTutorToken(): void {
+  clearCookie(TUTOR_ACCESS_COOKIE, TUTOR_ACCESS_COOKIE_PATH);
+  clearCookie(LEGACY_TUTOR_ACCESS_COOKIE, "/");
+}
+
+async function postLogout(path: string, realm: AuthRealm): Promise<void> {
   try {
     // `anonymous` keeps a 401 from bouncing to the session-expired redirect, so
     // the bearer is attached by hand: the backend needs it to revoke the token.
@@ -93,6 +112,18 @@ export function studentAccountDeleted(callbackUrl = "/login?deleted=1"): void {
 export async function adminLogout(callbackUrl = "/admin/login"): Promise<void> {
   await postLogout(endpoints.admin.auth.logout, "admin");
   clearAdminToken();
+  resetPostHog();
+  window.location.replace(callbackUrl);
+}
+
+/**
+ * Ends the tutor session on the backend, clears the local tutor token and
+ * leaves the visitor on the center login page. Student/admin cookies are
+ * untouched — the realms are independent.
+ */
+export async function tutorLogout(callbackUrl = "/center/login"): Promise<void> {
+  await postLogout(endpoints.centerApi.auth.logout, "tutor");
+  clearTutorToken();
   resetPostHog();
   window.location.replace(callbackUrl);
 }

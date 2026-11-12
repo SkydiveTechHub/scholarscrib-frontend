@@ -72,6 +72,64 @@ export function whenTawkReady(fn: () => void): void {
   window.addEventListener("tawk:load", onReady);
 }
 
+// Same clearance Ask Astra uses above the student tab bar.
+const MOBILE_NAV_CLEARANCE = "calc(5.5rem + env(safe-area-inset-bottom, 0px))";
+
+const TAWK_OFFSET_SELECTOR = [
+  'iframe[title*="chat" i]',
+  'iframe[src*="tawk"]',
+  "#tawkchat-minimized",
+  ".widget-visible",
+].join(",");
+
+function shouldLiftForMobileNav(): boolean {
+  return (
+    document.documentElement.getAttribute("data-mobile-nav") === "on" &&
+    window.matchMedia("(max-width: 1023px)").matches
+  );
+}
+
+function applyBottom(node: HTMLElement, lift: boolean): void {
+  if (lift) node.style.setProperty("bottom", MOBILE_NAV_CLEARANCE, "important");
+  else node.style.removeProperty("bottom");
+}
+
+/**
+ * Push the minimized bubble above the mobile tab bar. Tawk only exposes
+ * zIndex via its API, and it writes inline `bottom`, so we override here.
+ */
+export function syncTawkMobileOffset(): void {
+  if (typeof document === "undefined") return;
+  const lift = shouldLiftForMobileNav();
+
+  for (const node of document.querySelectorAll<HTMLElement>(TAWK_OFFSET_SELECTOR)) {
+    const style = getComputedStyle(node);
+    if (style.position === "fixed" || style.position === "absolute") {
+      applyBottom(node, lift);
+      continue;
+    }
+    // Newer embeds wrap the iframe in a fixed container.
+    const parent = node.parentElement;
+    if (parent && getComputedStyle(parent).position === "fixed") {
+      applyBottom(parent, lift);
+    }
+  }
+}
+
+if (typeof window !== "undefined") {
+  const runOffset = () => syncTawkMobileOffset();
+  window.addEventListener("tawk:load", runOffset);
+  window.addEventListener("tawk:layout", runOffset);
+  window.addEventListener("resize", runOffset);
+  whenTawkReady(() => {
+    runOffset();
+    // Tawk sometimes appends the iframe after onLoad.
+    const obs = new MutationObserver(runOffset);
+    obs.observe(document.body, { childList: true });
+    window.setTimeout(() => obs.disconnect(), 15_000);
+  });
+}
+
 function visitorName(
   firstName?: string | null,
   lastName?: string | null,
@@ -144,7 +202,10 @@ function applyVisibility(): void {
     const tawk = api();
     if (!tawk) return;
     if (shouldHideWidget(visibility)) tawk.hideWidget?.();
-    else tawk.showWidget?.();
+    else {
+      tawk.showWidget?.();
+      syncTawkMobileOffset();
+    }
   });
 }
 

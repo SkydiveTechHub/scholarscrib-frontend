@@ -17,8 +17,10 @@ export type RegisterInput = {
   lastName: string;
   email: string;
   password: string;
-  classLevel: string;
-  track: string;
+  /** Required for STUDENT; omitted for TUTOR (center owners). */
+  classLevel?: string;
+  /** Required for STUDENT; omitted for TUTOR (center owners). */
+  track?: string;
   state: string;
 };
 
@@ -149,6 +151,20 @@ export function useAdminLogin() {
         data: input,
         anonymous: true,
         realm: "admin",
+      }),
+  });
+}
+
+export function useTutorLogin() {
+  return useMutation({
+    mutationFn: (input: { email: string; password: string }) =>
+      request<TokenOut>({
+        method: "POST",
+        url: endpoints.centerApi.auth.login,
+        timeout: AUTH_TIMEOUT_MS,
+        data: input,
+        anonymous: true,
+        realm: "tutor",
       }),
   });
 }

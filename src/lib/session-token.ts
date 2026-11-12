@@ -2,8 +2,9 @@
  * Cookie helpers shared by the proxy and the signed-out route.
  *
  * The frontend keeps Bearer access tokens in plain, JS-readable cookies
- * (`sc.access_token` for students, `sc.admin_access_token` for admins). The
- * proxy only checks *presence* — it cannot decode the JWT, and it is not the
+ * (`sc.access_token` for students, `sc.admin_access_token` for admins,
+ * `scholarscrib.tutor-session` for tutors with path `/center`). The proxy
+ * only checks *presence* — it cannot decode the JWT, and it is not the
  * security boundary. The layouts re-check with the backend's session
  * endpoint, and every gated API call carries the token that the backend
  * verifies.
@@ -12,7 +13,13 @@
  * on every request.
  */
 import type { NextRequest, NextResponse } from "next/server";
-import { ACCESS_COOKIE, ADMIN_ACCESS_COOKIE } from "@/lib/api/config";
+import {
+  ACCESS_COOKIE,
+  ADMIN_ACCESS_COOKIE,
+  LEGACY_TUTOR_ACCESS_COOKIE,
+  TUTOR_ACCESS_COOKIE,
+  TUTOR_ACCESS_COOKIE_PATH,
+} from "@/lib/api/config";
 
 export function hasStudentTokenCookie(req: NextRequest): boolean {
   return Boolean(req.cookies.get(ACCESS_COOKIE)?.value);
@@ -20,6 +27,10 @@ export function hasStudentTokenCookie(req: NextRequest): boolean {
 
 export function hasAdminTokenCookie(req: NextRequest): boolean {
   return Boolean(req.cookies.get(ADMIN_ACCESS_COOKIE)?.value);
+}
+
+export function hasTutorTokenCookie(req: NextRequest): boolean {
+  return Boolean(req.cookies.get(TUTOR_ACCESS_COOKIE)?.value);
 }
 
 /**
@@ -32,6 +43,20 @@ export function deleteSessionCookies(req: NextRequest, res: NextResponse): void 
   // The access-token cookies.
   res.cookies.delete(ACCESS_COOKIE);
   res.cookies.delete(ADMIN_ACCESS_COOKIE);
+  // Tutor cookie is path-scoped to /center — must delete with the same path.
+  res.cookies.delete({ name: TUTOR_ACCESS_COOKIE, path: TUTOR_ACCESS_COOKIE_PATH });
+  res.cookies.delete({
+    name: TUTOR_ACCESS_COOKIE,
+    path: TUTOR_ACCESS_COOKIE_PATH,
+    secure: true,
+  });
+  // M0 mismatch: FE briefly used sc.tutor_access_token with path=/.
+  res.cookies.delete({ name: LEGACY_TUTOR_ACCESS_COOKIE, path: "/" });
+  res.cookies.delete({
+    name: LEGACY_TUTOR_ACCESS_COOKIE,
+    path: "/",
+    secure: true,
+  });
 
   // Legacy Auth.js session cookies (both the `__Secure-` and plain names —
   // the chunk list covers whichever the deployment used).

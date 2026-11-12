@@ -35,6 +35,8 @@ export const PUBLIC_EXACT_PATHS: readonly string[] = [
 export const PUBLIC_PATH_PREFIXES: readonly string[] = [
   "/learn",
   "/past-questions",
+  // Invite consent preview is readable before sign-in; accept still requires auth.
+  "/join",
 ];
 
 /** Sitemap shards: /sitemap/<shard>.xml, emitted by generateSitemaps. */
@@ -87,6 +89,7 @@ export function isPublicPath(pathname: string): boolean {
 export const KNOWN_ROOT_SEGMENTS: readonly string[] = [
   "api",
   "admin",
+  "center",
   "dashboard",
   "classroom",
   "practice",
@@ -97,6 +100,8 @@ export const KNOWN_ROOT_SEGMENTS: readonly string[] = [
   "library",
   "notifications",
   "settings",
+  "my-centers",
+  "join",
   "login",
   "register",
   "forgot-password",

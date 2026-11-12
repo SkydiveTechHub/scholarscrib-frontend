@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { redirect } from "next/navigation";
+import { LuBuilding2 } from "react-icons/lu";
 import { getSessionUser } from "@/lib/session";
 import { getSettingsProfile } from "@/lib/settings";
 import { SubscriptionSection } from "@/components/settings/subscription-section";
@@ -10,6 +12,7 @@ import { PasswordForm } from "@/components/settings/password-form";
 import { DeleteAccountSection } from "@/components/settings/delete-account-section";
 import { NotificationsSection } from "@/components/settings/notifications-section";
 import { PageHeader } from "@/components/ui/page-header";
+import { buttonClass } from "@/components/ui/button";
 export const metadata: Metadata = {
   title: "Settings — ScholarsCrib",
 };
@@ -38,6 +41,21 @@ export default async function SettingsPage({
 
       <div className="space-y-5 max-w-2xl">
         <SubscriptionSection userId={session.id} />
+
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-card px-4 py-3">
+          <div className="flex items-start gap-3">
+            <LuBuilding2 className="mt-0.5 h-4 w-4 flex-shrink-0 text-primary" />
+            <div>
+              <p className="text-sm font-semibold text-foreground">My centers</p>
+              <p className="text-xs text-muted">
+                See which tutors can view your assigned results, or leave a center.
+              </p>
+            </div>
+          </div>
+          <Link href="/my-centers" className={buttonClass("secondary", "sm")}>
+            Open
+          </Link>
+        </div>
 
         <SettingsTabs
           initial={tab ?? "account"}

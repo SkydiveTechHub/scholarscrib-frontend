@@ -12,8 +12,11 @@ import {
 } from "react-icons/lu";
 import { Logo } from "@/components/ui/logo";
 import { cn } from "@/lib/utils";
-import { useLogin } from "@/hooks/api/use-auth";
+import { useLogin, useTutorLogin } from "@/hooks/api/use-auth";
 import { isApiError } from "@/lib/api/errors";
+import { endpoints } from "@/lib/api/endpoints";
+import { request } from "@/lib/api/http";
+import type { SessionOut } from "@/lib/api/types";
 import { markFreshSignIn } from "@/lib/encouragement";
 import { FieldError, INVALID_INPUT } from "@/components/ui/field-error";
 import {
@@ -38,6 +41,7 @@ function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const login = useLogin();
+  const tutorLogin = useTutorLogin();
   const googleError = searchParams.get("error");
   const [error, setError] = useState(
     googleError === "google"
@@ -85,19 +89,64 @@ function LoginForm() {
     try {
       // Inside the try: a failed chunk load while offline must reset the
       // button too, not leave "Signing in…" spinning forever.
-      const { setStudentToken } = await import("@/lib/client-session");
-      const data = await login.mutateAsync({ email, password });
-      setStudentToken(data.accessToken);
-      markFreshSignIn();
+      const { setStudentToken, setTutorToken, clearStudentToken } =
+        await import("@/lib/client-session");
 
-      // A full navigation, not router.push + router.refresh. The refresh
-      // re-fetched /login under the new session cookie, so the (auth)
-      // layout's own redirect raced the push to a slow dashboard render;
-      // when either failed mid-transition the client router unmounted the
-      // tree and left a blank page. A real request also carries the fresh
-      // cookie through the proxy and shows a server error as an error page.
-      // Stays in the loading state: the page is about to be replaced.
-      window.location.assign(callbackUrl);
+      async function enterTutorConsole(token: string) {
+        setTutorToken(token);
+        markFreshSignIn();
+        window.location.assign(
+          callbackUrl.startsWith("/center") ? callbackUrl : "/center",
+        );
+      }
+
+      try {
+        const data = await login.mutateAsync({ email, password });
+        setStudentToken(data.accessToken);
+        markFreshSignIn();
+
+        // Tutors belong in the center console with a separate JWT cookie.
+        try {
+          const session = await request<SessionOut>({
+            method: "GET",
+            url: endpoints.auth.session,
+            realm: "student",
+          });
+          if (session.user?.role === "TUTOR") {
+            clearStudentToken();
+            const tutor = await tutorLogin.mutateAsync({ email, password });
+            await enterTutorConsole(tutor.accessToken);
+            return;
+          }
+        } catch {
+          // Session probe failed — continue as a student to the callback.
+        }
+
+        // Keep /join/… across complete-profile if the dashboard gate bounces
+        // a new account there before the deep link runs.
+        const { rememberPostAuthRedirect } = await import(
+          "@/lib/post-auth-redirect"
+        );
+        rememberPostAuthRedirect(callbackUrl);
+
+        // A full navigation, not router.push + router.refresh. The refresh
+        // re-fetched /login under the new session cookie, so the (auth)
+        // layout's own redirect raced the push to a slow dashboard render;
+        // when either failed mid-transition the client router unmounted the
+        // tree and left a blank page. A real request also carries the fresh
+        // cookie through the proxy and shows a server error as an error page.
+        // Stays in the loading state: the page is about to be replaced.
+        window.location.assign(callbackUrl);
+        return;
+      } catch (studentErr) {
+        // Student login rejects tutors once Role.TUTOR has its own realm —
+        // fall through to center login before surfacing credentials errors.
+        if (!(isApiError(studentErr) && studentErr.isAuthFailure)) {
+          throw studentErr;
+        }
+        const tutor = await tutorLogin.mutateAsync({ email, password });
+        await enterTutorConsole(tutor.accessToken);
+      }
     } catch (err) {
       if (isApiError(err)) {
         if (err.isRateLimited) {
@@ -132,7 +181,8 @@ function LoginForm() {
       // /api/auth/google sends the browser to Google, which returns to the
       // site root with ?code=. <GoogleCallback /> on the landing page trades
       // that code for an access token via POST /api/auth/google/tokens.
-      const state = createGoogleState();
+      // callbackUrl (e.g. /join/CODE) is stored with the OAuth state.
+      const state = createGoogleState(callbackUrl);
       window.location.assign(
         `${API_URL}${endpoints.auth.google}?state=${encodeURIComponent(state)}`,
       );
@@ -334,10 +384,23 @@ function LoginForm() {
       <p className="mt-6 text-center text-sm text-muted">
         Don&apos;t have an account?{" "}
         <Link
-          href="/register"
+          href={
+            callbackUrl !== "/dashboard"
+              ? `/register?callbackUrl=${encodeURIComponent(callbackUrl)}`
+              : "/register"
+          }
           className="font-bold text-primary hover:underline"
         >
           Create one
+        </Link>
+      </p>
+      <p className="mt-2 text-center text-sm text-muted">
+        Center owner?{" "}
+        <Link
+          href="/center/login"
+          className="font-bold text-primary hover:underline"
+        >
+          Sign in to Tutor Centers
         </Link>
       </p>
     </div>

@@ -9,9 +9,18 @@ import { getAccessToken } from "@/lib/api/client";
  * signed-in page from the browser's back/forward cache after sign-out, and a
  * tab left open after another tab signed out.
  */
-export function SessionGuard({ realm }: { realm: "student" | "admin" }) {
+export function SessionGuard({
+  realm,
+}: {
+  realm: "student" | "admin" | "tutor";
+}) {
   useEffect(() => {
-    const loginPath = realm === "admin" ? "/admin/login" : "/login";
+    const loginPath =
+      realm === "admin"
+        ? "/admin/login"
+        : realm === "tutor"
+          ? "/center/login"
+          : "/login";
 
     function check() {
       if (!getAccessToken(undefined, realm)) {

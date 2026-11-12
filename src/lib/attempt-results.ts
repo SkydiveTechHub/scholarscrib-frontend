@@ -22,6 +22,7 @@ type AttemptPayload = AttemptResultOut & {
   timeSpentSeconds?: unknown;
   awayEvents?: unknown;
   jamb?: unknown;
+  sharedWith?: unknown;
 };
 
 type JambResult = {
@@ -192,6 +193,16 @@ export async function buildAttemptResult(
   ) / 10;
   const gradeInfo = getGrade(percentage);
 
+  const sharedRaw = isRecord(data.sharedWith) ? data.sharedWith : null;
+  const sharedWith = sharedRaw
+    ? {
+        tutorName: str(sharedRaw.tutorName),
+        centerName: str(sharedRaw.centerName),
+      }
+    : data.sharedWithTutor
+      ? { tutorName: "your tutor", centerName: "your center" }
+      : null;
+
   return {
     attemptId: str(data.attemptId) ?? attemptId,
     assessmentTitle: String(data.assessmentTitle ?? ""),
@@ -212,5 +223,9 @@ export async function buildAttemptResult(
       num(data.correctCount) ?? results.filter((r) => r.isCorrect).length,
     results,
     topicBreakdown,
+    sharedWith:
+      sharedWith && (sharedWith.tutorName || sharedWith.centerName)
+        ? sharedWith
+        : null,
   };
 }

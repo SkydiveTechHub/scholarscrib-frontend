@@ -65,6 +65,59 @@ export const queryKeys = {
     unreadCount: () => [...queryKeys.notifications.all, "unread-count"] as const,
     list: () => [...queryKeys.notifications.all, "list"] as const,
   },
+  /** Student-facing center membership reads (`/api/centers/*`). */
+  centers: {
+    all: ["centers"] as const,
+    mine: () => [...queryKeys.centers.all, "mine"] as const,
+    invitePreview: (code: string) =>
+      [...queryKeys.centers.all, "invite", code] as const,
+    assigned: () => [...queryKeys.centers.all, "assigned"] as const,
+    assignment: (assignmentId: string) =>
+      [...queryKeys.centers.all, "assignment", assignmentId] as const,
+    recommendations: () =>
+      [...queryKeys.centers.all, "recommendations"] as const,
+  },
+  /** Tutor-facing center console reads (`/center/api/*`). */
+  center: {
+    all: ["center"] as const,
+    session: () => [...queryKeys.center.all, "session"] as const,
+    list: () => [...queryKeys.center.all, "list"] as const,
+    detail: (centerId: string) =>
+      [...queryKeys.center.all, "detail", centerId] as const,
+    roster: (centerId: string) =>
+      [...queryKeys.center.all, "roster", centerId] as const,
+    groups: (centerId: string) =>
+      [...queryKeys.center.all, "groups", centerId] as const,
+    invites: (centerId: string) =>
+      [...queryKeys.center.all, "invites", centerId] as const,
+    assignments: (centerId: string) =>
+      [...queryKeys.center.all, "assignments", centerId] as const,
+    assignment: (assignmentId: string) =>
+      [...queryKeys.center.all, "assignment", assignmentId] as const,
+    assignmentOverview: (assignmentId: string) =>
+      [...queryKeys.center.all, "assignment-overview", assignmentId] as const,
+    assignmentStudents: (assignmentId: string) =>
+      [...queryKeys.center.all, "assignment-students", assignmentId] as const,
+    assignmentItems: (assignmentId: string) =>
+      [...queryKeys.center.all, "assignment-items", assignmentId] as const,
+    studentResults: (centerId: string, studentId: string) =>
+      [...queryKeys.center.all, "student-results", centerId, studentId] as const,
+    recommendations: (centerId: string) =>
+      [...queryKeys.center.all, "recommendations", centerId] as const,
+    billing: (centerId: string) =>
+      [...queryKeys.center.all, "billing", centerId] as const,
+    tokens: (centerId: string) =>
+      [...queryKeys.center.all, "tokens", centerId] as const,
+    tokenPacks: (centerId: string) =>
+      [...queryKeys.center.all, "token-packs", centerId] as const,
+    /** Owner wallet (M7) — balance, ledger, and withdraw history. */
+    wallet: () => [...queryKeys.center.all, "wallet"] as const,
+    facilitators: (centerId: string) =>
+      [...queryKeys.center.all, "facilitators", centerId] as const,
+    facilitatorInvite: (code: string) =>
+      [...queryKeys.center.all, "facilitator-invite", code] as const,
+    tutorSession: () => [...queryKeys.center.all, "session"] as const,
+  },
   admin: {
     all: ["admin"] as const,
     questions: (params?: Record<string, unknown>) =>
@@ -89,5 +142,15 @@ export const queryKeys = {
     academicTerms: () => [...queryKeys.admin.all, "academic-terms"] as const,
     announcements: () => [...queryKeys.admin.all, "announcements"] as const,
     billingCatalog: () => [...queryKeys.admin.all, "billing-catalog"] as const,
+    tutors: (params?: Record<string, unknown>) =>
+      [...queryKeys.admin.all, "centers", "tutors", params ?? {}] as const,
+    tutor: (userId: string) =>
+      [...queryKeys.admin.all, "centers", "tutors", "detail", userId] as const,
+    centerReports: (params?: Record<string, unknown>) =>
+      [...queryKeys.admin.all, "centers", "reports", params ?? {}] as const,
+    centerAccessAudit: (params?: Record<string, unknown>) =>
+      [...queryKeys.admin.all, "centers", "audit", params ?? {}] as const,
+    centerWithdrawals: (params?: Record<string, unknown>) =>
+      [...queryKeys.admin.all, "centers", "withdrawals", params ?? {}] as const,
   },
 } as const;

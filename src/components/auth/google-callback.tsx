@@ -8,6 +8,10 @@ import {
   consumeGoogleState,
   loginPathForGoogleError,
 } from "@/lib/google-oauth-state";
+import {
+  consumePostAuthRedirect,
+  peekPostAuthRedirect,
+} from "@/lib/post-auth-redirect";
 
 // Google redirects back to the site root with ?code=. A code is single-use,
 // and React strict mode runs effects twice in dev, so remember what was sent.
@@ -61,9 +65,15 @@ export function GoogleCallback() {
       .then((data) => {
         setStudentToken(data.accessToken);
         markFreshSignIn();
-        // Full navigation so the proxy sees the fresh cookie. A profile that
-        // still needs completing is sent on by the dashboard layout.
-        window.location.assign("/dashboard");
+        // Full navigation so the proxy sees the fresh cookie. Prefer a stored
+        // deep link (e.g. /join/CODE). If we only have /dashboard, leave the
+        // stored link for complete-profile (new Google accounts often bounce
+        // there first).
+        const next = peekPostAuthRedirect() ?? "/dashboard";
+        if (next !== "/dashboard") {
+          consumePostAuthRedirect("/dashboard");
+        }
+        window.location.assign(next);
       })
       .catch(() => {
         // Surfaced through googleTokens.isError below.

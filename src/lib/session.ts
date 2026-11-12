@@ -46,3 +46,18 @@ export const getAdminSession = cache(async (): Promise<AdminSessionOut | null> =
     throw error;
   }
 });
+
+/**
+ * The signed-in tutor, or null. Uses the tutor JWT cookie and the center
+ * session endpoint — never the student session path.
+ */
+export const getTutorSession = cache(async (): Promise<SessionOut | null> => {
+  try {
+    return await api<SessionOut>(endpoints.centerApi.auth.session, {
+      realm: "tutor",
+    });
+  } catch (error) {
+    if (isApiError(error) && error.isAuthFailure) return null;
+    throw error;
+  }
+});

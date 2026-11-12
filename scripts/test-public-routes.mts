@@ -19,6 +19,13 @@ test("the past-questions tree is public at every depth", () => {
   assert.equal(isPublicPath("/past-questions/waec/biology/2019"), true);
 });
 
+test("center invite join links are public (consent before sign-in)", () => {
+  assert.equal(isPublicPath("/join"), true);
+  assert.equal(isPublicPath("/join/ABC123"), true);
+  // Prefix boundary: /joinX must stay gated.
+  assert.equal(isPublicPath("/joinx"), false);
+});
+
 test("crawler-facing metadata files are public", () => {
   // A crawler fetches these before anything else. Redirecting robots.txt to a
   // login page is indistinguishable, to Google, from having no robots.txt.
@@ -84,9 +91,13 @@ test("EVERY gated tree stays closed", () => {
     "/library",
     "/settings",
     "/settings/billing",
+    "/my-centers",
     "/admin",
     "/admin/questions",
     "/admin/api/students",
+    "/center",
+    "/center/roster",
+    "/center/api/centers",
     "/api/assessments/submit",
     "/api/billing/checkout",
   ]) {

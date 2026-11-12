@@ -10,7 +10,13 @@
 "use client";
 
 import axios, { AxiosError, type AxiosRequestConfig } from "axios";
-import { clearAdminToken, clearStudentToken, getAccessToken } from "./client";
+import {
+  clearAdminToken,
+  clearStudentToken,
+  clearTutorToken,
+  getAccessToken,
+  type AuthRealm,
+} from "./client";
 import { API_URL } from "./config";
 import { endpoints } from "./endpoints";
 import { readErrorBody } from "./error-body";
@@ -22,7 +28,7 @@ declare module "axios" {
     /** Skip the bearer header and the auth-failure redirect (public and login flows). */
     anonymous?: boolean;
     /** Which token to attach; defaults to a path-based guess. */
-    realm?: "student" | "admin";
+    realm?: AuthRealm;
     /** Internal: how many times this request has been replayed for a waking database. */
     wakeAttempt?: number;
   }
@@ -38,11 +44,18 @@ const SIGN_IN_PATHS: readonly string[] = [
   endpoints.admin.auth.login,
   endpoints.admin.auth.forgotPassword,
   endpoints.admin.auth.resetPassword,
+  endpoints.centerApi.auth.login,
+  endpoints.centerApi.auth.forgotPassword,
+  endpoints.centerApi.auth.resetPassword,
 ];
 
-function isAdminRealm(path: string, realm?: "student" | "admin"): boolean {
-  if (realm) return realm === "admin";
-  return path.startsWith("/admin") && !path.startsWith("/admin/api/auth");
+function resolveRealm(path: string, realm?: AuthRealm): AuthRealm {
+  if (realm) return realm;
+  if (path.startsWith("/admin") && !path.startsWith("/admin/api/auth")) {
+    return "admin";
+  }
+  if (path.startsWith("/center")) return "tutor";
+  return "student";
 }
 
 export const http = axios.create({
@@ -97,12 +110,17 @@ http.interceptors.response.use(undefined, async (error: unknown) => {
   // Never redirect during a public/login flow: an "invalid credentials" 401
   // must show the form's error, not bounce the user around.
   if (apiError.isAuthFailure && !config?.anonymous && !SIGN_IN_PATHS.includes(path)) {
-    const admin = isAdminRealm(path, config?.realm);
-    if (admin) clearAdminToken();
-    else clearStudentToken();
-    window.location.assign(
-      admin ? "/admin/login?reason=session" : "/login?reason=session",
-    );
+    const realm = resolveRealm(path, config?.realm);
+    if (realm === "admin") {
+      clearAdminToken();
+      window.location.assign("/admin/login?reason=session");
+    } else if (realm === "tutor") {
+      clearTutorToken();
+      window.location.assign("/center/login?reason=session");
+    } else {
+      clearStudentToken();
+      window.location.assign("/login?reason=session");
+    }
   }
   throw apiError;
 });

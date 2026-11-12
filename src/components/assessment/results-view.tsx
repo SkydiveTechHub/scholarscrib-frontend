@@ -27,6 +27,7 @@ import {
 import { AskAstraButton } from "@/components/tutor/ask-astra-button";
 import { reviewPrompt } from "@/lib/tutor/review-prompt";
 import { AchievementUnlockBanner } from "@/components/achievements/unlock-banner";
+import { SharedWithBadge } from "@/components/center-app/shared-with-badge";
 import { XpAwardBanner } from "@/components/gamification/xp-award-banner";
 import { ImprovementNote } from "@/components/gamification/improvement-note";
 import type { SubscriptionTier } from "@/lib/subscription";
@@ -89,6 +90,11 @@ export type ResultData = {
   correctCount: number;
   results: QuestionResult[];
   topicBreakdown: TopicBreakdown[];
+  /** S-2: set when this attempt was for a tutor assignment. */
+  sharedWith?: {
+    tutorName?: string | null;
+    centerName?: string | null;
+  } | null;
 };
 
 // High-stakes papers only. A ten-question topic quiz that flags a student for
@@ -230,6 +236,14 @@ export function ResultsView({
               <p className="mt-0.5 text-sm text-muted">
                 {result.jamb ? result.jamb.band.remark : "Quiz completed"}
               </p>
+              {result.sharedWith && (
+                <div className="mt-2">
+                  <SharedWithBadge
+                    tutorName={result.sharedWith.tutorName}
+                    centerName={result.sharedWith.centerName}
+                  />
+                </div>
+              )}
             </div>
             <div className="text-right">
               {/* A UTME candidate reads a mark out of 400, not a percentage. */}

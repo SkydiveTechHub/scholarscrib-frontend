@@ -136,6 +136,178 @@ export const endpoints = {
   push: {
     subscription: "/api/push/subscription",
   },
+  /**
+   * Student-facing center features (`/api/centers/*`): join, my centers, leave.
+   */
+  centers: {
+    /** My centers (active + left/removed history). BE: GET /api/centers */
+    mine: "/api/centers",
+    /** Preview an invite by short code (anonymous or student). */
+    invitePreview: (code: string) => `/api/centers/invites/${seg(code)}`,
+    /** Accept invite with consent payload. */
+    inviteAccept: (code: string) =>
+      `/api/centers/invites/${seg(code)}/accept`,
+    leave: (centerId: string) => `/api/centers/${seg(centerId)}/leave`,
+    /** Student Assigned inbox (S-6). BE: GET /api/centers/assigned */
+    assigned: "/api/centers/assigned",
+    assignment: (assignmentId: string) =>
+      `/api/centers/assignments/${seg(assignmentId)}`,
+    assignmentStart: (assignmentId: string) =>
+      `/api/centers/assignments/${seg(assignmentId)}/start`,
+    /** Tutor recommendations inbox (C-2). */
+    recommendations: "/api/centers/recommendations",
+    /** PATCH status: seen | acted */
+    recommendation: (recommendationId: string) =>
+      `/api/centers/recommendations/${seg(recommendationId)}`,
+  },
+  /**
+   * Tutor-facing center console (`/center/api/*`). Separate JWT realm from
+   * student Astra `/api/tutor/*`.
+   */
+  centerApi: {
+    auth: {
+      login: "/center/api/auth/login",
+      logout: "/center/api/auth/logout",
+      session: "/center/api/auth/session",
+      forgotPassword: "/center/api/auth/forgot-password",
+      resetPassword: "/center/api/auth/reset-password",
+    },
+    centers: {
+      list: "/center/api/centers",
+      create: "/center/api/centers",
+      detail: (centerId: string) => `/center/api/centers/${seg(centerId)}`,
+      update: (centerId: string) => `/center/api/centers/${seg(centerId)}`,
+    },
+    roster: {
+      list: (centerId: string) => `/center/api/centers/${seg(centerId)}/roster`,
+      remove: (centerId: string, membershipId: string) =>
+        `/center/api/centers/${seg(centerId)}/roster/${seg(membershipId)}`,
+    },
+    groups: {
+      list: (centerId: string) => `/center/api/centers/${seg(centerId)}/groups`,
+      create: (centerId: string) => `/center/api/centers/${seg(centerId)}/groups`,
+      detail: (centerId: string, groupId: string) =>
+        `/center/api/centers/${seg(centerId)}/groups/${seg(groupId)}`,
+      addMember: (centerId: string, groupId: string) =>
+        `/center/api/centers/${seg(centerId)}/groups/${seg(groupId)}/members`,
+      removeMember: (centerId: string, groupId: string, membershipId: string) =>
+        `/center/api/centers/${seg(centerId)}/groups/${seg(groupId)}/members/${seg(membershipId)}`,
+    },
+    invites: {
+      list: (centerId: string) => `/center/api/centers/${seg(centerId)}/invites`,
+      create: (centerId: string) => `/center/api/centers/${seg(centerId)}/invites`,
+      revoke: (centerId: string, inviteId: string) =>
+        `/center/api/centers/${seg(centerId)}/invites/${seg(inviteId)}/revoke`,
+      regenerate: (centerId: string, inviteId: string) =>
+        `/center/api/centers/${seg(centerId)}/invites/${seg(inviteId)}/regenerate`,
+    },
+    assignments: {
+      list: (centerId: string) =>
+        `/center/api/centers/${seg(centerId)}/assignments`,
+      create: (centerId: string) =>
+        `/center/api/centers/${seg(centerId)}/assignments`,
+      detail: (centerId: string, assignmentId: string) =>
+        `/center/api/centers/${seg(centerId)}/assignments/${seg(assignmentId)}`,
+      generate: (centerId: string, assignmentId: string) =>
+        `/center/api/centers/${seg(centerId)}/assignments/${seg(assignmentId)}/generate`,
+      publish: (centerId: string, assignmentId: string) =>
+        `/center/api/centers/${seg(centerId)}/assignments/${seg(assignmentId)}/publish`,
+      close: (centerId: string, assignmentId: string) =>
+        `/center/api/centers/${seg(centerId)}/assignments/${seg(assignmentId)}/close`,
+      extend: (centerId: string, assignmentId: string) =>
+        `/center/api/centers/${seg(centerId)}/assignments/${seg(assignmentId)}/extend`,
+      duplicate: (centerId: string, assignmentId: string) =>
+        `/center/api/centers/${seg(centerId)}/assignments/${seg(assignmentId)}/duplicate`,
+      /** P-1 overview. */
+      overview: (centerId: string, assignmentId: string) =>
+        `/center/api/centers/${seg(centerId)}/assignments/${seg(assignmentId)}/overview`,
+      /** P-2 per-student rows. */
+      students: (centerId: string, assignmentId: string) =>
+        `/center/api/centers/${seg(centerId)}/assignments/${seg(assignmentId)}/students`,
+      /** P-3 item analysis. */
+      items: (centerId: string, assignmentId: string) =>
+        `/center/api/centers/${seg(centerId)}/assignments/${seg(assignmentId)}/items`,
+    },
+    students: {
+      /** P-4 scoped student detail (assignment-scoped only). */
+      results: (centerId: string, studentId: string) =>
+        `/center/api/centers/${seg(centerId)}/students/${seg(studentId)}/results`,
+    },
+    recommendations: {
+      list: (centerId: string) =>
+        `/center/api/centers/${seg(centerId)}/recommendations`,
+      create: (centerId: string) =>
+        `/center/api/centers/${seg(centerId)}/recommendations`,
+      detail: (centerId: string, recommendationId: string) =>
+        `/center/api/centers/${seg(centerId)}/recommendations/${seg(recommendationId)}`,
+    },
+    billing: {
+      status: (centerId: string) =>
+        `/center/api/centers/${seg(centerId)}/billing`,
+      checkout: (centerId: string) =>
+        `/center/api/centers/${seg(centerId)}/billing/checkout`,
+      verify: (centerId: string) =>
+        `/center/api/centers/${seg(centerId)}/billing/verify`,
+    },
+    /**
+     * Tutor Astra (M6) — center-scoped chat. Separate from student
+     * `/api/tutor/*` and admin `/admin/api/astra/*`.
+     */
+    astra: {
+      threads: (centerId: string) =>
+        `/center/api/centers/${seg(centerId)}/astra/threads`,
+      thread: (centerId: string, threadId: string) =>
+        `/center/api/centers/${seg(centerId)}/astra/threads/${seg(threadId)}`,
+      messagesStream: (centerId: string, threadId: string) =>
+        `/center/api/centers/${seg(centerId)}/astra/threads/${seg(threadId)}/messages/stream`,
+      messagesStop: (centerId: string, threadId: string) =>
+        `/center/api/centers/${seg(centerId)}/astra/threads/${seg(threadId)}/messages/stream/stop`,
+      runStream: (centerId: string, threadId: string, runId: string) =>
+        `/center/api/centers/${seg(centerId)}/astra/threads/${seg(threadId)}/runs/${seg(runId)}/stream`,
+      actionsResume: (centerId: string, threadId: string) =>
+        `/center/api/centers/${seg(centerId)}/astra/threads/${seg(threadId)}/actions/resume`,
+    },
+    /** Per-center AI token pool (M6). Owner tops up; staff draw from pool. */
+    tokens: {
+      balance: (centerId: string) =>
+        `/center/api/centers/${seg(centerId)}/tokens`,
+      packs: (centerId: string) =>
+        `/center/api/centers/${seg(centerId)}/tokens/packs`,
+      checkout: (centerId: string) =>
+        `/center/api/centers/${seg(centerId)}/tokens/checkout`,
+      verify: (centerId: string) =>
+        `/center/api/centers/${seg(centerId)}/tokens/verify`,
+    },
+    /**
+     * Owner referral wallet (M7). Balance is per tutor owner; spend targets a
+     * center token pool. Owner-only (T-9).
+     */
+    wallet: {
+      status: "/center/api/wallet",
+      spendTokens: (centerId: string) =>
+        `/center/api/centers/${seg(centerId)}/wallet/spend-tokens`,
+      withdraw: "/center/api/wallet/withdraw",
+    },
+    /** Team plan facilitators (M5). Owner manages; staff can list. */
+    facilitators: {
+      list: (centerId: string) =>
+        `/center/api/centers/${seg(centerId)}/facilitators`,
+      invite: (centerId: string) =>
+        `/center/api/centers/${seg(centerId)}/facilitators/invites`,
+      revokeMember: (centerId: string, membershipId: string) =>
+        `/center/api/centers/${seg(centerId)}/facilitators/${seg(membershipId)}/revoke`,
+      revokeInvite: (centerId: string, inviteId: string) =>
+        `/center/api/centers/${seg(centerId)}/facilitators/invites/${seg(inviteId)}/revoke`,
+    },
+    facilitatorInvites: {
+      preview: (code: string) =>
+        `/center/api/facilitator-invites/${seg(code)}`,
+      accept: (code: string) =>
+        `/center/api/facilitator-invites/${seg(code)}/accept`,
+    },
+    archive: (centerId: string) =>
+      `/center/api/centers/${seg(centerId)}/archive`,
+  },
   admin: {
     auth: {
       login: "/admin/api/auth/login",
@@ -226,6 +398,24 @@ export const endpoints = {
       plan: (code: string) => `/admin/api/billing/plans/${seg(code)}`,
       entitlement: (code: string, featureCode: string) =>
         `/admin/api/billing/plans/${seg(code)}/entitlements/${seg(featureCode)}`,
+    },
+    /** Tutor Centers admin (M4): tutors list/verify/suspend, reports, access audit. */
+    centers: {
+      tutors: "/admin/api/centers/tutors",
+      tutor: (userId: string) => `/admin/api/centers/tutors/${seg(userId)}`,
+      tutorStatus: (userId: string) =>
+        `/admin/api/centers/tutors/${seg(userId)}/status`,
+      tutorVerify: (userId: string) =>
+        `/admin/api/centers/tutors/${seg(userId)}/verify`,
+      reports: "/admin/api/centers/reports",
+      report: (reportId: string) =>
+        `/admin/api/centers/reports/${seg(reportId)}`,
+      accessAudit: "/admin/api/centers/audit",
+      /** M7: withdraw request ops queue (D11). */
+      withdrawals: "/admin/api/centers/withdrawals",
+      /** Body: `{ fulfil: boolean, note? }` — reject when fulfil=false. */
+      withdrawalFulfil: (withdrawalId: string) =>
+        `/admin/api/centers/withdrawals/${seg(withdrawalId)}/fulfil`,
     },
   },
 } as const;

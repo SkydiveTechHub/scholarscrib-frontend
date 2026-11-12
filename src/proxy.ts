@@ -1,9 +1,11 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { classifyAdminPath } from "@/lib/admin-route";
+import { classifyCenterPath } from "@/lib/center-route";
 import { isKnownRootPath, isPublicPath } from "@/lib/public-routes";
 import {
   hasAdminTokenCookie,
   hasStudentTokenCookie,
+  hasTutorTokenCookie,
 } from "@/lib/session-token";
 
 const AUTH_ROUTES = [
@@ -45,6 +47,25 @@ export default async function proxy(req: NextRequest) {
     const adminLogin = new URL("/admin/login", req.url);
     adminLogin.searchParams.set("callbackUrl", `${pathname}${search}`);
     return NextResponse.redirect(adminLogin);
+  }
+
+  const centerPath = classifyCenterPath(pathname);
+  if (centerPath) {
+    // Same loop-avoidance as admin: let entry auth pages through so an expired
+    // tutor cookie cannot bounce /center/login ↔ /center forever.
+    if (centerPath === "auth" || centerPath === "login") {
+      return NextResponse.next();
+    }
+
+    if (hasTutorTokenCookie(req)) return NextResponse.next();
+
+    if (pathname.startsWith("/center/api/")) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const centerLogin = new URL("/center/login", req.url);
+    centerLogin.searchParams.set("callbackUrl", `${pathname}${search}`);
+    return NextResponse.redirect(centerLogin);
   }
 
   const token = hasStudentTokenCookie(req);

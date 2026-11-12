@@ -643,3 +643,18 @@
 :root[data-theme="dark"] .theme-dark-only {
   display: block;
 }
+
+/* ── Tawk.to above the student mobile tab bar ──────────────
+ *
+ * The embed API only exposes zIndex, not position. The tab bar is z-50 and
+ * owns the bottom edge, so without this the bubble sits under/in the nav.
+ * Clearance matches Ask Astra: 5.5rem + safe area. Desktop (lg+) is untouched.
+ */
+@media (max-width: 1023px) {
+  html[data-mobile-nav="on"] iframe[title="chat widget"],
+  html[data-mobile-nav="on"] iframe[title="Chat widget"],
+  html[data-mobile-nav="on"] #tawkchat-minimized,
+  html[data-mobile-nav="on"] .widget-visible {
+    bottom: calc(5.5rem + env(safe-area-inset-bottom, 0px)) !important;
+  }
+}

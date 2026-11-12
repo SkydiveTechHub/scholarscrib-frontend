@@ -102,11 +102,18 @@ export const REGISTER_STEP_FIELDS: Record<1 | 2, RegisterField[]> = {
   2: ["classLevel", "track", "state"],
 };
 
+/** Tutor step 2 only needs state — class/track are student academic fields. */
+export const REGISTER_TUTOR_STEP_FIELDS: Record<1 | 2, RegisterField[]> = {
+  1: ["firstName", "lastName", "email", "password"],
+  2: ["state"],
+};
+
 export function validateRegisterStep(
   step: 1 | 2,
-  values: Record<RegisterField, string>,
+  values: Record<RegisterField, string> & { role?: string },
 ): FieldErrors<RegisterField> {
   const errors: FieldErrors<RegisterField> = {};
+  const isTutor = values.role === "TUTOR";
 
   if (step === 1) {
     const firstName = validateName(values.firstName, "first");
@@ -117,6 +124,8 @@ export function validateRegisterStep(
     if (email) errors.email = email;
     const password = validateNewPassword(values.password);
     if (password) errors.password = password;
+  } else if (isTutor) {
+    if (!values.state) errors.state = "Select your state.";
   } else {
     if (!values.classLevel) errors.classLevel = "Select your class level.";
     if (!values.track) errors.track = "Select your track.";

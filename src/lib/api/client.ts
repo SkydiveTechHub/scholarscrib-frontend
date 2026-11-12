@@ -2,23 +2,36 @@
  * Browser token helpers: read and clear the JS-readable access-token cookies.
  * The HTTP client itself lives in ./http (axios); hooks in @/hooks/api call it.
  */
-import { ACCESS_COOKIE, ADMIN_ACCESS_COOKIE } from "./config";
+import {
+  ACCESS_COOKIE,
+  ADMIN_ACCESS_COOKIE,
+  LEGACY_TUTOR_ACCESS_COOKIE,
+  TUTOR_ACCESS_COOKIE,
+  TUTOR_ACCESS_COOKIE_PATH,
+} from "./config";
 
-function realmForPath(path: string): "student" | "admin" {
-  return path.startsWith("/admin") && !path.startsWith("/admin/api/auth")
-    ? "admin"
-    : "student";
+export type AuthRealm = "student" | "admin" | "tutor";
+
+function realmForPath(path: string): AuthRealm {
+  if (path.startsWith("/admin") && !path.startsWith("/admin/api/auth")) {
+    return "admin";
+  }
+  if (path.startsWith("/center")) return "tutor";
+  return "student";
+}
+
+function cookieForRealm(realm: AuthRealm): string {
+  if (realm === "admin") return ADMIN_ACCESS_COOKIE;
+  if (realm === "tutor") return TUTOR_ACCESS_COOKIE;
+  return ACCESS_COOKIE;
 }
 
 export function getAccessToken(
   path = window.location.pathname,
-  realm?: "student" | "admin",
+  realm?: AuthRealm,
 ): string | null {
   if (typeof document === "undefined") return null;
-  const name = (realm ?? realmForPath(path)) === "admin"
-    ? ADMIN_ACCESS_COOKIE
-    : ACCESS_COOKIE;
-  return readCookie(name);
+  return readCookie(cookieForRealm(realm ?? realmForPath(path)));
 }
 
 function readCookie(name: string): string | null {
@@ -29,12 +42,20 @@ function readCookie(name: string): string | null {
   return match ? decodeURIComponent(match.slice(name.length + 1)) : null;
 }
 
-export function clearStudentToken(): void {
+function clearBrowserCookie(name: string, path: string): void {
   if (typeof document === "undefined") return;
-  document.cookie = `${ACCESS_COOKIE}=; Max-Age=0; path=/; SameSite=Lax`;
+  document.cookie = `${name}=; Max-Age=0; path=${path}; SameSite=Lax`;
+}
+
+export function clearStudentToken(): void {
+  clearBrowserCookie(ACCESS_COOKIE, "/");
 }
 
 export function clearAdminToken(): void {
-  if (typeof document === "undefined") return;
-  document.cookie = `${ADMIN_ACCESS_COOKIE}=; Max-Age=0; path=/; SameSite=Lax`;
+  clearBrowserCookie(ADMIN_ACCESS_COOKIE, "/");
+}
+
+export function clearTutorToken(): void {
+  clearBrowserCookie(TUTOR_ACCESS_COOKIE, TUTOR_ACCESS_COOKIE_PATH);
+  clearBrowserCookie(LEGACY_TUTOR_ACCESS_COOKIE, "/");
 }

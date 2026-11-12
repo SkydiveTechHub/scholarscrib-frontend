@@ -1,13 +1,14 @@
 import {
   LuHouse,
   LuBookOpen,
-  LuBook,
+  LuClipboardList,
   LuClipboardCheck,
   LuCalendar,
   LuChartBar,
   LuAward,
   LuSettings,
   LuSparkles,
+  LuLightbulb,
 } from "react-icons/lu";
 
 export const NAV_GROUPS = [
@@ -24,6 +25,8 @@ export const NAV_GROUPS = [
     label: "Practice",
     items: [
       { name: "Practice", href: "/practice", icon: LuClipboardCheck },
+      { name: "Assigned", href: "/assigned", icon: LuClipboardList },
+      { name: "Recommendations", href: "/recommendations", icon: LuLightbulb },
       { name: "Study Plan", href: "/study-plan", icon: LuCalendar },
     ],
   },

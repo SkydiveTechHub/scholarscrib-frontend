@@ -10,21 +10,27 @@ import { OTP_LENGTH, OtpInput } from "./otp-input";
 const RESEND_COOLDOWN_SECONDS = 30;
 
 /**
- * The full-page step that stands between a signed-in, unverified student and
- * the dashboard.
+ * The full-page step that stands between a signed-in, unverified account and
+ * the rest of the app (student dashboard or tutor center console).
  *
  * Registration already triggers the code on the backend, so it arrives with
  * `alreadySent` and must not send a second one (that would invalidate the
- * first, which is the one in the student's inbox). Every other arrival — a
- * password sign-in by an existing unverified account — has had no code sent,
- * so one goes out as soon as this mounts.
+ * first, which is the one in the inbox). Every other arrival — a password
+ * sign-in by an existing unverified account — has had no code sent, so one
+ * goes out as soon as this mounts.
  */
 export function VerifyEmailGate({
   email,
   alreadySent,
+  successHref = "/dashboard",
+  realm = "student",
 }: {
   email: string;
   alreadySent: boolean;
+  /** Where to go after a successful verify (full navigation). */
+  successHref?: string;
+  /** Which session to clear on "Sign out". */
+  realm?: "student" | "tutor";
 }) {
   const sendOtp = useOtpSend();
   const verifyOtp = useOtpVerify();
@@ -34,7 +40,9 @@ export function VerifyEmailGate({
   );
   const [otp, setOtp] = useState("");
   const [error, setError] = useState("");
-  const [cooldown, setCooldown] = useState(alreadySent ? RESEND_COOLDOWN_SECONDS : 0);
+  const [cooldown, setCooldown] = useState(
+    alreadySent ? RESEND_COOLDOWN_SECONDS : 0,
+  );
 
   // A ref, not a module-level flag: React strict mode re-runs effects on the
   // same instance in dev (a ref survives that, so one send, not two), while a
@@ -89,10 +97,21 @@ export function VerifyEmailGate({
       {
         onSuccess: () => {
           setStep("done");
-          // A full navigation, not router.push + refresh: the dashboard layout
-          // must re-read the session from the backend to see the account as
-          // verified, and a real request carries the cookie through the proxy.
-          window.location.assign("/dashboard");
+          // Prefer a stored deep link (invite join) over the default dashboard.
+          void import("@/lib/post-auth-redirect").then(
+            ({ consumePostAuthRedirect, peekPostAuthRedirect }) => {
+              const stored = peekPostAuthRedirect();
+              const next =
+                successHref !== "/dashboard"
+                  ? successHref
+                  : (stored ?? "/dashboard");
+              if (stored) consumePostAuthRedirect("/dashboard");
+              // A full navigation, not router.push + refresh: the layout must
+              // re-read the session from the backend to see the account as
+              // verified, and a real request carries the cookie through the proxy.
+              window.location.assign(next);
+            },
+          );
         },
         onError: (err) => {
           setError(
@@ -106,16 +125,28 @@ export function VerifyEmailGate({
   }
 
   async function handleSignOut() {
-    // Same order as the complete-profile step: the next student on a shared
-    // phone must not receive this student's reminders.
-    const [{ unsubscribeThisDevice }, { studentLogout }] = await Promise.all([
+    // Same order as the complete-profile step: the next person on a shared
+    // phone must not inherit this session's side effects.
+    const [{ unsubscribeThisDevice }, session] = await Promise.all([
       import("@/lib/push-client"),
       import("@/lib/client-session"),
     ]);
-    await Promise.all([unsubscribeThisDevice(), studentLogout("/login")]);
+    if (realm === "tutor") {
+      await Promise.all([
+        unsubscribeThisDevice(),
+        session.tutorLogout("/center/login"),
+      ]);
+      return;
+    }
+    await Promise.all([
+      unsubscribeThisDevice(),
+      session.studentLogout("/login"),
+    ]);
   }
 
   const busy = sendOtp.isPending || verifyOtp.isPending;
+  const destinationLabel =
+    realm === "tutor" ? "your center console…" : "your dashboard…";
 
   if (step === "done") {
     return (
@@ -126,7 +157,7 @@ export function VerifyEmailGate({
         <h1 className="text-2xl font-bold tracking-tight text-foreground">
           Email verified
         </h1>
-        <p className="text-sm text-muted">Taking you to your dashboard…</p>
+        <p className="text-sm text-muted">Taking you to {destinationLabel}</p>
       </div>
     );
   }
@@ -168,7 +199,9 @@ export function VerifyEmailGate({
         <button
           type="submit"
           disabled={
-            busy || step !== "enter" || otp.replace(/\D/g, "").length < OTP_LENGTH
+            busy ||
+            step !== "enter" ||
+            otp.replace(/\D/g, "").length < OTP_LENGTH
           }
           className={buttonClass("primary", "lg", "w-full")}
         >

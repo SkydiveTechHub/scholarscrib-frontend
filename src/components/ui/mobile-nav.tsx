@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect } from "react";
 import { cn } from "@/lib/utils";
 import {
   LuHouse,
@@ -29,12 +30,30 @@ const IMMERSIVE_ROUTES = [
   /^\/practice\/cbt/,
   /^\/classroom\/[^/]+\/[^/]+\/quiz/,
   /^\/classroom\/[^/]+\/[^/]+\/practice$/,
+  /^\/assigned\/[^/]+$/,
 ];
 
 export function MobileNav() {
   const pathname = usePathname();
+  const immersive = IMMERSIVE_ROUTES.some((route) => route.test(pathname));
 
-  if (IMMERSIVE_ROUTES.some((route) => route.test(pathname))) return null;
+  // Lets Tawk CSS/JS lift the chat bubble above this bar. Cleared on
+  // immersive routes where the nav unmounts.
+  useEffect(() => {
+    if (immersive) {
+      document.documentElement.removeAttribute("data-mobile-nav");
+      window.dispatchEvent(new Event("tawk:layout"));
+      return;
+    }
+    document.documentElement.setAttribute("data-mobile-nav", "on");
+    window.dispatchEvent(new Event("tawk:layout"));
+    return () => {
+      document.documentElement.removeAttribute("data-mobile-nav");
+      window.dispatchEvent(new Event("tawk:layout"));
+    };
+  }, [immersive]);
+
+  if (immersive) return null;
 
   return (
     <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-border bg-card/95 backdrop-blur-md lg:hidden">

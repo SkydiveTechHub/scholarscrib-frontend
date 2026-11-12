@@ -45,7 +45,11 @@ export function CompleteProfileForm({
     try {
       await completeProfile.mutateAsync(form);
       // replace, not push: Back must not return to a step that is done.
-      router.replace("/dashboard");
+      // Prefer a stored deep link (e.g. /join/CODE) from invite → Google/register.
+      const { consumePostAuthRedirect } = await import(
+        "@/lib/post-auth-redirect"
+      );
+      router.replace(consumePostAuthRedirect("/dashboard"));
       router.refresh();
     } catch (err) {
       if (isApiError(err)) {
